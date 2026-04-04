@@ -419,34 +419,46 @@ export default function Page() {
         <h2 className="mb-8 text-center text-3xl font-light tracking-tight md:text-4xl">
           Under the hood
         </h2>
-        <div className="space-y-4">
+        <div className="grid gap-4 md:grid-cols-3">
           {[
             {
               name: "Arc (Circle)",
               role: "Settlement rail",
-              detail: "USDC-native L1 blockchain.\nAll payroll and customer payments settle here.\nThe Payroll smart contract holds company funds and executes payments.",
+              lines: [
+                "USDC-native L1 blockchain.",
+                "All payroll and customer payments settle here.",
+                "The Payroll smart contract holds company funds and executes payments.",
+              ],
             },
             {
               name: "Chainlink CRE",
               role: "Payment automation",
-              detail: "A cron-triggered workflow fetches due salary requests from our backend via Confidential HTTP.\nThen executes on-chain payments through the KeystoneForwarder.",
+              lines: [
+                "Cron-triggered workflow fetches due salary requests via Confidential HTTP.",
+                "Executes on-chain payments through the KeystoneForwarder.",
+              ],
             },
             {
               name: "WalletConnect Pay",
               role: "Customer checkout",
-              detail: "Customers pay through checkout links.\nWe add per-invoice customization (amount, currency, metadata) on top of the standard WC Pay flow.",
+              lines: [
+                "Customers pay through checkout links.",
+                "Per-invoice customization (amount, currency, metadata) on top of standard WC Pay.",
+              ],
             },
           ].map((tech) => (
             <div
               key={tech.name}
-              className="flex items-start gap-6 rounded-lg border p-6"
+              className="rounded-lg border p-6"
               style={{ borderColor: "var(--tone-border)", background: "var(--tone-linen)" }}
             >
-              <div className="w-48 shrink-0">
-                <p className="text-base font-semibold">{tech.name}</p>
-                <p className="text-sm" style={{ color: "var(--tone-green)" }}>{tech.role}</p>
+              <p className="text-lg font-semibold">{tech.name}</p>
+              <p className="text-sm" style={{ color: "var(--tone-green)" }}>{tech.role}</p>
+              <div className="mt-3 flex flex-col gap-2">
+                {tech.lines.map((line) => (
+                  <p key={line} className="text-sm leading-relaxed" style={{ color: "var(--tone-muted)" }}>{line}</p>
+                ))}
               </div>
-              <p className="whitespace-pre-line text-sm leading-relaxed" style={{ color: "var(--tone-muted)" }}>{tech.detail}</p>
             </div>
           ))}
         </div>
