@@ -235,6 +235,39 @@ export default defineSchema({
     .index("by_employeeId", ["employeeId"])
     .index("by_compensationLineId", ["compensationLineId"]),
 
+  // ─── Usage Tabs (running pay-as-you-go tabs per customer per product) ───
+  usageTabs: defineTable({
+    companyId: v.id("companies"),
+    productId: v.id("products"),
+    customerIdentifier: v.string(), // wallet address, email, or API client ID
+    totalUnits: v.number(),
+    totalCents: v.number(),
+    status: v.union(
+      v.literal("open"),     // accepting new entries
+      v.literal("billed"),   // payment link generated, no more entries
+      v.literal("paid")      // settled
+    ),
+    paymentId: v.optional(v.id("customerPayments")),
+    checkoutUrl: v.optional(v.string()),
+    billedAt: v.optional(v.number()),
+    paidAt: v.optional(v.number()),
+  })
+    .index("by_companyId", ["companyId"])
+    .index("by_productId", ["productId"])
+    .index("by_companyId_and_status", ["companyId", "status"])
+    .index("by_customer", ["companyId", "productId", "customerIdentifier"]),
+
+  // ─── Usage Entries (individual usage records, audit trail) ───
+  usageEntries: defineTable({
+    tabId: v.id("usageTabs"),
+    companyId: v.id("companies"),
+    units: v.number(),
+    amountCents: v.number(),
+    description: v.optional(v.string()),
+  })
+    .index("by_tabId", ["tabId"])
+    .index("by_companyId", ["companyId"]),
+
   // ─── Checkout Links (public purchase URLs for products) ───
   checkoutLinks: defineTable({
     companyId: v.id("companies"),
