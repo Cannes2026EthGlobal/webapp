@@ -473,11 +473,13 @@ export default function Page() {
               <div>
                 <p className="text-xs" style={{ color: "var(--tone-green)" }}>Step {i + 1}</p>
                 <h3 className="text-sm font-semibold">{step.title}</h3>
-                <ul className="mt-1 space-y-0.5">
+                <div className="mt-2 flex flex-col gap-1.5">
                   {step.lines.map((line) => (
-                    <li key={line} className="text-xs" style={{ color: "var(--tone-muted)" }}>{line}</li>
+                    <p key={line} className="text-xs leading-normal" style={{ color: "var(--tone-muted)" }}>
+                      — {line}
+                    </p>
                   ))}
-                </ul>
+                </div>
               </div>
             </div>
           ))}
