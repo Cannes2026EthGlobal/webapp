@@ -1,14 +1,16 @@
 "use client";
 
-import { useQuery } from "convex/react";
+import { useQuery, useMutation } from "convex/react";
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import { api } from "@/convex/_generated/api";
 import { useCompany } from "@/hooks/use-company";
 import { formatCents } from "@/lib/format";
 
+import { toast } from "sonner";
 import { PageHeader } from "@/components/page-header";
 import { CompanyGuard } from "@/components/company-guard";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardAction,
@@ -135,9 +137,38 @@ function SettlementChart() {
     api.overview.settlementChart,
     companyId ? { companyId } : "skip"
   );
+  const seedHistory = useMutation(api.seedHistory.seedSettlementHistory);
 
-  if (!chartData || chartData.length === 0) {
-    return null;
+  if (!chartData) return null;
+
+  if (chartData.length <= 1) {
+    return (
+      <div className="px-4 lg:px-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Settlement Flows</CardTitle>
+            <CardDescription>
+              No historical data yet
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {companyId && (
+              <Button
+                variant="outline"
+                onClick={async () => {
+                  const result = await seedHistory({ companyId });
+                  if ("seeded" in result && result.seeded) {
+                    toast.success(`Seeded ${result.entriesCreated} historical entries`);
+                  }
+                }}
+              >
+                Generate 30-day settlement history
+              </Button>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   // Convert cents to dollars for display

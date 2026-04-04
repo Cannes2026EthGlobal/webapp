@@ -229,7 +229,7 @@ function TreasuryContent() {
                         {entry.reason}
                       </TableCell>
                       <TableCell className="text-muted-foreground">
-                        {formatDate(entry._creationTime)}
+                        {formatDate(entry.occurredAt ?? entry._creationTime)}
                       </TableCell>
                     </TableRow>
                   ))}

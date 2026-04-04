@@ -206,5 +206,6 @@ export default defineSchema({
     currency: v.union(v.literal("USD"), v.literal("EUR")),
     reason: v.string(),
     relatedPaymentId: v.optional(v.string()),
+    occurredAt: v.optional(v.number()),
   }).index("by_companyId", ["companyId"]),
 });
