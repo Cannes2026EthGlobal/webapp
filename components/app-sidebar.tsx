@@ -53,9 +53,24 @@ const navItems = [
     icon: <HugeiconsIcon icon={UserGroupIcon} strokeWidth={2} />,
   },
   {
+    title: "Employee Payments",
+    url: "/dashboard/employee-payments",
+    icon: <HugeiconsIcon icon={Analytics01Icon} strokeWidth={2} />,
+  },
+  {
     title: "Customers",
     url: "/dashboard/customers",
     icon: <HugeiconsIcon icon={Menu01Icon} strokeWidth={2} />,
+  },
+  {
+    title: "Customer Payments",
+    url: "/dashboard/customer-payments",
+    icon: <HugeiconsIcon icon={Analytics01Icon} strokeWidth={2} />,
+  },
+  {
+    title: "Agents",
+    url: "/dashboard/agents",
+    icon: <HugeiconsIcon icon={CommandIcon} strokeWidth={2} />,
   },
   {
     title: "Payroll",
