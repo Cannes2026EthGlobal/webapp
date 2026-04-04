@@ -1,5 +1,6 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
+import { debitBalance } from "./balances";
 
 const paymentTypeValidator = v.union(
   v.literal("salary"),
@@ -16,6 +17,15 @@ const statusValidator = v.union(
   v.literal("settled"),
   v.literal("failed")
 );
+
+// Valid status transitions
+const VALID_TRANSITIONS: Record<string, string[]> = {
+  draft: ["approved", "failed"],
+  approved: ["queued", "draft", "failed"],
+  queued: ["settled", "failed"],
+  settled: [],
+  failed: ["draft"],
+};
 
 export const listByCompany = query({
   args: {
@@ -85,8 +95,35 @@ export const updateStatus = mutation({
     txHash: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const { id, ...fields } = args;
-    await ctx.db.patch(id, fields);
+    const payment = await ctx.db.get(args.id);
+    if (!payment) throw new Error("Payment not found");
+
+    const allowed = VALID_TRANSITIONS[payment.status];
+    if (!allowed || !allowed.includes(args.status)) {
+      throw new Error(
+        `Invalid transition: ${payment.status} → ${args.status}`
+      );
+    }
+
+    // When settling, debit the treasury
+    if (args.status === "settled") {
+      const employee = await ctx.db.get(payment.employeeId);
+      const employeeName = employee?.displayName ?? "Unknown";
+
+      await debitBalance(ctx, {
+        companyId: payment.companyId,
+        amountCents: payment.amountCents,
+        currency: payment.currency,
+        reason: `Payroll: ${employeeName} — ${payment.description ?? payment.type}`,
+        relatedPaymentId: payment._id,
+      });
+    }
+
+    await ctx.db.patch(args.id, {
+      status: args.status,
+      ...(args.settledAt !== undefined && { settledAt: args.settledAt }),
+      ...(args.txHash !== undefined && { txHash: args.txHash }),
+    });
   },
 });
 
@@ -101,6 +138,11 @@ export const update = mutation({
     batchId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    const payment = await ctx.db.get(args.id);
+    if (!payment) throw new Error("Payment not found");
+    if (payment.status !== "draft") {
+      throw new Error("Can only edit payments in draft status");
+    }
     const { id, ...fields } = args;
     const updates: Record<string, unknown> = {};
     for (const [key, value] of Object.entries(fields)) {
@@ -115,6 +157,11 @@ export const update = mutation({
 export const remove = mutation({
   args: { id: v.id("employeePayments") },
   handler: async (ctx, args) => {
+    const payment = await ctx.db.get(args.id);
+    if (!payment) throw new Error("Payment not found");
+    if (payment.status !== "draft" && payment.status !== "failed") {
+      throw new Error("Can only remove draft or failed payments");
+    }
     await ctx.db.delete(args.id);
   },
 });

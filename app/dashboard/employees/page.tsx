@@ -1,10 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useCompany } from "@/hooks/use-company";
-import { formatCents } from "@/lib/format";
+import { formatCents, formatDateShort } from "@/lib/format";
 
 import { PageHeader } from "@/components/page-header";
 import { CompanyGuard } from "@/components/company-guard";
@@ -45,6 +46,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 
 function EmployeesContent({ showCreate, setShowCreate }: { showCreate: boolean; setShowCreate: (v: boolean) => void }) {
+  const router = useRouter();
   const { companyId } = useCompany();
   const employees = useQuery(
     api.employees.listByCompany,
@@ -132,13 +134,18 @@ function EmployeesContent({ showCreate, setShowCreate }: { showCreate: boolean; 
                     <TableHead>Payout</TableHead>
                     <TableHead>Wallet</TableHead>
                     <TableHead>Privacy</TableHead>
+                    <TableHead>Next payment</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead />
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {employees.map((emp) => (
-                    <TableRow key={emp._id}>
+                    <TableRow
+                      key={emp._id}
+                      className="cursor-pointer"
+                      onClick={() => router.push(`/dashboard/employees/${emp._id}`)}
+                    >
                       <TableCell className="font-medium">
                         {emp.displayName}
                       </TableCell>
@@ -166,6 +173,11 @@ function EmployeesContent({ showCreate, setShowCreate }: { showCreate: boolean; 
                           {emp.privacyLevel}
                         </Badge>
                       </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {emp.nextPaymentDate
+                          ? formatDateShort(emp.nextPaymentDate)
+                          : "-"}
+                      </TableCell>
                       <TableCell>
                         <StatusBadge status={emp.status} />
                       </TableCell>
@@ -173,7 +185,10 @@ function EmployeesContent({ showCreate, setShowCreate }: { showCreate: boolean; 
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => void removeEmployee({ id: emp._id })}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            void removeEmployee({ id: emp._id });
+                          }}
                         >
                           Remove
                         </Button>

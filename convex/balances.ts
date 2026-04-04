@@ -1,5 +1,86 @@
-import { query, mutation } from "./_generated/server";
+import { query, mutation, internalMutation } from "./_generated/server";
 import { v } from "convex/values";
+import type { MutationCtx } from "./_generated/server";
+import type { Id } from "./_generated/dataModel";
+
+// ─── Shared helpers (callable within same transaction) ───
+
+export async function creditBalance(
+  ctx: MutationCtx,
+  args: {
+    companyId: Id<"companies">;
+    amountCents: number;
+    currency: "USD" | "EUR";
+    reason: string;
+    relatedPaymentId?: string;
+  }
+) {
+  const existing = await ctx.db
+    .query("companyBalances")
+    .withIndex("by_companyId_and_currency", (q) =>
+      q.eq("companyId", args.companyId).eq("currency", args.currency)
+    )
+    .unique();
+
+  if (existing) {
+    await ctx.db.patch(existing._id, {
+      totalCreditedCents: existing.totalCreditedCents + args.amountCents,
+    });
+  } else {
+    await ctx.db.insert("companyBalances", {
+      companyId: args.companyId,
+      totalCreditedCents: args.amountCents,
+      totalDebitedCents: 0,
+      currency: args.currency,
+    });
+  }
+
+  await ctx.db.insert("balanceEntries", {
+    companyId: args.companyId,
+    type: "credit",
+    amountCents: args.amountCents,
+    currency: args.currency,
+    reason: args.reason,
+    relatedPaymentId: args.relatedPaymentId,
+  });
+}
+
+export async function debitBalance(
+  ctx: MutationCtx,
+  args: {
+    companyId: Id<"companies">;
+    amountCents: number;
+    currency: "USD" | "EUR";
+    reason: string;
+    relatedPaymentId?: string;
+  }
+) {
+  const existing = await ctx.db
+    .query("companyBalances")
+    .withIndex("by_companyId_and_currency", (q) =>
+      q.eq("companyId", args.companyId).eq("currency", args.currency)
+    )
+    .unique();
+
+  if (!existing) throw new Error("No balance record to debit");
+  const available = existing.totalCreditedCents - existing.totalDebitedCents;
+  if (args.amountCents > available) throw new Error("Insufficient balance");
+
+  await ctx.db.patch(existing._id, {
+    totalDebitedCents: existing.totalDebitedCents + args.amountCents,
+  });
+
+  await ctx.db.insert("balanceEntries", {
+    companyId: args.companyId,
+    type: "debit",
+    amountCents: args.amountCents,
+    currency: args.currency,
+    reason: args.reason,
+    relatedPaymentId: args.relatedPaymentId,
+  });
+}
+
+// ─── Queries ───
 
 export const getForCompany = query({
   args: {
@@ -37,6 +118,8 @@ export const getEntriesForCompany = query({
   },
 });
 
+// ─── Public mutations (used directly from UI for manual adjustments) ───
+
 export const credit = mutation({
   args: {
     companyId: v.id("companies"),
@@ -46,34 +129,7 @@ export const credit = mutation({
     relatedPaymentId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const existing = await ctx.db
-      .query("companyBalances")
-      .withIndex("by_companyId_and_currency", (q) =>
-        q.eq("companyId", args.companyId).eq("currency", args.currency)
-      )
-      .unique();
-
-    if (existing) {
-      await ctx.db.patch(existing._id, {
-        totalCreditedCents: existing.totalCreditedCents + args.amountCents,
-      });
-    } else {
-      await ctx.db.insert("companyBalances", {
-        companyId: args.companyId,
-        totalCreditedCents: args.amountCents,
-        totalDebitedCents: 0,
-        currency: args.currency,
-      });
-    }
-
-    await ctx.db.insert("balanceEntries", {
-      companyId: args.companyId,
-      type: "credit",
-      amountCents: args.amountCents,
-      currency: args.currency,
-      reason: args.reason,
-      relatedPaymentId: args.relatedPaymentId,
-    });
+    await creditBalance(ctx, args);
   },
 });
 
@@ -86,28 +142,6 @@ export const debit = mutation({
     relatedPaymentId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const existing = await ctx.db
-      .query("companyBalances")
-      .withIndex("by_companyId_and_currency", (q) =>
-        q.eq("companyId", args.companyId).eq("currency", args.currency)
-      )
-      .unique();
-
-    if (!existing) throw new Error("No balance record to debit");
-    const available = existing.totalCreditedCents - existing.totalDebitedCents;
-    if (args.amountCents > available) throw new Error("Insufficient balance");
-
-    await ctx.db.patch(existing._id, {
-      totalDebitedCents: existing.totalDebitedCents + args.amountCents,
-    });
-
-    await ctx.db.insert("balanceEntries", {
-      companyId: args.companyId,
-      type: "debit",
-      amountCents: args.amountCents,
-      currency: args.currency,
-      reason: args.reason,
-      relatedPaymentId: args.relatedPaymentId,
-    });
+    await debitBalance(ctx, args);
   },
 });

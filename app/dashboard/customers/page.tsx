@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useCompany } from "@/hooks/use-company";
@@ -44,6 +45,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 
 function CustomersContent({ showCreate, setShowCreate }: { showCreate: boolean; setShowCreate: (v: boolean) => void }) {
+  const router = useRouter();
   const { companyId } = useCompany();
   const customers = useQuery(
     api.customers.listByCompany,
@@ -120,7 +122,11 @@ function CustomersContent({ showCreate, setShowCreate }: { showCreate: boolean; 
                 </TableHeader>
                 <TableBody>
                   {customers.map((cust) => (
-                    <TableRow key={cust._id}>
+                    <TableRow
+                      key={cust._id}
+                      className="cursor-pointer"
+                      onClick={() => router.push(`/dashboard/customers/${cust._id}`)}
+                    >
                       <TableCell className="font-medium">
                         {cust.displayName}
                       </TableCell>
@@ -149,9 +155,10 @@ function CustomersContent({ showCreate, setShowCreate }: { showCreate: boolean; 
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() =>
-                            void removeCustomer({ id: cust._id })
-                          }
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            void removeCustomer({ id: cust._id });
+                          }}
                         >
                           Remove
                         </Button>

@@ -192,8 +192,12 @@ function EmployeePaymentsContent({ showCreate, setShowCreate }: { showCreate: bo
                 <PaymentsTable
                   payments={statusGroups[tab]}
                   employeeMap={employeeMap}
-                  onApprove={(id) =>
-                    void updateStatus({ id, status: "approved" })
+                  onTransition={(id, status) =>
+                    void updateStatus({
+                      id,
+                      status,
+                      ...(status === "settled" ? { settledAt: Date.now() } : {}),
+                    })
                   }
                   onRemove={(id) => void removePayment({ id })}
                 />
@@ -299,7 +303,7 @@ function EmployeePaymentsContent({ showCreate, setShowCreate }: { showCreate: bo
 function PaymentsTable({
   payments,
   employeeMap,
-  onApprove,
+  onTransition,
   onRemove,
 }: {
   payments: Array<{
@@ -314,7 +318,7 @@ function PaymentsTable({
     settledAt?: number;
   }>;
   employeeMap: Map<string, { displayName: string }>;
-  onApprove: (id: Id<"employeePayments">) => void;
+  onTransition: (id: Id<"employeePayments">, status: "draft" | "approved" | "queued" | "settled" | "failed") => void;
   onRemove: (id: Id<"employeePayments">) => void;
 }) {
   if (payments.length === 0) {
@@ -369,20 +373,27 @@ function PaymentsTable({
               <TableCell>
                 <div className="flex gap-1">
                   {p.status === "draft" && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => onApprove(p._id)}
-                    >
+                    <Button variant="outline" size="sm" onClick={() => onTransition(p._id, "approved")}>
                       Approve
                     </Button>
                   )}
+                  {p.status === "approved" && (
+                    <Button variant="outline" size="sm" onClick={() => onTransition(p._id, "queued")}>
+                      Queue
+                    </Button>
+                  )}
+                  {p.status === "queued" && (
+                    <Button variant="default" size="sm" onClick={() => onTransition(p._id, "settled")}>
+                      Settle
+                    </Button>
+                  )}
+                  {p.status === "failed" && (
+                    <Button variant="outline" size="sm" onClick={() => onTransition(p._id, "draft")}>
+                      Retry
+                    </Button>
+                  )}
                   {(p.status === "draft" || p.status === "failed") && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => onRemove(p._id)}
-                    >
+                    <Button variant="ghost" size="sm" onClick={() => onRemove(p._id)}>
                       Remove
                     </Button>
                   )}

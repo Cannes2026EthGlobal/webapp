@@ -196,11 +196,11 @@ function CustomerPaymentsContent({ showCreate, setShowCreate }: { showCreate: bo
                 <CustomerPaymentsTable
                   payments={modeGroups[tab]}
                   customerMap={customerMap}
-                  onMarkPaid={(id) =>
+                  onTransition={(id, status) =>
                     void updateStatus({
                       id,
-                      status: "paid",
-                      paidAt: Date.now(),
+                      status,
+                      ...(status === "paid" ? { paidAt: Date.now() } : {}),
                     })
                   }
                   onRemove={(id) => void removePayment({ id })}
@@ -308,7 +308,7 @@ function CustomerPaymentsContent({ showCreate, setShowCreate }: { showCreate: bo
 function CustomerPaymentsTable({
   payments,
   customerMap,
-  onMarkPaid,
+  onTransition,
   onRemove,
 }: {
   payments: Array<{
@@ -323,7 +323,7 @@ function CustomerPaymentsTable({
     paidAt?: number;
   }>;
   customerMap: Map<string, { displayName: string }>;
-  onMarkPaid: (id: Id<"customerPayments">) => void;
+  onTransition: (id: Id<"customerPayments">, status: "draft" | "sent" | "pending" | "paid" | "overdue" | "cancelled") => void;
   onRemove: (id: Id<"customerPayments">) => void;
 }) {
   if (payments.length === 0) {
@@ -379,23 +379,33 @@ function CustomerPaymentsTable({
               </TableCell>
               <TableCell>
                 <div className="flex gap-1">
-                  {["draft", "sent", "pending", "overdue"].includes(
-                    p.status
-                  ) && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => onMarkPaid(p._id)}
-                    >
+                  {p.status === "draft" && (
+                    <Button variant="outline" size="sm" onClick={() => onTransition(p._id, "sent")}>
+                      Send
+                    </Button>
+                  )}
+                  {p.status === "sent" && (
+                    <Button variant="outline" size="sm" onClick={() => onTransition(p._id, "pending")}>
+                      Mark pending
+                    </Button>
+                  )}
+                  {(p.status === "pending" || p.status === "overdue") && (
+                    <Button variant="default" size="sm" onClick={() => onTransition(p._id, "paid")}>
                       Mark paid
                     </Button>
                   )}
-                  {["draft", "cancelled"].includes(p.status) && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => onRemove(p._id)}
-                    >
+                  {p.status === "cancelled" && (
+                    <Button variant="outline" size="sm" onClick={() => onTransition(p._id, "draft")}>
+                      Reopen
+                    </Button>
+                  )}
+                  {["draft", "sent", "pending"].includes(p.status) && (
+                    <Button variant="ghost" size="sm" onClick={() => onTransition(p._id, "cancelled")}>
+                      Cancel
+                    </Button>
+                  )}
+                  {(p.status === "draft" || p.status === "cancelled") && (
+                    <Button variant="ghost" size="sm" onClick={() => onRemove(p._id)}>
                       Remove
                     </Button>
                   )}

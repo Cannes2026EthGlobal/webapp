@@ -1,5 +1,6 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
+import { creditBalance } from "./balances";
 
 const modeValidator = v.union(
   v.literal("usage"),
@@ -16,6 +17,16 @@ const statusValidator = v.union(
   v.literal("overdue"),
   v.literal("cancelled")
 );
+
+// Valid status transitions
+const VALID_TRANSITIONS: Record<string, string[]> = {
+  draft: ["sent", "cancelled"],
+  sent: ["pending", "overdue", "cancelled"],
+  pending: ["paid", "overdue", "cancelled"],
+  overdue: ["paid", "cancelled"],
+  paid: [],
+  cancelled: ["draft"],
+};
 
 export const listByCompany = query({
   args: {
@@ -97,8 +108,38 @@ export const updateStatus = mutation({
     txHash: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const { id, ...fields } = args;
-    await ctx.db.patch(id, fields);
+    const payment = await ctx.db.get(args.id);
+    if (!payment) throw new Error("Payment not found");
+
+    const allowed = VALID_TRANSITIONS[payment.status];
+    if (!allowed || !allowed.includes(args.status)) {
+      throw new Error(
+        `Invalid transition: ${payment.status} → ${args.status}`
+      );
+    }
+
+    // When paid, credit the treasury
+    if (args.status === "paid") {
+      let customerName = "Anonymous";
+      if (payment.customerId) {
+        const customer = await ctx.db.get(payment.customerId);
+        customerName = customer?.displayName ?? "Unknown";
+      }
+
+      await creditBalance(ctx, {
+        companyId: payment.companyId,
+        amountCents: payment.amountCents,
+        currency: payment.currency,
+        reason: `Payment: ${customerName} — ${payment.description ?? payment.mode}`,
+        relatedPaymentId: payment._id,
+      });
+    }
+
+    await ctx.db.patch(args.id, {
+      status: args.status,
+      ...(args.paidAt !== undefined && { paidAt: args.paidAt }),
+      ...(args.txHash !== undefined && { txHash: args.txHash }),
+    });
   },
 });
 
@@ -113,6 +154,11 @@ export const update = mutation({
     referenceId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    const payment = await ctx.db.get(args.id);
+    if (!payment) throw new Error("Payment not found");
+    if (payment.status !== "draft") {
+      throw new Error("Can only edit payments in draft status");
+    }
     const { id, ...fields } = args;
     const updates: Record<string, unknown> = {};
     for (const [key, value] of Object.entries(fields)) {
@@ -127,6 +173,11 @@ export const update = mutation({
 export const remove = mutation({
   args: { id: v.id("customerPayments") },
   handler: async (ctx, args) => {
+    const payment = await ctx.db.get(args.id);
+    if (!payment) throw new Error("Payment not found");
+    if (payment.status !== "draft" && payment.status !== "cancelled") {
+      throw new Error("Can only remove draft or cancelled payments");
+    }
     await ctx.db.delete(args.id);
   },
 });

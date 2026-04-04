@@ -23,10 +23,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 
 function TreasuryContent() {
   const { companyId } = useCompany();
+
   const balance = useQuery(
     api.balances.getForCompany,
     companyId ? { companyId, currency: "USD" } : "skip"
@@ -35,8 +37,12 @@ function TreasuryContent() {
     api.balances.getEntriesForCompany,
     companyId ? { companyId } : "skip"
   );
+  const stats = useQuery(
+    api.overview.stats,
+    companyId ? { companyId } : "skip"
+  );
 
-  if (!balance || !entries) {
+  if (!balance || !entries || !stats) {
     return (
       <div className="p-4 lg:p-6">
         <Skeleton className="h-96" />
@@ -44,9 +50,13 @@ function TreasuryContent() {
     );
   }
 
+  const netPosition =
+    balance.availableCents - stats.payrollDueCents + stats.receivablesCents;
+
   return (
     <div className="flex flex-col gap-4 p-4 lg:p-6">
-      <div className="grid grid-cols-1 gap-4 @xl/main:grid-cols-3">
+      {/* ─── Balance Summary ─── */}
+      <div className="grid grid-cols-1 gap-4 @xl/main:grid-cols-2 @5xl/main:grid-cols-4">
         <Card>
           <CardHeader className="pb-2">
             <CardDescription>Available balance</CardDescription>
@@ -69,7 +79,7 @@ function TreasuryContent() {
           </CardHeader>
           <CardContent>
             <p className="text-xs text-muted-foreground">
-              Inbound collections from all sources
+              All inbound collections
             </p>
           </CardContent>
         </Card>
@@ -82,15 +92,100 @@ function TreasuryContent() {
           </CardHeader>
           <CardContent>
             <p className="text-xs text-muted-foreground">
-              Payroll and outbound settlements
+              All outbound settlements
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardDescription>Net position</CardDescription>
+            <CardTitle
+              className={`text-2xl tabular-nums ${netPosition < 0 ? "text-destructive" : ""}`}
+            >
+              {formatCents(netPosition)}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-xs text-muted-foreground">
+              Balance − payroll due + receivables
             </p>
           </CardContent>
         </Card>
       </div>
 
+      {/* ─── Obligations & Receivables ─── */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Payment Obligations</CardTitle>
+            <CardDescription>
+              Upcoming outbound commitments
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex items-center justify-between rounded-lg border p-3">
+              <div>
+                <p className="text-sm font-medium">Payroll due</p>
+                <p className="text-xs text-muted-foreground">
+                  {stats.payrollDueCount} payment{stats.payrollDueCount !== 1 ? "s" : ""} in draft or approved
+                </p>
+              </div>
+              <span className="text-sm font-medium tabular-nums">
+                {formatCents(stats.payrollDueCents)}
+              </span>
+            </div>
+            <div className="flex items-center justify-between rounded-lg border p-3">
+              <div>
+                <p className="text-sm font-medium">Active employees</p>
+                <p className="text-xs text-muted-foreground">
+                  Current active headcount
+                </p>
+              </div>
+              <span className="text-sm font-medium tabular-nums">
+                {stats.activeEmployees}
+              </span>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Inbound Collections</CardTitle>
+            <CardDescription>
+              Pending and expected revenue
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex items-center justify-between rounded-lg border p-3">
+              <div>
+                <p className="text-sm font-medium">Pending receivables</p>
+                <p className="text-xs text-muted-foreground">
+                  {stats.receivablesCount} payment{stats.receivablesCount !== 1 ? "s" : ""} awaiting settlement
+                </p>
+              </div>
+              <span className="text-sm font-medium tabular-nums">
+                {formatCents(stats.receivablesCents)}
+              </span>
+            </div>
+            <div className="flex items-center justify-between rounded-lg border p-3">
+              <div>
+                <p className="text-sm font-medium">Revenue today</p>
+                <p className="text-xs text-muted-foreground">
+                  Customer payments settled today
+                </p>
+              </div>
+              <span className="text-sm font-medium tabular-nums">
+                {formatCents(stats.usageRevenueTodayCents)}
+              </span>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* ─── Ledger Entries ─── */}
       <Card>
         <CardHeader>
-          <CardTitle>Ledger entries</CardTitle>
+          <CardTitle>Ledger Entries</CardTitle>
           <CardDescription>
             Audit trail of all balance movements
           </CardDescription>
@@ -145,6 +240,7 @@ function TreasuryContent() {
         </CardContent>
       </Card>
 
+      {/* ─── Settlement Placeholder ─── */}
       <Card>
         <CardHeader>
           <CardTitle>Settlement & Payout</CardTitle>
