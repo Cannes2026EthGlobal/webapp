@@ -150,9 +150,9 @@ export default function Page() {
           style={{ borderColor: "var(--tone-border)", background: "var(--tone-border)" }}
         >
           {[
-            { value: "USDC", label: "Native settlement" },
-            { value: "30s", label: "CRE cron cycle" },
-            { value: "2%", label: "Default advance rate" },
+            { value: "USDC", label: "Payroll & invoices in stablecoins" },
+            { value: "80%", label: "Max advance on next paycheck" },
+            { value: "Custom", label: "Per-invoice reception parameters" },
             { value: "3 chains", label: "Arc, Arbitrum, Base" },
           ].map((s) => (
             <div
