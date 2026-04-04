@@ -67,11 +67,6 @@ const navItems = [
     icon: <HugeiconsIcon icon={ChartHistogramIcon} strokeWidth={2} />,
   },
   {
-    title: "Receivables",
-    url: "/dashboard/customers",
-    icon: <HugeiconsIcon icon={Folder01Icon} strokeWidth={2} />,
-  },
-  {
     title: "Treasury",
     url: "/dashboard/treasury",
     icon: <HugeiconsIcon icon={Analytics01Icon} strokeWidth={2} />,
