@@ -28,6 +28,7 @@ export default defineSchema({
     industry: v.optional(v.string()),
     website: v.optional(v.string()),
     payrollContractAddress: v.optional(v.string()),
+    ownerWallet: v.optional(v.string()), // legacy field from old schema
   }).index("by_userId", ["userId"]),
 
   // ─── Onboarding Wizard State (persisted across refreshes) ───
