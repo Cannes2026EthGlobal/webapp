@@ -22,7 +22,7 @@ export default defineSchema({
 
   // ─── Business Profiles (1:1 per user, gates dashboard access) ───
   businessProfiles: defineTable({
-    userId: v.id("users"),
+    userId: v.optional(v.id("users")),
     businessName: v.string(),
     description: v.optional(v.string()),
     industry: v.optional(v.string()),
