@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery } from "convex/react";
+import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import { api } from "@/convex/_generated/api";
 import { useCompany } from "@/hooks/use-company";
 import { formatCents } from "@/lib/format";
@@ -11,11 +12,18 @@ import { Badge } from "@/components/ui/badge";
 import {
   Card,
   CardAction,
+  CardContent,
   CardDescription,
   CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+  type ChartConfig,
+} from "@/components/ui/chart";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { ChartUpIcon, ChartDownIcon } from "@hugeicons/core-free-icons";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -104,7 +112,96 @@ function OverviewContent() {
           );
         })}
       </div>
+      <SettlementChart />
       <RecentActivity />
+    </div>
+  );
+}
+
+const chartConfig = {
+  inbound: {
+    label: "Inbound",
+    color: "var(--chart-1)",
+  },
+  outbound: {
+    label: "Outbound",
+    color: "var(--chart-2)",
+  },
+} satisfies ChartConfig;
+
+function SettlementChart() {
+  const { companyId } = useCompany();
+  const chartData = useQuery(
+    api.overview.settlementChart,
+    companyId ? { companyId } : "skip"
+  );
+
+  if (!chartData || chartData.length === 0) {
+    return null;
+  }
+
+  // Convert cents to dollars for display
+  const data = chartData.map((d) => ({
+    date: d.date,
+    inbound: d.inbound / 100,
+    outbound: d.outbound / 100,
+  }));
+
+  return (
+    <div className="px-4 lg:px-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>Settlement Flows</CardTitle>
+          <CardDescription>
+            Inbound collections vs outbound settlements
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ChartContainer config={chartConfig} className="aspect-auto h-[250px] w-full">
+            <AreaChart data={data}>
+              <defs>
+                <linearGradient id="fillInbound" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="var(--chart-1)" stopOpacity={0.8} />
+                  <stop offset="95%" stopColor="var(--chart-1)" stopOpacity={0.1} />
+                </linearGradient>
+                <linearGradient id="fillOutbound" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="var(--chart-2)" stopOpacity={0.8} />
+                  <stop offset="95%" stopColor="var(--chart-2)" stopOpacity={0.1} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid vertical={false} />
+              <XAxis
+                dataKey="date"
+                tickLine={false}
+                axisLine={false}
+                tickMargin={8}
+                tickFormatter={(value: string) => {
+                  const d = new Date(value);
+                  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+                }}
+              />
+              <ChartTooltip
+                cursor={false}
+                content={<ChartTooltipContent />}
+              />
+              <Area
+                dataKey="inbound"
+                type="natural"
+                fill="url(#fillInbound)"
+                stroke="var(--chart-1)"
+                stackId="a"
+              />
+              <Area
+                dataKey="outbound"
+                type="natural"
+                fill="url(#fillOutbound)"
+                stroke="var(--chart-2)"
+                stackId="b"
+              />
+            </AreaChart>
+          </ChartContainer>
+        </CardContent>
+      </Card>
     </div>
   );
 }

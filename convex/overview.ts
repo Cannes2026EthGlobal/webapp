@@ -1,6 +1,40 @@
 import { query } from "./_generated/server";
 import { v } from "convex/values";
 
+export const settlementChart = query({
+  args: { companyId: v.id("companies") },
+  handler: async (ctx, args) => {
+    const entries = await ctx.db
+      .query("balanceEntries")
+      .withIndex("by_companyId", (q) => q.eq("companyId", args.companyId))
+      .order("desc")
+      .take(500);
+
+    // Group by date
+    const byDate = new Map<string, { inbound: number; outbound: number }>();
+
+    for (const entry of entries) {
+      const date = new Date(entry._creationTime).toISOString().slice(0, 10);
+      const existing = byDate.get(date) ?? { inbound: 0, outbound: 0 };
+      if (entry.type === "credit") {
+        existing.inbound += entry.amountCents;
+      } else {
+        existing.outbound += entry.amountCents;
+      }
+      byDate.set(date, existing);
+    }
+
+    // Convert to sorted array (ascending date)
+    return Array.from(byDate.entries())
+      .map(([date, data]) => ({
+        date,
+        inbound: data.inbound,
+        outbound: data.outbound,
+      }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+  },
+});
+
 export const stats = query({
   args: { companyId: v.id("companies") },
   handler: async (ctx, args) => {
