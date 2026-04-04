@@ -70,9 +70,14 @@ const navItems = [
     icon: <HugeiconsIcon icon={Folder01Icon} strokeWidth={2} />,
   },
   {
-    title: "Products & SDK",
+    title: "Products",
     url: "/dashboard/products",
     icon: <HugeiconsIcon icon={Database01Icon} strokeWidth={2} />,
+  },
+  {
+    title: "Developer",
+    url: "/dashboard/developer",
+    icon: <HugeiconsIcon icon={CommandIcon} strokeWidth={2} />,
   },
   {
     title: "Treasury",

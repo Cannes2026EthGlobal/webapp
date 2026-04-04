@@ -262,4 +262,16 @@ export default defineSchema({
     relatedPaymentId: v.optional(v.string()),
     occurredAt: v.optional(v.number()),
   }).index("by_companyId", ["companyId"]),
+
+  // ─── API Keys (for company SDK access) ───
+  apiKeys: defineTable({
+    companyId: v.id("companies"),
+    keyHash: v.string(),
+    keyPrefix: v.string(),
+    label: v.string(),
+    isActive: v.boolean(),
+    lastUsedAt: v.optional(v.number()),
+  })
+    .index("by_keyHash", ["keyHash"])
+    .index("by_companyId", ["companyId"]),
 });
