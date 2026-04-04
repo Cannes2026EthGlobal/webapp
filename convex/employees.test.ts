@@ -81,7 +81,7 @@ describe("employees", () => {
       employeeId: empId,
       companyId,
       name: "Base Salary",
-      type: "salary",
+
       amountCents: 1000000,
       asset: "USDC",
       frequency: "monthly",
@@ -91,10 +91,10 @@ describe("employees", () => {
       employeeId: empId,
       companyId,
       name: "Bonus",
-      type: "bonus",
+
       amountCents: 200000,
       asset: "USDC",
-      frequency: "one-time",
+      frequency: "monthly",
       isActive: true,
     });
     const list = await t.query(api.employees.listByCompany, { companyId });
@@ -124,7 +124,7 @@ describe("employees", () => {
       employeeId: id,
       companyId,
       name: "Base Salary",
-      type: "salary",
+
       amountCents: 1000000,
       asset: "USDC",
       frequency: "monthly",

@@ -32,7 +32,7 @@ describe("compensationLines", () => {
       employeeId,
       companyId,
       name: "Base Salary",
-      type: "salary",
+
       amountCents: 1000000,
       asset: "USDC",
       frequency: "monthly",
@@ -41,7 +41,7 @@ describe("compensationLines", () => {
     const line = await t.query(api.compensationLines.getById, { id });
     expect(line).toMatchObject({
       name: "Base Salary",
-      type: "salary",
+
       amountCents: 1000000,
       isActive: true,
     });
@@ -54,7 +54,7 @@ describe("compensationLines", () => {
       employeeId,
       companyId,
       name: "Base Salary",
-      type: "salary",
+
       amountCents: 1000000,
       asset: "USDC",
       frequency: "monthly",
@@ -64,7 +64,7 @@ describe("compensationLines", () => {
       employeeId,
       companyId,
       name: "Consulting Retainer",
-      type: "milestone",
+
       amountCents: 300000,
       asset: "USDC",
       frequency: "monthly",
@@ -83,7 +83,7 @@ describe("compensationLines", () => {
       employeeId,
       companyId,
       name: "Active",
-      type: "salary",
+
       amountCents: 1000000,
       asset: "USDC",
       frequency: "monthly",
@@ -93,10 +93,10 @@ describe("compensationLines", () => {
       employeeId,
       companyId,
       name: "Inactive",
-      type: "bonus",
+
       amountCents: 200000,
       asset: "USDC",
-      frequency: "one-time",
+      frequency: "monthly",
       isActive: false,
     });
     const active = await t.query(api.compensationLines.listActiveByEmployee, {
@@ -113,7 +113,7 @@ describe("compensationLines", () => {
       employeeId,
       companyId,
       name: "Old Name",
-      type: "salary",
+
       amountCents: 500000,
       asset: "USDC",
       frequency: "monthly",
@@ -136,7 +136,7 @@ describe("compensationLines", () => {
       employeeId,
       companyId,
       name: "Salary",
-      type: "salary",
+
       amountCents: 1000000,
       asset: "USDC",
       frequency: "monthly",
@@ -157,10 +157,10 @@ describe("compensationLines", () => {
       employeeId,
       companyId,
       name: "Temp",
-      type: "bonus",
+
       amountCents: 100000,
       asset: "USDC",
-      frequency: "one-time",
+      frequency: "monthly",
       isActive: true,
     });
     await t.mutation(api.compensationLines.remove, { id });
@@ -182,7 +182,7 @@ describe("compensationLines", () => {
       employeeId,
       companyId,
       name: "Base Salary",
-      type: "salary",
+
       amountCents: 1000000,
       asset: "USDC",
       frequency: "monthly",

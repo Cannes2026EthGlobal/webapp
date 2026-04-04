@@ -41,20 +41,19 @@ export const seedDemoData = mutation({
     const compLines: Array<{
       employeeIndex: number;
       name: string;
-      type: "salary" | "hourly" | "per-task" | "milestone" | "bonus";
       amountCents: number;
-      frequency: "monthly" | "biweekly" | "weekly" | "per-task" | "one-time";
+      frequency: "monthly" | "biweekly" | "weekly";
       isActive: boolean;
       description?: string;
     }> = [
-      { employeeIndex: 0, name: "Base Salary", type: "salary", amountCents: 1200000, frequency: "monthly", isActive: true },
-      { employeeIndex: 0, name: "Q1 Performance Bonus", type: "bonus", amountCents: 250000, frequency: "one-time", isActive: true, description: "Quarterly performance incentive" },
-      { employeeIndex: 1, name: "Base Salary", type: "salary", amountCents: 950000, frequency: "monthly", isActive: true },
-      { employeeIndex: 2, name: "Contract Rate", type: "hourly", amountCents: 8500, frequency: "biweekly", isActive: true },
-      { employeeIndex: 3, name: "Base Salary", type: "salary", amountCents: 1100000, frequency: "monthly", isActive: true },
-      { employeeIndex: 4, name: "Part-time Rate", type: "hourly", amountCents: 6500, frequency: "biweekly", isActive: true },
-      { employeeIndex: 5, name: "Audit Fee", type: "per-task", amountCents: 500000, frequency: "per-task", isActive: true },
-      { employeeIndex: 6, name: "Base Salary", type: "salary", amountCents: 900000, frequency: "monthly", isActive: true },
+      { employeeIndex: 0, name: "Base Salary", amountCents: 1200000, frequency: "monthly", isActive: true },
+      { employeeIndex: 0, name: "Housing Allowance", amountCents: 250000, frequency: "monthly", isActive: true, description: "Monthly housing stipend" },
+      { employeeIndex: 1, name: "Base Salary", amountCents: 950000, frequency: "monthly", isActive: true },
+      { employeeIndex: 2, name: "Contract Salary", amountCents: 850000, frequency: "biweekly", isActive: true },
+      { employeeIndex: 3, name: "Base Salary", amountCents: 1100000, frequency: "monthly", isActive: true },
+      { employeeIndex: 4, name: "Part-time Salary", amountCents: 650000, frequency: "biweekly", isActive: true },
+      { employeeIndex: 5, name: "Retainer", amountCents: 500000, frequency: "monthly", isActive: true },
+      { employeeIndex: 6, name: "Base Salary", amountCents: 900000, frequency: "monthly", isActive: true },
     ];
 
     for (const line of compLines) {
@@ -63,7 +62,6 @@ export const seedDemoData = mutation({
         companyId,
         name: line.name,
         description: line.description,
-        type: line.type,
         amountCents: line.amountCents,
         asset: "USDC",
         frequency: line.frequency,

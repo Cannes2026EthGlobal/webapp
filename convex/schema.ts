@@ -69,27 +69,18 @@ export default defineSchema({
     .index("by_companyId", ["companyId"])
     .index("by_companyId_and_status", ["companyId", "status"]),
 
-  // ─── Compensation Lines (one-to-many per employee) ───
+  // ─── Compensation Lines (salaries, one-to-many per employee) ───
   compensationLines: defineTable({
     employeeId: v.id("employees"),
     companyId: v.id("companies"),
     name: v.string(),
     description: v.optional(v.string()),
-    type: v.union(
-      v.literal("salary"),
-      v.literal("hourly"),
-      v.literal("per-task"),
-      v.literal("milestone"),
-      v.literal("bonus")
-    ),
     amountCents: v.number(),
     asset: v.string(),
     frequency: v.union(
       v.literal("monthly"),
       v.literal("biweekly"),
-      v.literal("weekly"),
-      v.literal("per-task"),
-      v.literal("one-time")
+      v.literal("weekly")
     ),
     startDate: v.optional(v.number()),
     endDate: v.optional(v.number()),

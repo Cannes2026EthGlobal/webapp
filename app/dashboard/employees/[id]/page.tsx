@@ -332,7 +332,6 @@ type CompLine = {
   _creationTime: number;
   name: string;
   description?: string;
-  type: string;
   amountCents: number;
   asset: string;
   frequency: string;
@@ -362,7 +361,6 @@ function CompensationCard({
   const [form, setForm] = useState({
     name: "",
     description: "",
-    type: "salary" as string,
     amountCents: 0,
     asset: "USDC",
     frequency: "monthly" as string,
@@ -371,7 +369,7 @@ function CompensationCard({
   });
 
   const resetForm = () => {
-    setForm({ name: "", description: "", type: "salary", amountCents: 0, asset: "USDC", frequency: "monthly", startDate: "", endDate: "" });
+    setForm({ name: "", description: "", amountCents: 0, asset: "USDC", frequency: "monthly", startDate: "", endDate: "" });
   };
 
   const handleAdd = async () => {
@@ -382,10 +380,9 @@ function CompensationCard({
         companyId,
         name: form.name,
         description: form.description || undefined,
-        type: form.type as "salary" | "hourly" | "per-task" | "milestone" | "bonus",
         amountCents: form.amountCents,
         asset: form.asset,
-        frequency: form.frequency as "monthly" | "biweekly" | "weekly" | "per-task" | "one-time",
+        frequency: form.frequency as "monthly" | "biweekly" | "weekly",
         startDate: form.startDate ? new Date(form.startDate).getTime() : undefined,
         endDate: form.endDate ? new Date(form.endDate).getTime() : undefined,
         isActive: true,
@@ -405,10 +402,9 @@ function CompensationCard({
         id: editingLine._id,
         name: form.name,
         description: form.description || undefined,
-        type: form.type as "salary" | "hourly" | "per-task" | "milestone" | "bonus",
         amountCents: form.amountCents,
         asset: form.asset,
-        frequency: form.frequency as "monthly" | "biweekly" | "weekly" | "per-task" | "one-time",
+        frequency: form.frequency as "monthly" | "biweekly" | "weekly",
         startDate: form.startDate ? new Date(form.startDate).getTime() : undefined,
         endDate: form.endDate ? new Date(form.endDate).getTime() : undefined,
       });
@@ -424,7 +420,6 @@ function CompensationCard({
     setForm({
       name: line.name,
       description: line.description ?? "",
-      type: line.type,
       amountCents: line.amountCents,
       asset: line.asset,
       frequency: line.frequency,
@@ -463,7 +458,6 @@ function CompensationCard({
                 <TableHeader>
                   <TableRow>
                     <TableHead>Name</TableHead>
-                    <TableHead>Type</TableHead>
                     <TableHead>Amount</TableHead>
                     <TableHead>Frequency</TableHead>
                     <TableHead>Period</TableHead>
@@ -482,13 +476,8 @@ function CompensationCard({
                           )}
                         </div>
                       </TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className="capitalize">{line.type}</Badge>
-                      </TableCell>
                       <TableCell className="tabular-nums">{formatCents(line.amountCents)} <span className="text-xs text-muted-foreground">{line.asset}</span></TableCell>
-                      <TableCell className="capitalize">
-                        {line.type === "salary" ? line.frequency : line.type === "hourly" ? "Per hour" : line.type === "bonus" ? "One-time" : "Per task"}
-                      </TableCell>
+                      <TableCell className="capitalize">{line.frequency}</TableCell>
                       <TableCell className="text-muted-foreground text-xs">
                         {line.startDate ? formatDateShort(line.startDate) : "No start"}
                         {" — "}
@@ -561,38 +550,16 @@ function CompensationCard({
               <Input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Monthly base compensation" />
             </div>
             <div className="grid gap-2">
-              <Label>Type</Label>
-              <Select
-                value={form.type}
-                onValueChange={(v) => setForm({
-                  ...form,
-                  type: v,
-                  frequency: v === "salary" ? form.frequency : v === "hourly" ? "biweekly" : v === "bonus" ? "one-time" : "per-task",
-                })}
-              >
+              <Label>Frequency</Label>
+              <Select value={form.frequency} onValueChange={(v) => setForm({ ...form, frequency: v })}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="salary">Salary</SelectItem>
-                  <SelectItem value="hourly">Hourly</SelectItem>
-                  <SelectItem value="per-task">Per task</SelectItem>
-                  <SelectItem value="milestone">Milestone</SelectItem>
-                  <SelectItem value="bonus">Bonus</SelectItem>
+                  <SelectItem value="monthly">Monthly</SelectItem>
+                  <SelectItem value="biweekly">Biweekly</SelectItem>
+                  <SelectItem value="weekly">Weekly</SelectItem>
                 </SelectContent>
               </Select>
             </div>
-            {form.type === "salary" && (
-              <div className="grid gap-2">
-                <Label>Frequency</Label>
-                <Select value={form.frequency} onValueChange={(v) => setForm({ ...form, frequency: v })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="monthly">Monthly</SelectItem>
-                    <SelectItem value="biweekly">Biweekly</SelectItem>
-                    <SelectItem value="weekly">Weekly</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label>Amount (USD)</Label>

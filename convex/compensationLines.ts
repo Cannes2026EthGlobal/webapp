@@ -1,20 +1,10 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 
-const typeValidator = v.union(
-  v.literal("salary"),
-  v.literal("hourly"),
-  v.literal("per-task"),
-  v.literal("milestone"),
-  v.literal("bonus")
-);
-
 const frequencyValidator = v.union(
   v.literal("monthly"),
   v.literal("biweekly"),
-  v.literal("weekly"),
-  v.literal("per-task"),
-  v.literal("one-time")
+  v.literal("weekly")
 );
 
 export const listByEmployee = query({
@@ -63,7 +53,6 @@ export const create = mutation({
     companyId: v.id("companies"),
     name: v.string(),
     description: v.optional(v.string()),
-    type: typeValidator,
     amountCents: v.number(),
     asset: v.string(),
     frequency: frequencyValidator,
@@ -86,7 +75,6 @@ export const update = mutation({
     id: v.id("compensationLines"),
     name: v.optional(v.string()),
     description: v.optional(v.string()),
-    type: v.optional(typeValidator),
     amountCents: v.optional(v.number()),
     asset: v.optional(v.string()),
     frequency: v.optional(frequencyValidator),
@@ -119,7 +107,6 @@ export const toggleActive = mutation({
 export const remove = mutation({
   args: { id: v.id("compensationLines") },
   handler: async (ctx, args) => {
-    // Check for non-settled payments referencing this line
     const linkedPayments = await ctx.db
       .query("employeePayments")
       .withIndex("by_compensationLineId", (q) =>
