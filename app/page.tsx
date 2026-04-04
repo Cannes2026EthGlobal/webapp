@@ -446,56 +446,48 @@ export default function Page() {
         <h2 className="mb-8 text-center text-2xl font-light tracking-tight">
           How it works
         </h2>
-        <div className="grid gap-6 md:grid-cols-3">
+        <div className="space-y-4">
           {howItWorks.map((step, i) => (
-            <div key={step.title} className="text-center">
+            <div
+              key={step.title}
+              className="flex items-start gap-5 rounded-lg border p-6"
+              style={{ borderColor: "var(--tone-border)", background: "var(--tone-linen)" }}
+            >
               <div
-                className="mx-auto mb-3 inline-flex size-10 items-center justify-center rounded-full border"
-                style={{
-                  borderColor: "var(--tone-border)",
-                  color: "var(--tone-green)",
-                }}
+                className="flex size-10 shrink-0 items-center justify-center rounded-full border"
+                style={{ borderColor: "var(--tone-border)", color: "var(--tone-green)" }}
               >
                 <step.icon className="size-5" />
               </div>
-              <p
-                className="mb-1 text-xs"
-                style={{ color: "var(--tone-muted)" }}
-              >
-                Step {i + 1}
-              </p>
-              <h3 className="text-sm font-semibold">{step.title}</h3>
-              <p
-                className="mt-1.5 text-sm leading-relaxed"
-                style={{ color: "var(--tone-muted)" }}
-              >
-                {step.description}
-              </p>
+              <div>
+                <p className="text-xs font-medium" style={{ color: "var(--tone-green)" }}>Step {i + 1}</p>
+                <h3 className="text-base font-semibold">{step.title}</h3>
+                <p className="mt-1 text-sm leading-relaxed" style={{ color: "var(--tone-muted)" }}>
+                  {step.description}
+                </p>
+              </div>
             </div>
           ))}
         </div>
       </section>
 
       {/* ─── Built with ─── */}
-      <section className="mx-auto max-w-4xl px-6 pb-20">
+      <section className="mx-auto max-w-5xl px-6 pb-24">
         <p
-          className="mb-4 text-center text-xs font-medium uppercase tracking-widest"
+          className="mb-6 text-center text-sm font-medium uppercase tracking-widest"
           style={{ color: "var(--tone-muted)" }}
         >
           Built with
         </p>
-        <div className="flex flex-wrap justify-center gap-3">
+        <div className="grid grid-cols-3 gap-4">
           {sponsorStack.map((s) => (
-            <span
+            <div
               key={s}
-              className="rounded-full border px-3 py-1 text-xs font-medium"
-              style={{
-                borderColor: "var(--tone-border)",
-                color: "var(--tone-carbon)",
-              }}
+              className="rounded-lg border px-6 py-5 text-center"
+              style={{ borderColor: "var(--tone-border)", background: "var(--tone-linen)" }}
             >
-              {s}
-            </span>
+              <span className="text-base font-semibold" style={{ color: "var(--tone-carbon)" }}>{s}</span>
+            </div>
           ))}
         </div>
       </section>
