@@ -64,6 +64,35 @@ function TreasuryContent() {
 
   const [showDeposit, setShowDeposit] = useState(false);
 
+  // Deposit tx tracking lives here so it survives dialog close
+  const { sendTransaction, data: depositTxHash, isPending: isDepositPending } = useSendTransaction();
+  const { data: depositReceipt, isLoading: isDepositWaiting } = useWaitForTransactionReceipt({ hash: depositTxHash });
+  const creditBalance = useMutation(api.balances.credit);
+  const [depositRecorded, setDepositRecorded] = useState(false);
+  const [depositAmount, setDepositAmount] = useState("");
+
+  useEffect(() => {
+    if (depositReceipt && !isDepositWaiting && !depositRecorded && depositAmount) {
+      setDepositRecorded(true);
+      const cents = Math.round(parseFloat(depositAmount) * 100);
+      if (companyId && cents > 0) {
+        creditBalance({
+          companyId,
+          amountCents: cents,
+          currency: "USD" as const,
+          reason: `Payroll contract deposit — ${depositAmount} USDC`,
+          relatedPaymentId: depositTxHash,
+        }).then(() => {
+          toast.success("Deposit confirmed and recorded in ledger");
+          void refetchOnChain();
+        }).catch(() => {
+          toast.error("On-chain deposit confirmed but ledger update failed");
+        });
+      }
+      setShowDeposit(false);
+    }
+  }, [depositReceipt, isDepositWaiting, depositRecorded, depositAmount, companyId, creditBalance, depositTxHash, refetchOnChain]);
+
   const entries = useQuery(
     api.balances.getEntriesForCompany,
     companyId ? { companyId } : "skip"
@@ -263,8 +292,18 @@ function TreasuryContent() {
         open={showDeposit}
         onOpenChange={setShowDeposit}
         contractAddress={payrollContractAddress}
-        companyId={companyId}
-        onSuccess={() => void refetchOnChain()}
+        isPending={isDepositPending}
+        isWaiting={isDepositWaiting}
+        txHash={depositTxHash}
+        onDeposit={(amount) => {
+          if (!payrollContractAddress) return;
+          setDepositRecorded(false);
+          setDepositAmount(amount);
+          sendTransaction(
+            { to: payrollContractAddress, value: parseEther(amount) },
+            { onError: (err) => toast.error(err.message.slice(0, 100)) }
+          );
+        }}
       />
     </div>
   );
@@ -274,68 +313,20 @@ function DepositDialog({
   open,
   onOpenChange,
   contractAddress,
-  companyId,
-  onSuccess,
+  isPending,
+  isWaiting,
+  txHash,
+  onDeposit,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   contractAddress: `0x${string}` | undefined;
-  companyId: any;
-  onSuccess: () => void;
+  isPending: boolean;
+  isWaiting: boolean;
+  txHash?: string;
+  onDeposit: (amount: string) => void;
 }) {
   const [amount, setAmount] = useState("");
-  const { sendTransaction, data: txHash, isPending } = useSendTransaction();
-  const { data: receipt, isLoading: isWaiting } = useWaitForTransactionReceipt({
-    hash: txHash,
-  });
-  const creditBalance = useMutation(api.balances.credit);
-  const [recorded, setRecorded] = useState(false);
-  const [depositedAmount, setDepositedAmount] = useState("");
-
-  useEffect(() => {
-    if (receipt && !isWaiting && !recorded) {
-      setRecorded(true);
-      const cents = Math.round(parseFloat(depositedAmount || "0") * 100);
-      if (companyId && cents > 0) {
-        creditBalance({
-          companyId,
-          amountCents: cents,
-          currency: "USD" as const,
-          reason: `Payroll contract deposit — ${depositedAmount} USDC`,
-          relatedPaymentId: txHash,
-        }).then(() => {
-          toast.success("Deposit confirmed and recorded in ledger");
-          onSuccess();
-          onOpenChange(false);
-        }).catch((err) => {
-          toast.error(`Deposit confirmed on-chain but ledger update failed: ${err}`);
-          onSuccess();
-          onOpenChange(false);
-        });
-      } else {
-        toast.success("Deposit confirmed");
-        onSuccess();
-        onOpenChange(false);
-      }
-    }
-  }, [receipt, isWaiting, recorded, depositedAmount, companyId, creditBalance, txHash, onSuccess, onOpenChange]);
-
-  const handleDeposit = () => {
-    if (!contractAddress || !amount) return;
-    setRecorded(false);
-    setDepositedAmount(amount);
-    sendTransaction(
-      {
-        to: contractAddress,
-        value: parseEther(amount),
-      },
-      {
-        onError: (err) => {
-          toast.error(err.message.slice(0, 100));
-        },
-      }
-    );
-  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -358,22 +349,24 @@ function DepositDialog({
               onChange={(e) => setAmount(e.target.value)}
             />
           </div>
-          {txHash && (
+          {(isPending || isWaiting) && (
             <div className="flex items-center gap-2">
               <div className="size-2 animate-pulse rounded-full bg-yellow-500" />
-              <span className="text-sm">Waiting for confirmation...</span>
+              <span className="text-sm">
+                {isPending ? "Confirm in wallet..." : "Waiting for on-chain confirmation..."}
+              </span>
             </div>
           )}
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isPending || isWaiting}>
             Cancel
           </Button>
           <Button
-            onClick={handleDeposit}
-            disabled={isPending || !amount || parseFloat(amount) <= 0}
+            onClick={() => onDeposit(amount)}
+            disabled={isPending || isWaiting || !amount || parseFloat(amount) <= 0}
           >
-            {isPending ? "Confirm in wallet..." : "Deposit"}
+            {isPending ? "Signing..." : isWaiting ? "Confirming..." : "Deposit"}
           </Button>
         </DialogFooter>
       </DialogContent>
