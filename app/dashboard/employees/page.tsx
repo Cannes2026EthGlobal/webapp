@@ -140,8 +140,19 @@ function EmployeesContent({ showCreate, setShowCreate }: { showCreate: boolean; 
                           {emp.employmentType}
                         </Badge>
                       </TableCell>
-                      <TableCell className="tabular-nums">
-                        {formatCents(emp.totalCompensationCents)}
+                      <TableCell>
+                        <div className="tabular-nums font-medium">
+                          {formatCents(emp.totalCompensationCents)}
+                        </div>
+                        {emp.compensationLines.length > 0 && (
+                          <div className="mt-0.5 space-y-0.5">
+                            {emp.compensationLines.map((line, i) => (
+                              <div key={i} className="text-xs text-muted-foreground">
+                                {line.name}: {formatCents(line.amountCents)}/{line.frequency}
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </TableCell>
                       <TableCell>
                         <Badge

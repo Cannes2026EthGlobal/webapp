@@ -50,16 +50,21 @@ export const listByCompany = query({
       .take(500);
 
     // Group active lines by employee
-    const linesByEmployee = new Map<string, number>();
+    const totalByEmployee = new Map<string, number>();
+    const linesByEmployee = new Map<string, Array<{ name: string; amountCents: number; frequency: string }>>();
     for (const line of allLines) {
       if (!line.isActive) continue;
-      const current = linesByEmployee.get(line.employeeId) ?? 0;
-      linesByEmployee.set(line.employeeId, current + line.amountCents);
+      const total = totalByEmployee.get(line.employeeId) ?? 0;
+      totalByEmployee.set(line.employeeId, total + line.amountCents);
+      const lines = linesByEmployee.get(line.employeeId) ?? [];
+      lines.push({ name: line.name, amountCents: line.amountCents, frequency: line.frequency });
+      linesByEmployee.set(line.employeeId, lines);
     }
 
     return employees.map((emp) => ({
       ...emp,
-      totalCompensationCents: linesByEmployee.get(emp._id) ?? emp.payoutAmountCents ?? 0,
+      totalCompensationCents: totalByEmployee.get(emp._id) ?? emp.payoutAmountCents ?? 0,
+      compensationLines: linesByEmployee.get(emp._id) ?? [],
     }));
   },
 });
