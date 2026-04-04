@@ -62,11 +62,6 @@ const navItems = [
   },
   // ─── Money ───
   {
-    title: "Payroll",
-    url: "/dashboard/payroll",
-    icon: <HugeiconsIcon icon={ChartHistogramIcon} strokeWidth={2} />,
-  },
-  {
     title: "Treasury",
     url: "/dashboard/treasury",
     icon: <HugeiconsIcon icon={Analytics01Icon} strokeWidth={2} />,

@@ -9,6 +9,7 @@ import { formatCents, formatDate, formatDateShort } from "@/lib/format";
 import { toast } from "sonner";
 import type { Id } from "@/convex/_generated/dataModel";
 
+import { PayrollContent } from "@/app/dashboard/payroll/page";
 import { PageHeader } from "@/components/page-header";
 import { CompanyGuard } from "@/components/company-guard";
 import { Badge } from "@/components/ui/badge";
@@ -736,17 +737,30 @@ export default function EmployeesPage() {
     <>
       <PageHeader
         title="Employees"
-        description="Manage team members and outbound payment settlement"
+        description="Team management, payroll, and salary advances"
       />
       <div className="flex flex-1 flex-col">
         <div className="@container/main flex flex-1 flex-col gap-2">
           <CompanyGuard>
-            <EmployeesContent
-              showCreate={showCreate}
-              setShowCreate={setShowCreate}
-              showCreatePayment={showCreatePayment}
-              setShowCreatePayment={setShowCreatePayment}
-            />
+            <div className="px-4 pt-4 lg:px-6">
+              <Tabs defaultValue="roster">
+                <TabsList>
+                  <TabsTrigger value="roster">Roster & Payments</TabsTrigger>
+                  <TabsTrigger value="payroll">Payroll & Advances</TabsTrigger>
+                </TabsList>
+                <TabsContent value="roster">
+                  <EmployeesContent
+                    showCreate={showCreate}
+                    setShowCreate={setShowCreate}
+                    showCreatePayment={showCreatePayment}
+                    setShowCreatePayment={setShowCreatePayment}
+                  />
+                </TabsContent>
+                <TabsContent value="payroll">
+                  <PayrollContent />
+                </TabsContent>
+              </Tabs>
+            </div>
           </CompanyGuard>
         </div>
       </div>

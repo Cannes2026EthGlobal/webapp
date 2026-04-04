@@ -324,6 +324,9 @@ function PendingRequestRow({
   );
 }
 
+// Exported for use in the employees page tab
+export { PayrollContent };
+
 export default function PayrollPage() {
   return (
     <CompanyGuard>
