@@ -2,7 +2,6 @@ import {
   ArrowRight,
   Bot,
   BriefcaseBusiness,
-  Fingerprint,
   ReceiptText,
   Workflow,
 } from "lucide-react";
@@ -79,34 +78,31 @@ const inboundRows = [
   { name: "B2B invoice / Company", status: "Pending", amount: "$9.8k" },
 ];
 
-const settlementSteps = [
+const howItWorks = [
   {
-    title: "Create the payable",
+    title: "Manage your team and customers",
     description:
-      "A payroll run, invoice event, or metered call becomes a visible money event inside the workspace.",
+      "Add employees with salary details, onboard customers, and create billable products — all from one dashboard.",
+    icon: BriefcaseBusiness,
+  },
+  {
+    title: "Collect payments via WalletConnect Pay",
+    description:
+      "Generate checkout links for your products. Customers pay in USDC from any wallet. Funds land in your treasury automatically.",
     icon: ReceiptText,
   },
   {
-    title: "Route with intent",
+    title: "Run payroll on Arc",
     description:
-      "Approve, shield, meter, or collect without losing the operator view of why money is moving.",
-    icon: Fingerprint,
-  },
-  {
-    title: "Close the ledger",
-    description:
-      "Arc settles, WalletConnect Pay captures, and records land back in one room.",
+      "Approve salary batches and advances. Chainlink CRE executes payments on-chain through the Payroll smart contract. Employees can request advances against their next paycheck.",
     icon: Workflow,
   },
 ];
 
 const sponsorStack = [
-  "Arc",
+  "Arc (Circle)",
   "Chainlink CRE",
   "WalletConnect Pay",
-  "ENS",
-  "Uniswap v4",
-  "Hedera HTS",
 ];
 
 export default function Page() {
@@ -358,13 +354,13 @@ export default function Page() {
         </div>
       </section>
 
-      {/* ─── Settlement Flow ─── */}
+      {/* ─── How It Works ─── */}
       <section id="settlement" className="mx-auto max-w-4xl px-6 pb-20">
         <h2 className="mb-8 text-center text-2xl font-light tracking-tight">
-          Three moves to close any money event.
+          How it works
         </h2>
         <div className="grid gap-6 md:grid-cols-3">
-          {settlementSteps.map((step, i) => (
+          {howItWorks.map((step, i) => (
             <div key={step.title} className="text-center">
               <div
                 className="mx-auto mb-3 inline-flex size-10 items-center justify-center rounded-full border"
