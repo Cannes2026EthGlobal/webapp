@@ -407,16 +407,11 @@ function CctpBridgeCard() {
             </SelectContent>
           </Select>
           <Input
-            placeholder="Recipient 0x..."
-            value={recipient}
-            onChange={(e) => setRecipient(e.target.value)}
-            className="flex-1"
-          />
-          <Input
             type="number"
             placeholder="USDC amount"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
+            className="flex-1"
           />
         </div>
         <div className="flex items-center gap-3">
