@@ -56,6 +56,16 @@ export default defineSchema({
     website: v.optional(v.string()),
     logoUrl: v.optional(v.string()),
     payrollContractAddress: v.optional(v.string()),
+    // ─── Settlement Configuration (for CRE + CCTP bridge) ───
+    settlementAddress: v.optional(v.string()),    // destination wallet for USDC
+    settlementNetwork: v.optional(v.string()),     // e.g. "ethereum", "arbitrum", "base", "polygon", "avalanche", "arc"
+    settlementChainId: v.optional(v.number()),     // EVM chain ID (1, 42161, 8453, 137, 43114, 5042002)
+    cctpDomain: v.optional(v.number()),            // Circle CCTP domain (0=Ethereum, 1=Avalanche, 2=Optimism, 3=Arbitrum, 6=Base, 7=Polygon)
+    // ─── Customization ───
+    defaultCurrency: v.optional(v.union(v.literal("USD"), v.literal("EUR"))),
+    webhookUrl: v.optional(v.string()),            // global webhook for all payment events
+    brandColor: v.optional(v.string()),            // hex color for checkout pages
+    supportEmail: v.optional(v.string()),          // shown on checkout and invoices
   })
     .index("by_ownerId", ["ownerId"])
     .index("by_slug", ["slug"]),

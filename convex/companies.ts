@@ -84,10 +84,18 @@ export const update = mutation({
     website: v.optional(v.string()),
     logoUrl: v.optional(v.string()),
     payrollContractAddress: v.optional(v.string()),
+    settlementAddress: v.optional(v.string()),
+    settlementNetwork: v.optional(v.string()),
+    settlementChainId: v.optional(v.number()),
+    cctpDomain: v.optional(v.number()),
+    defaultCurrency: v.optional(v.union(v.literal("USD"), v.literal("EUR"))),
+    webhookUrl: v.optional(v.string()),
+    brandColor: v.optional(v.string()),
+    supportEmail: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const { id, ...fields } = args;
-    const updates: Record<string, string | undefined> = {};
+    const updates: Record<string, unknown> = {};
     for (const [key, value] of Object.entries(fields)) {
       if (value !== undefined) {
         updates[key] = value;
