@@ -24,7 +24,7 @@ export const clearAllData = mutation({
       for (const doc of await ctx.db.query("employeePayments").withIndex("by_companyId", (q) => q.eq("companyId", company._id)).take(500)) { await ctx.db.delete(doc._id); deleted++; }
       for (const doc of await ctx.db.query("customerPayments").withIndex("by_companyId", (q) => q.eq("companyId", company._id)).take(500)) { await ctx.db.delete(doc._id); deleted++; }
       for (const doc of await ctx.db.query("compensationLines").withIndex("by_companyId", (q) => q.eq("companyId", company._id)).take(500)) { await ctx.db.delete(doc._id); deleted++; }
-      for (const doc of await ctx.db.query("compensationSplits").withIndex("by_companyId", (q) => q.eq("companyId", company._id)).take(500)) { await ctx.db.delete(doc._id); deleted++; }
+      // compensationSplits are deleted via cascade when compensationLines are deleted
       for (const doc of await ctx.db.query("creditRequests").withIndex("by_companyId", (q) => q.eq("companyId", company._id)).take(500)) { await ctx.db.delete(doc._id); deleted++; }
       for (const doc of await ctx.db.query("creditSettings").withIndex("by_companyId", (q) => q.eq("companyId", company._id)).take(500)) { await ctx.db.delete(doc._id); deleted++; }
       for (const doc of await ctx.db.query("checkoutLinks").withIndex("by_companyId", (q) => q.eq("companyId", company._id)).take(500)) { await ctx.db.delete(doc._id); deleted++; }
