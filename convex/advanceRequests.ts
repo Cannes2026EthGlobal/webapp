@@ -116,8 +116,9 @@ export const request = mutation({
       throw new Error("You have an outstanding advance that hasn't been deducted yet");
     }
 
+    const payoutCents = employee.payoutAmountCents ?? 0;
     const maxAllowed = Math.floor(
-      (employee.payoutAmountCents * maxAdvancePercent) / 100
+      (payoutCents * maxAdvancePercent) / 100
     );
     if (args.requestedAmountCents > maxAllowed) {
       throw new Error(
@@ -149,7 +150,7 @@ export const request = mutation({
       status: "pending",
       reason: args.reason,
       nextPaycheckDate,
-      nextPaycheckAmountCents: employee.payoutAmountCents,
+      nextPaycheckAmountCents: payoutCents,
     });
   },
 });

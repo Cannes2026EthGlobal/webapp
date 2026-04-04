@@ -55,7 +55,8 @@ export const upcoming = query({
         const advanceDeductionCents = hasActiveAdvance
           ? advances[0].requestedAmountCents
           : 0;
-        const netPayoutCents = emp.payoutAmountCents - advanceDeductionCents;
+        const empPayoutCents = emp.payoutAmountCents ?? 0;
+        const netPayoutCents = empPayoutCents - advanceDeductionCents;
 
         totalSalaryCents += netPayoutCents;
 
@@ -63,8 +64,8 @@ export const upcoming = query({
           employeeId: emp._id,
           displayName: emp.displayName,
           role: emp.role,
-          payoutAmountCents: emp.payoutAmountCents,
-          frequency: emp.payoutFrequency,
+          payoutAmountCents: empPayoutCents,
+          frequency: emp.payoutFrequency ?? "monthly",
           hasActiveAdvance,
           advanceDeductionCents,
           netPayoutCents,

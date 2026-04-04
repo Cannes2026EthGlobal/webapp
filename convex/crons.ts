@@ -51,7 +51,7 @@ export const getMonthlyPayrollInternal = internalQuery({
     let total = 0;
     for (const e of employees) {
       if (e.compensationModel === "salary") {
-        total += e.payoutAmountCents;
+        total += e.payoutAmountCents ?? 0;
       }
     }
     return total;
