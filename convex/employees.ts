@@ -16,8 +16,7 @@ const privacyLevelValidator = v.union(
 
 const statusValidator = v.union(
   v.literal("active"),
-  v.literal("inactive"),
-  v.literal("onboarding")
+  v.literal("inactive")
 );
 
 export const listByCompany = query({

@@ -50,14 +50,15 @@ export const seedDemoData = mutation({
     const day = 86400000;
     const now = Date.now();
     // Salaries are tiny (0–1 USDC) so the demo contract doesn't need much funding
+    const empWallet = "0xba232D9C9A551a60ff20F9f6AA3BBb21FE55F909";
     const employeeData = [
-      { displayName: "Elena Vasquez", role: "Lead Engineer", employmentType: "full-time" as const, walletVerified: true, privacyLevel: "verified" as const, status: "active" as const, email: "elena@arcdemo.co", walletAddress: "0x1234...abcd", startDate: now - 730 * day, payoutAmountCents: 95, payoutFrequency: "monthly" as const },
-      { displayName: "Marcus Chen", role: "Product Designer", employmentType: "full-time" as const, walletVerified: true, privacyLevel: "pseudonymous" as const, status: "active" as const, startDate: now - 548 * day, payoutAmountCents: 80, payoutFrequency: "monthly" as const },
-      { displayName: "Aria Nakamura", role: "Backend Developer", employmentType: "contractor" as const, walletVerified: true, privacyLevel: "shielded" as const, status: "active" as const, walletAddress: "0x5678...efgh", startDate: now - 365 * day, payoutAmountCents: 70, payoutFrequency: "biweekly" as const },
-      { displayName: "James Whitfield", role: "DevOps", employmentType: "full-time" as const, walletVerified: false, privacyLevel: "pseudonymous" as const, status: "active" as const, startDate: now - 912 * day, payoutAmountCents: 85, payoutFrequency: "monthly" as const },
-      { displayName: "Sofia Reyes", role: "Data Analyst", employmentType: "part-time" as const, walletVerified: true, privacyLevel: "verified" as const, status: "active" as const, email: "sofia@arcdemo.co", startDate: now - 180 * day, payoutAmountCents: 50, payoutFrequency: "biweekly" as const },
-      { displayName: "Kai Tanaka", role: "Smart Contract Auditor", employmentType: "freelance" as const, walletVerified: true, privacyLevel: "shielded" as const, status: "active" as const, startDate: now - 90 * day, payoutAmountCents: 40, payoutFrequency: "monthly" as const },
-      { displayName: "Luna Park", role: "Marketing Lead", employmentType: "full-time" as const, walletVerified: true, privacyLevel: "verified" as const, status: "onboarding" as const, startDate: now - 14 * day, payoutAmountCents: 75, payoutFrequency: "monthly" as const },
+      { displayName: "Elena Vasquez", role: "Lead Engineer", employmentType: "full-time" as const, walletVerified: true, privacyLevel: "verified" as const, status: "active" as const, email: "elena@arcdemo.co", walletAddress: empWallet, startDate: now - 730 * day, payoutAmountCents: 95, payoutFrequency: "monthly" as const },
+      { displayName: "Marcus Chen", role: "Product Designer", employmentType: "full-time" as const, walletVerified: true, privacyLevel: "pseudonymous" as const, status: "active" as const, walletAddress: empWallet, startDate: now - 548 * day, payoutAmountCents: 80, payoutFrequency: "monthly" as const },
+      { displayName: "Aria Nakamura", role: "Backend Developer", employmentType: "contractor" as const, walletVerified: true, privacyLevel: "shielded" as const, status: "active" as const, walletAddress: empWallet, startDate: now - 365 * day, payoutAmountCents: 70, payoutFrequency: "biweekly" as const },
+      { displayName: "James Whitfield", role: "DevOps", employmentType: "full-time" as const, walletVerified: false, privacyLevel: "pseudonymous" as const, status: "active" as const, walletAddress: empWallet, startDate: now - 912 * day, payoutAmountCents: 85, payoutFrequency: "monthly" as const },
+      { displayName: "Sofia Reyes", role: "Data Analyst", employmentType: "part-time" as const, walletVerified: true, privacyLevel: "verified" as const, status: "active" as const, email: "sofia@arcdemo.co", walletAddress: empWallet, startDate: now - 180 * day, payoutAmountCents: 50, payoutFrequency: "biweekly" as const },
+      { displayName: "Kai Tanaka", role: "Smart Contract Auditor", employmentType: "freelance" as const, walletVerified: true, privacyLevel: "shielded" as const, status: "active" as const, walletAddress: empWallet, startDate: now - 90 * day, payoutAmountCents: 40, payoutFrequency: "monthly" as const },
+      { displayName: "Luna Park", role: "Marketing Lead", employmentType: "full-time" as const, walletVerified: true, privacyLevel: "verified" as const, status: "active" as const, walletAddress: empWallet, startDate: now - 14 * day, payoutAmountCents: 75, payoutFrequency: "monthly" as const },
     ];
 
     const employeeIds = [];

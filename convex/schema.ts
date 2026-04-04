@@ -106,8 +106,7 @@ export default defineSchema({
     notes: v.optional(v.string()),
     status: v.union(
       v.literal("active"),
-      v.literal("inactive"),
-      v.literal("onboarding")
+      v.literal("inactive")
     ),
     startDate: v.optional(v.number()),
   })

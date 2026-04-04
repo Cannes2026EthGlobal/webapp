@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useCompany } from "@/hooks/use-company";
-import { formatCents, formatDate, formatDateShort } from "@/lib/format";
+import { formatCents, formatDateShort } from "@/lib/format";
 import { toast } from "sonner";
 import type { Id } from "@/convex/_generated/dataModel";
 
@@ -56,19 +56,14 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 
 function EmployeesContent({
   showCreate,
   setShowCreate,
-  showCreatePayment,
-  setShowCreatePayment,
 }: {
   showCreate: boolean;
   setShowCreate: (v: boolean) => void;
-  showCreatePayment: boolean;
-  setShowCreatePayment: (v: boolean) => void;
 }) {
   const router = useRouter();
   const { companyId } = useCompany();
@@ -76,16 +71,9 @@ function EmployeesContent({
     api.employees.listByCompany,
     companyId ? { companyId } : "skip"
   );
-  const payments = useQuery(
-    api.employeePayments.listByCompany,
-    companyId ? { companyId } : "skip"
-  );
   const createEmployee = useMutation(api.employees.create);
   const removeEmployee = useMutation(api.employees.remove);
   const updateEmployee = useMutation(api.employees.update);
-  const createPayment = useMutation(api.employeePayments.create);
-  const updatePaymentStatus = useMutation(api.employeePayments.updateStatus);
-  const removePayment = useMutation(api.employeePayments.remove);
 
   const [deleteTarget, setDeleteTarget] = useState<{ id: Id<"employees">; name: string } | null>(null);
 
@@ -94,16 +82,10 @@ function EmployeesContent({
     role: "",
     employmentType: "full-time" as const,
     email: "",
+    walletAddress: "",
   });
 
-  const [paymentForm, setPaymentForm] = useState({
-    employeeId: "",
-    type: "salary" as const,
-    amountCents: 0,
-    description: "",
-  });
-
-  if (!employees || !payments) {
+  if (!employees) {
     return (
       <div className="p-4 lg:p-6">
         <Skeleton className="h-96" />
@@ -111,10 +93,8 @@ function EmployeesContent({
     );
   }
 
-  const employeeMap = new Map(employees.map((e) => [e._id, e]));
-
   const handleCreate = async () => {
-    if (!companyId || !formData.displayName || !formData.role) return;
+    if (!companyId || !formData.displayName || !formData.role || !formData.walletAddress) return;
     await createEmployee({
       companyId,
       displayName: formData.displayName,
@@ -122,8 +102,9 @@ function EmployeesContent({
       employmentType: formData.employmentType,
       walletVerified: false,
       privacyLevel: "pseudonymous",
-      status: "onboarding",
+      status: "active",
       email: formData.email || undefined,
+      walletAddress: formData.walletAddress,
     });
     setShowCreate(false);
     setFormData({
@@ -131,6 +112,7 @@ function EmployeesContent({
       role: "",
       employmentType: "full-time",
       email: "",
+      walletAddress: "",
     });
     toast.success("Employee added");
   };
@@ -155,90 +137,53 @@ function EmployeesContent({
     }
   };
 
-  const handleCreatePayment = async () => {
-    if (!companyId || !paymentForm.employeeId || !paymentForm.amountCents) return;
-    await createPayment({
-      companyId,
-      employeeId: paymentForm.employeeId as Id<"employees">,
-      type: paymentForm.type,
-      amountCents: paymentForm.amountCents,
-      currency: "USD",
-      description: paymentForm.description || undefined,
-    });
-    setShowCreatePayment(false);
-    setPaymentForm({
-      employeeId: "",
-      type: "salary",
-      amountCents: 0,
-      description: "",
-    });
-  };
-
-  const statusGroups = {
-    all: payments,
-    draft: payments.filter((p) => p.status === "draft"),
-    approved: payments.filter((p) => p.status === "approved"),
-    queued: payments.filter((p) => p.status === "queued"),
-    settled: payments.filter((p) => p.status === "settled"),
-    failed: payments.filter((p) => p.status === "failed"),
-  };
+  const activeCount = employees.filter((e) => e.status === "active").length;
 
   return (
     <div className="flex flex-col gap-4 p-4 lg:p-6">
-      {/* ─── Payment Summary ─── */}
+      {/* ─── Summary ─── */}
       <div className="grid grid-cols-1 gap-4 @xl/main:grid-cols-3">
         <Card>
           <CardHeader className="pb-2">
-            <CardDescription>Draft</CardDescription>
+            <CardDescription>Total employees</CardDescription>
             <CardTitle className="text-2xl tabular-nums">
-              {formatCents(
-                statusGroups.draft.reduce((s, p) => s + p.amountCents, 0)
-              )}
+              {employees.length}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-xs text-muted-foreground">
-              {statusGroups.draft.length} payment
-              {statusGroups.draft.length !== 1 ? "s" : ""} awaiting approval
+              {activeCount} active
             </p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardDescription>Approved / Queued</CardDescription>
+            <CardDescription>Monthly payroll</CardDescription>
             <CardTitle className="text-2xl tabular-nums">
               {formatCents(
-                [...statusGroups.approved, ...statusGroups.queued].reduce(
-                  (s, p) => s + p.amountCents,
-                  0
-                )
+                employees
+                  .filter((e) => e.status === "active")
+                  .reduce((s, e) => s + (e.payoutAmountCents ?? 0), 0)
               )}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-xs text-muted-foreground">
-              {statusGroups.approved.length + statusGroups.queued.length}{" "}
-              payment
-              {statusGroups.approved.length + statusGroups.queued.length !== 1
-                ? "s"
-                : ""}{" "}
-              pending settlement
+              Based on current salaries
             </p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardDescription>Settled</CardDescription>
+            <CardDescription>Employment types</CardDescription>
             <CardTitle className="text-2xl tabular-nums">
-              {formatCents(
-                statusGroups.settled.reduce((s, p) => s + p.amountCents, 0)
-              )}
+              {new Set(employees.map((e) => e.employmentType)).size}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-xs text-muted-foreground">
-              {statusGroups.settled.length} payment
-              {statusGroups.settled.length !== 1 ? "s" : ""} completed
+              {employees.filter((e) => e.employmentType === "full-time").length} full-time,{" "}
+              {employees.filter((e) => e.employmentType !== "full-time").length} other
             </p>
           </CardContent>
         </Card>
@@ -336,69 +281,6 @@ function EmployeesContent({
         </CardContent>
       </Card>
 
-      {/* ─── Payment Runs ─── */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle>Payment runs</CardTitle>
-              <CardDescription>
-                Outbound settlement desk for payroll, freelance, bonuses, and
-                credits
-              </CardDescription>
-            </div>
-            <Button size="sm" onClick={() => setShowCreatePayment(true)}>
-              New payment
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <Tabs defaultValue="all">
-            <TabsList>
-              <TabsTrigger value="all">All ({statusGroups.all.length})</TabsTrigger>
-              <TabsTrigger value="draft">
-                Draft ({statusGroups.draft.length})
-              </TabsTrigger>
-              <TabsTrigger value="approved">
-                Approved ({statusGroups.approved.length})
-              </TabsTrigger>
-              <TabsTrigger value="settled">
-                Settled ({statusGroups.settled.length})
-              </TabsTrigger>
-            </TabsList>
-
-            {(["all", "draft", "approved", "settled"] as const).map((tab) => (
-              <TabsContent key={tab} value={tab}>
-                <PaymentsTable
-                  payments={statusGroups[tab]}
-                  employeeMap={employeeMap}
-                  onTransition={async (id, status) => {
-                    try {
-                      await updatePaymentStatus({
-                        id,
-                        status,
-                        ...(status === "settled" ? { settledAt: Date.now() } : {}),
-                      });
-                      toast.success(`Payment ${status}`);
-                    } catch (e) {
-                      toast.error(e instanceof Error ? e.message : "Failed to update status");
-                    }
-                  }}
-                  onRemove={async (id) => {
-                    try {
-                      await removePayment({ id });
-                      toast.success("Payment removed");
-                    } catch (e) {
-                      toast.error(e instanceof Error ? e.message : "Failed to remove");
-                    }
-                  }}
-                />
-              </TabsContent>
-            ))}
-          </Tabs>
-        </CardContent>
-      </Card>
-
       {/* ─── Create Employee Dialog ─── */}
       <Dialog open={showCreate} onOpenChange={setShowCreate}>
         <DialogContent>
@@ -452,6 +334,17 @@ function EmployeesContent({
               </Select>
             </div>
             <div className="grid gap-2">
+              <Label htmlFor="walletAddress">Wallet address</Label>
+              <Input
+                id="walletAddress"
+                placeholder="0x..."
+                value={formData.walletAddress}
+                onChange={(e) =>
+                  setFormData({ ...formData, walletAddress: e.target.value })
+                }
+              />
+            </div>
+            <div className="grid gap-2">
               <Label htmlFor="email">Email (optional)</Label>
               <Input
                 id="email"
@@ -472,97 +365,6 @@ function EmployeesContent({
               Cancel
             </Button>
             <Button onClick={() => void handleCreate()}>Add employee</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* ─── Create Payment Dialog ─── */}
-      <Dialog open={showCreatePayment} onOpenChange={setShowCreatePayment}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Create payment</DialogTitle>
-            <DialogDescription>
-              Add a new outbound payment for an employee.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label>Employee</Label>
-              <Select
-                value={paymentForm.employeeId}
-                onValueChange={(v) =>
-                  setPaymentForm({ ...paymentForm, employeeId: v })
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select employee" />
-                </SelectTrigger>
-                <SelectContent>
-                  {employees.map((emp) => (
-                    <SelectItem key={emp._id} value={emp._id}>
-                      {emp.displayName} - {emp.role}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-2">
-                <Label>Payment type</Label>
-                <Select
-                  value={paymentForm.type}
-                  onValueChange={(v) =>
-                    setPaymentForm({
-                      ...paymentForm,
-                      type: v as typeof paymentForm.type,
-                    })
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="salary">Salary</SelectItem>
-                    <SelectItem value="freelance">Freelance</SelectItem>
-                    <SelectItem value="bonus">Bonus</SelectItem>
-                    <SelectItem value="reimbursement">Reimbursement</SelectItem>
-                    <SelectItem value="credit">Credit</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="paymentAmount">Amount (USD)</Label>
-                <Input
-                  id="paymentAmount"
-                  type="number"
-                  value={paymentForm.amountCents / 100 || ""}
-                  onChange={(e) =>
-                    setPaymentForm({
-                      ...paymentForm,
-                      amountCents: Math.round(
-                        parseFloat(e.target.value || "0") * 100
-                      ),
-                    })
-                  }
-                />
-              </div>
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="paymentDescription">Description (optional)</Label>
-              <Input
-                id="paymentDescription"
-                value={paymentForm.description}
-                onChange={(e) =>
-                  setPaymentForm({ ...paymentForm, description: e.target.value })
-                }
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowCreatePayment(false)}>
-              Cancel
-            </Button>
-            <Button onClick={() => void handleCreatePayment()}>Create payment</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -591,136 +393,11 @@ function EmployeesContent({
   );
 }
 
-function PaymentsTable({
-  payments,
-  employeeMap,
-  onTransition,
-  onRemove,
-}: {
-  payments: Array<{
-    _id: Id<"employeePayments">;
-    _creationTime: number;
-    employeeId: Id<"employees">;
-    type: string;
-    amountCents: number;
-    status: string;
-    description?: string;
-    scheduledDate?: number;
-    settledAt?: number;
-  }>;
-  employeeMap: Map<string, { displayName: string }>;
-  onTransition: (id: Id<"employeePayments">, status: "draft" | "approved" | "queued" | "settled" | "failed") => void;
-  onRemove: (id: Id<"employeePayments">) => void;
-}) {
-  if (payments.length === 0) {
-    return (
-      <p className="py-8 text-center text-sm text-muted-foreground">
-        No payments in this category
-      </p>
-    );
-  }
-
-  return (
-    <div className="overflow-x-auto">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Employee</TableHead>
-            <TableHead>Type</TableHead>
-            <TableHead>Amount</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>Description</TableHead>
-            <TableHead>Date</TableHead>
-            <TableHead />
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {payments.map((p) => (
-            <TableRow key={p._id}>
-              <TableCell className="font-medium">
-                {employeeMap.get(p.employeeId)?.displayName ?? "Unknown"}
-              </TableCell>
-              <TableCell>
-                <Badge variant="outline" className="capitalize">
-                  {p.type}
-                </Badge>
-              </TableCell>
-              <TableCell className="tabular-nums">
-                {formatCents(p.amountCents)}
-              </TableCell>
-              <TableCell>
-                <PaymentStatusBadge status={p.status} />
-              </TableCell>
-              <TableCell className="max-w-48 truncate text-muted-foreground">
-                {p.description ?? "-"}
-              </TableCell>
-              <TableCell className="text-muted-foreground">
-                {p.settledAt
-                  ? formatDate(p.settledAt)
-                  : p.scheduledDate
-                    ? formatDate(p.scheduledDate)
-                    : formatDate(p._creationTime)}
-              </TableCell>
-              <TableCell>
-                <div className="flex gap-1">
-                  {p.status === "draft" && (
-                    <Button variant="outline" size="sm" onClick={() => onTransition(p._id, "approved")}>
-                      Approve
-                    </Button>
-                  )}
-                  {p.status === "approved" && (
-                    <Button variant="outline" size="sm" onClick={() => onTransition(p._id, "queued")}>
-                      Queue
-                    </Button>
-                  )}
-                  {p.status === "queued" && (
-                    <Button variant="default" size="sm" onClick={() => onTransition(p._id, "settled")}>
-                      Settle
-                    </Button>
-                  )}
-                  {p.status === "failed" && (
-                    <Button variant="outline" size="sm" onClick={() => onTransition(p._id, "draft")}>
-                      Retry
-                    </Button>
-                  )}
-                  {(p.status === "draft" || p.status === "failed") && (
-                    <Button variant="ghost" size="sm" onClick={() => onRemove(p._id)}>
-                      Remove
-                    </Button>
-                  )}
-                </div>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </div>
-  );
-}
-
 function StatusBadge({ status }: { status: string }) {
   const variant =
     status === "active"
       ? "default"
-      : status === "inactive"
-        ? "destructive"
-        : "secondary";
-  return (
-    <Badge variant={variant} className="capitalize">
-      {status}
-    </Badge>
-  );
-}
-
-function PaymentStatusBadge({ status }: { status: string }) {
-  const variant =
-    status === "settled"
-      ? "default"
-      : status === "failed"
-        ? "destructive"
-        : status === "approved" || status === "queued"
-          ? "secondary"
-          : "outline";
+      : "destructive";
   return (
     <Badge variant={variant} className="capitalize">
       {status}
@@ -730,13 +407,12 @@ function PaymentStatusBadge({ status }: { status: string }) {
 
 export default function EmployeesPage() {
   const [showCreate, setShowCreate] = useState(false);
-  const [showCreatePayment, setShowCreatePayment] = useState(false);
 
   return (
     <>
       <PageHeader
         title="Employees"
-        description="Manage team members and outbound payment settlement"
+        description="Manage team members and compensation"
       />
       <div className="flex flex-1 flex-col">
         <div className="@container/main flex flex-1 flex-col gap-2">
@@ -744,8 +420,6 @@ export default function EmployeesPage() {
             <EmployeesContent
               showCreate={showCreate}
               setShowCreate={setShowCreate}
-              showCreatePayment={showCreatePayment}
-              setShowCreatePayment={setShowCreatePayment}
             />
           </CompanyGuard>
         </div>
