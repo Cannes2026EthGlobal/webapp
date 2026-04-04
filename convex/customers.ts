@@ -54,6 +54,21 @@ export const getById = query({
   },
 });
 
+export const getByWallet = query({
+  args: {
+    companyId: v.id("companies"),
+    walletAddress: v.string(),
+  },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("customers")
+      .withIndex("by_companyId_and_walletAddress", (q) =>
+        q.eq("companyId", args.companyId).eq("walletAddress", args.walletAddress)
+      )
+      .unique();
+  },
+});
+
 export const create = mutation({
   args: {
     companyId: v.id("companies"),
