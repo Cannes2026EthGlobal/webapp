@@ -7,45 +7,31 @@ import {
 } from "lucide-react";
 import { LandingAuthButton } from "@/components/landing-auth-button";
 
-const navLinks = [
-  { name: "Overview", href: "#overview" },
-  { name: "Model", href: "#model" },
-  { name: "Console", href: "#console" },
-  { name: "Settlement", href: "#settlement" },
-];
-
 const productLanes = [
   {
-    id: "B2B layer",
-    title: "Private ops for payroll and invoices.",
+    id: "Payroll & Advances",
+    title: "Pay your team from one desk.",
     description:
-      "Run payroll, vendor payouts, and invoice settlement from one control desk.",
+      "Manage salaries, approve payments, and let employees request advances against their next paycheck — with interest calculated on-chain.",
     icon: BriefcaseBusiness,
     points: [
-      "Private payroll batches on Arc",
-      "Salary advances with on-chain interest",
-      "Treasury-aware approvals and routing",
+      "Monthly payroll settled in USDC on Arc",
+      "Salary advances with configurable interest rates",
+      "Auto-disable advances when treasury runs low",
     ],
   },
   {
-    id: "B2C layer",
-    title: "Usage billing for AI products.",
+    id: "Invoicing & Checkout",
+    title: "Get paid by your customers.",
     description:
-      "Meter usage, collect payment at the moment value is created.",
+      "Create products, generate checkout links, and collect payments via WalletConnect Pay. Funds hit your treasury automatically.",
     icon: Bot,
     points: [
-      "WalletConnect Pay for live checkout",
-      "Usage, invoices, one-time payments, and reusable links",
-      "Programmable settlement logic for software-native revenue",
+      "Checkout links with WalletConnect Pay",
+      "Invoices, usage billing, and one-time payments",
+      "Real-time treasury balance tracking",
     ],
   },
-];
-
-const privacyStates = [
-  "Shielded routes",
-  "Pseudonymous employees",
-  "Verified wallets",
-  "Multi-wallet customers",
 ];
 
 const workspaceNav = [
@@ -53,10 +39,8 @@ const workspaceNav = [
   "Employees",
   "Customers",
   "Payroll",
-  "Receivables",
   "Products",
   "Treasury",
-  "Settings",
 ];
 
 const overviewMetrics = [
@@ -67,34 +51,34 @@ const overviewMetrics = [
 ];
 
 const outboundRows = [
-  { name: "Payroll batch / Shielded", status: "Approved", amount: "$18.4k" },
-  { name: "Salary advance / Verified", status: "Settled", amount: "$4.9k" },
-  { name: "Bonus run / Pseudonymous", status: "Draft", amount: "$4.1k" },
+  { name: "Elena Vasquez — Salary", status: "Approved", amount: "$12,000" },
+  { name: "Marcus Chen — Advance", status: "Settled", amount: "$4,900" },
+  { name: "Aria Nakamura — Contractor", status: "Draft", amount: "$4,250" },
 ];
 
 const inboundRows = [
-  { name: "API usage / Multi-wallet", status: "Streaming", amount: "$146" },
-  { name: "Checkout link / Verified", status: "Settled", amount: "$2.1k" },
-  { name: "B2B invoice / Company", status: "Pending", amount: "$9.8k" },
+  { name: "Synthex AI — API usage", status: "Streaming", amount: "$146" },
+  { name: "DevCon ticket — Checkout", status: "Paid", amount: "$350" },
+  { name: "Northwind Labs — Invoice", status: "Pending", amount: "$9,800" },
 ];
 
 const howItWorks = [
   {
-    title: "Manage your team and customers",
+    title: "Set up your workspace",
     description:
-      "Add employees with salary details, onboard customers, and create billable products — all from one dashboard.",
+      "Add employees with salary details, onboard customers, and create billable products. Deploy your Payroll smart contract on Arc.",
     icon: BriefcaseBusiness,
   },
   {
-    title: "Collect payments via WalletConnect Pay",
+    title: "Collect and pay",
     description:
-      "Generate checkout links for your products. Customers pay in USDC from any wallet. Funds land in your treasury automatically.",
+      "Generate checkout links for customers. Approve payroll batches. Employees can request salary advances — interest is deducted upfront.",
     icon: ReceiptText,
   },
   {
-    title: "Run payroll on Arc",
+    title: "Settle on-chain",
     description:
-      "Approve salary batches and advances. Chainlink CRE executes payments on-chain through the Payroll smart contract. Employees can request advances against their next paycheck.",
+      "Chainlink CRE automatically executes approved payments through the Payroll contract on Arc. WalletConnect Pay handles customer checkout.",
     icon: Workflow,
   },
 ];
@@ -129,16 +113,9 @@ export default function Page() {
           </span>
         </div>
         <div className="hidden items-center gap-6 md:flex">
-          {navLinks.map((l) => (
-            <a
-              key={l.name}
-              href={l.href}
-              className="text-sm transition-colors hover:opacity-70"
-              style={{ color: "var(--tone-muted)" }}
-            >
-              {l.name}
-            </a>
-          ))}
+          <a href="#features" className="text-sm transition-colors hover:opacity-70" style={{ color: "var(--tone-muted)" }}>Features</a>
+          <a href="#dashboard" className="text-sm transition-colors hover:opacity-70" style={{ color: "var(--tone-muted)" }}>Dashboard</a>
+          <a href="#how-it-works" className="text-sm transition-colors hover:opacity-70" style={{ color: "var(--tone-muted)" }}>How it works</a>
           <LandingAuthButton />
         </div>
         <div className="md:hidden">
@@ -147,29 +124,27 @@ export default function Page() {
       </nav>
 
       {/* ─── Hero ─── */}
-      <section
-        id="overview"
-        className="mx-auto max-w-3xl px-6 pb-20 pt-16 text-center md:pt-24"
-      >
+      <section className="mx-auto max-w-3xl px-6 pb-24 pt-16 text-center md:pt-28">
         <h1 className="text-4xl font-light leading-tight tracking-tight md:text-5xl">
-          Quiet infrastructure for
+          Payroll, invoicing, and salary advances
           <br />
-          real-time money movement.
+          <span style={{ color: "var(--tone-green)" }}>settled on Arc.</span>
         </h1>
         <p
-          className="mx-auto mt-5 max-w-xl text-base leading-relaxed"
+          className="mx-auto mt-5 max-w-lg text-base leading-relaxed"
           style={{ color: "var(--tone-muted)" }}
         >
-          Private payroll, invoicing, and pay-as-you-go billing on Arc. One
-          accounting surface for outbound operations and inbound revenue.
+          One dashboard for paying your team and getting paid by your customers.
+          USDC settlement on Arc. Salary advances with on-chain interest.
+          Checkout links via WalletConnect Pay.
         </p>
         <div className="mt-8 flex justify-center">
           <LandingAuthButton />
         </div>
       </section>
 
-      {/* ─── Product Lanes ─── */}
-      <section id="model" className="mx-auto max-w-5xl px-6 pb-20">
+      {/* ─── Features ─── */}
+      <section id="features" className="mx-auto max-w-5xl px-6 pb-24">
         <div className="grid gap-6 md:grid-cols-2">
           {productLanes.map((lane) => (
             <div
@@ -217,29 +192,16 @@ export default function Page() {
             </div>
           ))}
         </div>
-
-        {/* Privacy states */}
-        <div className="mt-8 flex flex-wrap justify-center gap-3">
-          {privacyStates.map((s) => (
-            <span
-              key={s}
-              className="rounded-full border px-3 py-1 text-xs"
-              style={{
-                borderColor: "var(--tone-border)",
-                color: "var(--tone-muted)",
-              }}
-            >
-              {s}
-            </span>
-          ))}
-        </div>
       </section>
 
-      {/* ─── Console Preview ─── */}
-      <section id="console" className="mx-auto max-w-5xl px-6 pb-20">
-        <h2 className="mb-6 text-center text-2xl font-light tracking-tight">
-          One room for every money event.
+      {/* ─── Dashboard Preview ─── */}
+      <section id="dashboard" className="mx-auto max-w-5xl px-6 pb-24">
+        <h2 className="mb-2 text-center text-2xl font-light tracking-tight">
+          Your operator dashboard
         </h2>
+        <p className="mb-8 text-center text-sm" style={{ color: "var(--tone-muted)" }}>
+          Everything your finance team needs in one view.
+        </p>
         <div
           className="overflow-hidden rounded-lg border"
           style={{
@@ -299,7 +261,7 @@ export default function Page() {
                 className="mb-2 text-xs font-medium uppercase tracking-widest"
                 style={{ color: "var(--tone-muted)" }}
               >
-                Outbound desk
+                Payroll (outbound)
               </p>
               <div className="space-y-2">
                 {outboundRows.map((r) => (
@@ -327,7 +289,7 @@ export default function Page() {
                 className="mb-2 text-xs font-medium uppercase tracking-widest"
                 style={{ color: "var(--tone-muted)" }}
               >
-                Inbound desk
+                Receivables (inbound)
               </p>
               <div className="space-y-2">
                 {inboundRows.map((r) => (
@@ -355,7 +317,7 @@ export default function Page() {
       </section>
 
       {/* ─── How It Works ─── */}
-      <section id="settlement" className="mx-auto max-w-4xl px-6 pb-20">
+      <section id="how-it-works" className="mx-auto max-w-4xl px-6 pb-24">
         <h2 className="mb-8 text-center text-2xl font-light tracking-tight">
           How it works
         </h2>
@@ -389,7 +351,7 @@ export default function Page() {
         </div>
       </section>
 
-      {/* ─── Sponsors ─── */}
+      {/* ─── Built with ─── */}
       <section className="mx-auto max-w-4xl px-6 pb-20">
         <p
           className="mb-4 text-center text-xs font-medium uppercase tracking-widest"
