@@ -231,10 +231,20 @@ export default function Page() {
             <h3 className="mt-2 text-lg font-semibold">
               Employees can request their salary in advance.
             </h3>
-            <p className="mt-2 text-sm leading-relaxed" style={{ color: "var(--tone-muted)" }}>
-              Your team members connect their wallet and see their upcoming paycheck, eligible advance amount, and interest breakdown.
-              The employer sets the interest rate, max advance percentage, and can disable advances per employee or automatically when treasury runs low.
-            </p>
+            <ul className="mt-3 space-y-2 text-sm" style={{ color: "var(--tone-muted)" }}>
+              <li className="flex items-start gap-2">
+                <ArrowRight className="mt-0.5 size-3.5 shrink-0" style={{ color: "var(--tone-green)" }} />
+                <span>Employees connect their wallet and see their upcoming paycheck, eligible advance amount, and interest breakdown</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <ArrowRight className="mt-0.5 size-3.5 shrink-0" style={{ color: "var(--tone-green)" }} />
+                <span>Employer sets the interest rate and max advance percentage</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <ArrowRight className="mt-0.5 size-3.5 shrink-0" style={{ color: "var(--tone-green)" }} />
+                <span>Disable advances per employee or automatically when treasury runs low</span>
+              </li>
+            </ul>
           </div>
           <div
             className="rounded-lg border p-4 md:w-72"
