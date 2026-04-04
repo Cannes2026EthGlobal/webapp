@@ -6,6 +6,8 @@ import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useCompany } from "@/hooks/use-company";
 import { formatCents, formatDateShort } from "@/lib/format";
+import { toast } from "sonner";
+import type { Id } from "@/convex/_generated/dataModel";
 
 import { PageHeader } from "@/components/page-header";
 import { CompanyGuard } from "@/components/company-guard";
@@ -26,6 +28,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -35,6 +47,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import {
   Table,
   TableBody,
@@ -54,6 +67,10 @@ function EmployeesContent({ showCreate, setShowCreate }: { showCreate: boolean; 
   );
   const createEmployee = useMutation(api.employees.create);
   const removeEmployee = useMutation(api.employees.remove);
+  const updateEmployee = useMutation(api.employees.update);
+
+  const [deleteTarget, setDeleteTarget] = useState<{ id: Id<"employees">; name: string } | null>(null);
+
   const [formData, setFormData] = useState({
     displayName: "",
     role: "",
@@ -62,7 +79,6 @@ function EmployeesContent({ showCreate, setShowCreate }: { showCreate: boolean; 
     payoutAsset: "USDC",
     payoutAmountCents: 0,
     payoutFrequency: "monthly" as const,
-    privacyLevel: "pseudonymous" as const,
     email: "",
     walletAddress: "",
   });
@@ -87,7 +103,7 @@ function EmployeesContent({ showCreate, setShowCreate }: { showCreate: boolean; 
       payoutAmountCents: formData.payoutAmountCents,
       payoutFrequency: formData.payoutFrequency,
       walletVerified: false,
-      privacyLevel: formData.privacyLevel,
+      privacyLevel: "pseudonymous",
       status: "onboarding",
       email: formData.email || undefined,
       walletAddress: formData.walletAddress || undefined,
@@ -101,10 +117,30 @@ function EmployeesContent({ showCreate, setShowCreate }: { showCreate: boolean; 
       payoutAsset: "USDC",
       payoutAmountCents: 0,
       payoutFrequency: "monthly",
-      privacyLevel: "pseudonymous",
       email: "",
       walletAddress: "",
     });
+    toast.success("Employee added");
+  };
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    await removeEmployee({ id: deleteTarget.id });
+    toast.success(`${deleteTarget.name} removed`);
+    setDeleteTarget(null);
+  };
+
+  // Advance toggle uses the notes field: "[no-advance]" prefix means disabled
+  const isAdvanceEnabled = (notes?: string) => !notes?.startsWith("[no-advance]");
+  const toggleAdvance = async (id: Id<"employees">, currentNotes?: string) => {
+    if (isAdvanceEnabled(currentNotes)) {
+      await updateEmployee({ id, notes: `[no-advance]${currentNotes ?? ""}` });
+      toast.success("Advance requests disabled for this employee");
+    } else {
+      const cleaned = (currentNotes ?? "").replace("[no-advance]", "");
+      await updateEmployee({ id, notes: cleaned || undefined });
+      toast.success("Advance requests enabled for this employee");
+    }
   };
 
   return (
@@ -130,11 +166,9 @@ function EmployeesContent({ showCreate, setShowCreate }: { showCreate: boolean; 
                     <TableHead>Name</TableHead>
                     <TableHead>Role</TableHead>
                     <TableHead>Type</TableHead>
-                    <TableHead>Compensation</TableHead>
                     <TableHead>Payout</TableHead>
-                    <TableHead>Wallet</TableHead>
-                    <TableHead>Privacy</TableHead>
                     <TableHead>Next payment</TableHead>
+                    <TableHead>Advance</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead />
                   </TableRow>
@@ -149,34 +183,26 @@ function EmployeesContent({ showCreate, setShowCreate }: { showCreate: boolean; 
                       <TableCell className="font-medium">
                         {emp.displayName}
                       </TableCell>
-                      <TableCell>{emp.role}</TableCell>
+                      <TableCell className="text-muted-foreground">{emp.role}</TableCell>
                       <TableCell>
                         <Badge variant="outline" className="capitalize">
                           {emp.employmentType}
                         </Badge>
                       </TableCell>
-                      <TableCell className="capitalize">
-                        {emp.compensationModel}
-                      </TableCell>
                       <TableCell className="tabular-nums">
                         {formatCents(emp.payoutAmountCents)}/{emp.payoutFrequency}
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          variant={emp.walletVerified ? "default" : "secondary"}
-                        >
-                          {emp.walletVerified ? "Verified" : "Pending"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className="capitalize">
-                          {emp.privacyLevel}
-                        </Badge>
                       </TableCell>
                       <TableCell className="text-muted-foreground">
                         {emp.nextPaymentDate
                           ? formatDateShort(emp.nextPaymentDate)
                           : "-"}
+                      </TableCell>
+                      <TableCell>
+                        <Switch
+                          checked={isAdvanceEnabled(emp.notes)}
+                          onCheckedChange={() => toggleAdvance(emp._id, emp.notes)}
+                          onClick={(e) => e.stopPropagation()}
+                        />
                       </TableCell>
                       <TableCell>
                         <StatusBadge status={emp.status} />
@@ -185,9 +211,10 @@ function EmployeesContent({ showCreate, setShowCreate }: { showCreate: boolean; 
                         <Button
                           variant="ghost"
                           size="sm"
+                          className="text-destructive hover:text-destructive"
                           onClick={(e) => {
                             e.stopPropagation();
-                            void removeEmployee({ id: emp._id });
+                            setDeleteTarget({ id: emp._id, name: emp.displayName });
                           }}
                         >
                           Remove
@@ -202,6 +229,7 @@ function EmployeesContent({ showCreate, setShowCreate }: { showCreate: boolean; 
         </CardContent>
       </Card>
 
+      {/* Create dialog */}
       <Dialog open={showCreate} onOpenChange={setShowCreate}>
         <DialogContent>
           <DialogHeader>
@@ -317,37 +345,29 @@ function EmployeesContent({ showCreate, setShowCreate }: { showCreate: boolean; 
                 </Select>
               </div>
             </div>
-            <div className="grid gap-2">
-              <Label htmlFor="email">Email (optional)</Label>
-              <Input
-                id="email"
-                type="email"
-                value={formData.email}
-                onChange={(e) =>
-                  setFormData({ ...formData, email: e.target.value })
-                }
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label>Privacy level</Label>
-              <Select
-                value={formData.privacyLevel}
-                onValueChange={(v) =>
-                  setFormData({
-                    ...formData,
-                    privacyLevel: v as typeof formData.privacyLevel,
-                  })
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="pseudonymous">Pseudonymous</SelectItem>
-                  <SelectItem value="verified">Verified</SelectItem>
-                  <SelectItem value="shielded">Shielded</SelectItem>
-                </SelectContent>
-              </Select>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="email">Email (optional)</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) =>
+                    setFormData({ ...formData, email: e.target.value })
+                  }
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="wallet">Wallet address (optional)</Label>
+                <Input
+                  id="wallet"
+                  placeholder="0x..."
+                  value={formData.walletAddress}
+                  onChange={(e) =>
+                    setFormData({ ...formData, walletAddress: e.target.value })
+                  }
+                />
+              </div>
             </div>
           </div>
           <DialogFooter>
@@ -358,6 +378,27 @@ function EmployeesContent({ showCreate, setShowCreate }: { showCreate: boolean; 
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Delete confirmation */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove employee</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to remove <strong>{deleteTarget?.name}</strong> from this workspace? This action cannot be undone. Any pending payments for this employee will need to be handled separately.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => void handleDelete()}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Remove
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
