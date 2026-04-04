@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getPaymentStatus, parseReferenceId } from "@/lib/wcpay-client";
+import { getPaymentStatus } from "@/lib/wcpay-client";
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "@/convex/_generated/api";
 
@@ -22,12 +22,6 @@ export async function POST(req: NextRequest) {
 
     if (status.status !== "succeeded") {
       return NextResponse.json({ received: true, status: status.status });
-    }
-
-    // Parse referenceId to get the Convex payment ID
-    const parsed = parseReferenceId(referenceId);
-    if (!parsed) {
-      return NextResponse.json({ error: "Invalid referenceId" }, { status: 400 });
     }
 
     // Look up the payment by referenceId
