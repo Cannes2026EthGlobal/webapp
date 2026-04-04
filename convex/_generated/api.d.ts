@@ -29,6 +29,7 @@ import type * as payrollForecast from "../payrollForecast.js";
 import type * as products from "../products.js";
 import type * as seed from "../seed.js";
 import type * as seedHistory from "../seedHistory.js";
+import type * as usageTabs from "../usageTabs.js";
 import type * as users from "../users.js";
 
 import type {
@@ -59,6 +60,7 @@ declare const fullApi: ApiFromModules<{
   products: typeof products;
   seed: typeof seed;
   seedHistory: typeof seedHistory;
+  usageTabs: typeof usageTabs;
   users: typeof users;
 }>;
 
