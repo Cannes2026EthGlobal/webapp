@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useQuery } from "convex/react";
 import ReactMarkdown from "react-markdown";
 import { api } from "@/convex/_generated/api";
@@ -101,6 +101,21 @@ function AIInsightsContent() {
     api.aiInsights.listBills,
     companyId ? { companyId } : "skip"
   );
+
+  // Hydrate latest analysis from DB on mount/refresh
+  useEffect(() => {
+    if (recentRequests && recentRequests.length > 0 && !activeAnalysis && !isAnalyzing) {
+      const latest = recentRequests[0];
+      setActiveAnalysis(latest.insightType);
+      setAnalysisResult(latest.response);
+      setAnalysisUsage({
+        inputTokens: latest.inputTokens,
+        outputTokens: latest.outputTokens,
+        costCents: latest.costCents,
+        model: latest.model,
+      });
+    }
+  }, [recentRequests]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const runAnalysis = useCallback(
     async (type: InsightType) => {
@@ -349,9 +364,20 @@ function AIInsightsContent() {
                 </p>
               )}
               {recentRequests?.map((req) => (
-                <div
+                <button
                   key={req._id}
-                  className="flex items-center justify-between py-3"
+                  className="flex w-full items-center justify-between py-3 text-left transition-colors hover:bg-muted/50"
+                  onClick={() => {
+                    setActiveAnalysis(req.insightType);
+                    setAnalysisResult(req.response);
+                    setAnalysisUsage({
+                      inputTokens: req.inputTokens,
+                      outputTokens: req.outputTokens,
+                      costCents: req.costCents,
+                      model: req.model,
+                    });
+                    scrollTo({ top: 0, behavior: "smooth" });
+                  }}
                 >
                   <div className="flex items-center gap-3">
                     <Badge variant="outline" className="text-xs capitalize">
@@ -369,7 +395,7 @@ function AIInsightsContent() {
                       {formatCents(req.costCents)}
                     </Badge>
                   </div>
-                </div>
+                </button>
               ))}
             </div>
           </CardContent>
