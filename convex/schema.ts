@@ -1,0 +1,210 @@
+import { defineSchema, defineTable } from "convex/server";
+import { v } from "convex/values";
+
+export default defineSchema({
+  // ─── Companies ───
+  companies: defineTable({
+    name: v.string(),
+    slug: v.string(),
+    ownerWallet: v.string(),
+    treasuryAddress: v.optional(v.string()),
+    industry: v.optional(v.string()),
+    website: v.optional(v.string()),
+    logoUrl: v.optional(v.string()),
+  })
+    .index("by_ownerWallet", ["ownerWallet"])
+    .index("by_slug", ["slug"]),
+
+  // ─── Employees ───
+  employees: defineTable({
+    companyId: v.id("companies"),
+    displayName: v.string(),
+    role: v.string(),
+    employmentType: v.union(
+      v.literal("full-time"),
+      v.literal("part-time"),
+      v.literal("contractor"),
+      v.literal("freelance")
+    ),
+    compensationModel: v.union(
+      v.literal("salary"),
+      v.literal("hourly"),
+      v.literal("per-task"),
+      v.literal("milestone")
+    ),
+    payoutAsset: v.string(),
+    payoutAmountCents: v.number(),
+    payoutFrequency: v.union(
+      v.literal("monthly"),
+      v.literal("biweekly"),
+      v.literal("weekly"),
+      v.literal("per-task")
+    ),
+    nextPaymentDate: v.optional(v.number()),
+    walletAddress: v.optional(v.string()),
+    backupWalletAddress: v.optional(v.string()),
+    walletVerified: v.boolean(),
+    privacyLevel: v.union(
+      v.literal("pseudonymous"),
+      v.literal("verified"),
+      v.literal("shielded")
+    ),
+    // Identity vault (concealed by default)
+    legalName: v.optional(v.string()),
+    taxId: v.optional(v.string()),
+    jurisdiction: v.optional(v.string()),
+    email: v.optional(v.string()),
+    notes: v.optional(v.string()),
+    status: v.union(
+      v.literal("active"),
+      v.literal("inactive"),
+      v.literal("onboarding")
+    ),
+  })
+    .index("by_companyId", ["companyId"])
+    .index("by_companyId_and_status", ["companyId", "status"]),
+
+  // ─── Customers ───
+  customers: defineTable({
+    companyId: v.id("companies"),
+    displayName: v.string(),
+    customerType: v.union(
+      v.literal("company"),
+      v.literal("app"),
+      v.literal("agent"),
+      v.literal("buyer")
+    ),
+    pricingModel: v.union(
+      v.literal("usage"),
+      v.literal("invoice"),
+      v.literal("one-time"),
+      v.literal("subscription")
+    ),
+    billingState: v.union(
+      v.literal("active"),
+      v.literal("overdue"),
+      v.literal("paused"),
+      v.literal("churned")
+    ),
+    walletAddress: v.optional(v.string()),
+    walletReady: v.boolean(),
+    email: v.optional(v.string()),
+    contactName: v.optional(v.string()),
+    notes: v.optional(v.string()),
+  })
+    .index("by_companyId", ["companyId"])
+    .index("by_companyId_and_billingState", ["companyId", "billingState"]),
+
+  // ─── Products ───
+  products: defineTable({
+    companyId: v.id("companies"),
+    name: v.string(),
+    description: v.optional(v.string()),
+    billingUnit: v.string(),
+    pricingModel: v.union(
+      v.literal("per-unit"),
+      v.literal("tiered"),
+      v.literal("flat"),
+      v.literal("usage-commit")
+    ),
+    unitPriceCents: v.number(),
+    currency: v.union(v.literal("USD"), v.literal("EUR")),
+    settlementAsset: v.string(),
+    privacyMode: v.union(
+      v.literal("standard"),
+      v.literal("shielded"),
+      v.literal("pseudonymous")
+    ),
+    refundPolicy: v.union(
+      v.literal("no-refund"),
+      v.literal("partial"),
+      v.literal("full")
+    ),
+    webhookUrl: v.optional(v.string()),
+    isActive: v.boolean(),
+  })
+    .index("by_companyId", ["companyId"])
+    .index("by_companyId_and_isActive", ["companyId", "isActive"]),
+
+  // ─── Employee Payments (outbound) ───
+  employeePayments: defineTable({
+    companyId: v.id("companies"),
+    employeeId: v.id("employees"),
+    type: v.union(
+      v.literal("salary"),
+      v.literal("freelance"),
+      v.literal("bonus"),
+      v.literal("reimbursement"),
+      v.literal("advance")
+    ),
+    amountCents: v.number(),
+    currency: v.union(v.literal("USD"), v.literal("EUR")),
+    status: v.union(
+      v.literal("draft"),
+      v.literal("approved"),
+      v.literal("queued"),
+      v.literal("settled"),
+      v.literal("failed")
+    ),
+    description: v.optional(v.string()),
+    scheduledDate: v.optional(v.number()),
+    settledAt: v.optional(v.number()),
+    txHash: v.optional(v.string()),
+    batchId: v.optional(v.string()),
+  })
+    .index("by_companyId", ["companyId"])
+    .index("by_companyId_and_status", ["companyId", "status"])
+    .index("by_employeeId", ["employeeId"]),
+
+  // ─── Customer Payments (inbound) ───
+  customerPayments: defineTable({
+    companyId: v.id("companies"),
+    customerId: v.optional(v.id("customers")),
+    productId: v.optional(v.id("products")),
+    mode: v.union(
+      v.literal("usage"),
+      v.literal("invoice"),
+      v.literal("one-time"),
+      v.literal("checkout")
+    ),
+    amountCents: v.number(),
+    currency: v.union(v.literal("USD"), v.literal("EUR")),
+    status: v.union(
+      v.literal("draft"),
+      v.literal("sent"),
+      v.literal("pending"),
+      v.literal("paid"),
+      v.literal("overdue"),
+      v.literal("cancelled")
+    ),
+    description: v.optional(v.string()),
+    dueDate: v.optional(v.number()),
+    paidAt: v.optional(v.number()),
+    txHash: v.optional(v.string()),
+    referenceId: v.optional(v.string()),
+  })
+    .index("by_companyId", ["companyId"])
+    .index("by_companyId_and_status", ["companyId", "status"])
+    .index("by_customerId", ["customerId"])
+    .index("by_productId", ["productId"]),
+
+  // ─── Treasury / Company Balances ───
+  companyBalances: defineTable({
+    companyId: v.id("companies"),
+    totalCreditedCents: v.number(),
+    totalDebitedCents: v.number(),
+    currency: v.union(v.literal("USD"), v.literal("EUR")),
+  })
+    .index("by_companyId", ["companyId"])
+    .index("by_companyId_and_currency", ["companyId", "currency"]),
+
+  // ─── Balance Ledger Entries (audit trail) ───
+  balanceEntries: defineTable({
+    companyId: v.id("companies"),
+    type: v.union(v.literal("credit"), v.literal("debit")),
+    amountCents: v.number(),
+    currency: v.union(v.literal("USD"), v.literal("EUR")),
+    reason: v.string(),
+    relatedPaymentId: v.optional(v.string()),
+  }).index("by_companyId", ["companyId"]),
+});

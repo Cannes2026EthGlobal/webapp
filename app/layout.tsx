@@ -4,7 +4,9 @@ import { Geist } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { Toaster } from "sonner";
 import ContextProvider from "@/context";
+import { ConvexClientProvider } from "./ConvexClientProvider";
 
 const fontSans = Geist({ subsets: ["latin"], variable: "--font-sans" });
 
@@ -24,11 +26,16 @@ export default async function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning className={fontSans.variable}>
       <body className="antialiased">
-        <ContextProvider cookies={cookies}>
-          <ThemeProvider>
-            <TooltipProvider>{children}</TooltipProvider>
-          </ThemeProvider>
-        </ContextProvider>
+        <ConvexClientProvider>
+          <ContextProvider cookies={cookies}>
+            <ThemeProvider>
+              <TooltipProvider>
+                {children}
+                <Toaster richColors position="bottom-right" />
+              </TooltipProvider>
+            </ThemeProvider>
+          </ContextProvider>
+        </ConvexClientProvider>
       </body>
     </html>
   );
