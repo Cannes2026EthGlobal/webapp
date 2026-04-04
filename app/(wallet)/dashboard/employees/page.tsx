@@ -163,7 +163,7 @@ function EmployeesContent({
               {formatCents(
                 employees
                   .filter((e) => e.status === "active")
-                  .reduce((s, e) => s + (e.payoutAmountCents ?? 0), 0)
+                  .reduce((s, e) => s + (e.totalCompensationCents ?? 0), 0)
               )}
             </CardTitle>
           </CardHeader>
@@ -242,7 +242,7 @@ function EmployeesContent({
                         </Badge>
                       </TableCell>
                       <TableCell className="tabular-nums">
-                        {formatCents(emp.payoutAmountCents ?? 0)}/{emp.payoutFrequency}
+                        {formatCents(emp.totalCompensationCents ?? 0)}/mo
                       </TableCell>
                       <TableCell className="text-muted-foreground">
                         {emp.nextPaymentDate
@@ -357,8 +357,7 @@ function EmployeesContent({
             </div>
           </div>
           <p className="text-xs text-muted-foreground rounded-md bg-muted px-3 py-2">
-            Salary and compensation details are configured on the employee
-            profile page. You will be redirected there after creating.
+            Compensation lines are configured on the employee profile page after creating.
           </p>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowCreate(false)}>

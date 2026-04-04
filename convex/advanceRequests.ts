@@ -116,18 +116,20 @@ export const request = mutation({
       throw new Error("You have an outstanding credit that hasn't been deducted yet");
     }
 
-    const payoutCents = employee.payoutAmountCents ?? 0;
+    // Sum active compensation lines as the source of truth for payout amount
+    const activeLines = await ctx.db
+      .query("compensationLines")
+      .withIndex("by_employeeId_and_isActive", (q) =>
+        q.eq("employeeId", args.employeeId).eq("isActive", true)
+      )
+      .take(20);
+    const payoutCents = activeLines.reduce((s, l) => s + l.amountCents, 0);
     const maxAllowed = Math.floor((payoutCents * maxCreditPercent) / 100);
     if (args.requestedAmountCents > maxAllowed) {
       throw new Error(
         `Maximum credit is ${maxCreditPercent}% of your paycheck ($${(maxAllowed / 100).toFixed(2)})`
       );
     }
-
-    const interestAmountCents = Math.ceil(
-      (args.requestedAmountCents * interestRateBps) / 10000
-    );
-    const netAmountCents = args.requestedAmountCents - interestAmountCents;
 
     const now = new Date();
     let nextPaycheckDate: number;
@@ -137,6 +139,17 @@ export const request = mutation({
       const next = new Date(now.getFullYear(), now.getMonth() + 1, 1);
       nextPaycheckDate = next.getTime();
     }
+
+    // Prorate annual interest over the actual days until next paycheck
+    const daysUntilPaycheck = Math.max(
+      1,
+      Math.ceil((nextPaycheckDate - now.getTime()) / 86_400_000)
+    );
+    const interestAmountCents = Math.ceil(
+      (args.requestedAmountCents * interestRateBps * daysUntilPaycheck) /
+        (10000 * 365)
+    );
+    const netAmountCents = args.requestedAmountCents - interestAmountCents;
 
     return await ctx.db.insert("creditRequests", {
       companyId: args.companyId,

@@ -16,6 +16,7 @@ import type * as checkout from "../checkout.js";
 import type * as checkoutLinks from "../checkoutLinks.js";
 import type * as companies from "../companies.js";
 import type * as compensationLines from "../compensationLines.js";
+import type * as compensationSplits from "../compensationSplits.js";
 import type * as crons from "../crons.js";
 import type * as customerPayments from "../customerPayments.js";
 import type * as customers from "../customers.js";
@@ -47,6 +48,7 @@ declare const fullApi: ApiFromModules<{
   checkoutLinks: typeof checkoutLinks;
   companies: typeof companies;
   compensationLines: typeof compensationLines;
+  compensationSplits: typeof compensationSplits;
   crons: typeof crons;
   customerPayments: typeof customerPayments;
   customers: typeof customers;

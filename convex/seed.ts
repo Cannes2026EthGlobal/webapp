@@ -489,8 +489,9 @@ export const seedCompanyData = mutation({
       { employeeIndex: 6, name: "Base Salary", amountCents: 75, frequency: "monthly" as const, isActive: true },
     ];
 
+    const compLineIds = [];
     for (const line of compLines) {
-      await ctx.db.insert("compensationLines", {
+      const id = await ctx.db.insert("compensationLines", {
         employeeId: employeeIds[line.employeeIndex],
         companyId,
         name: line.name,
@@ -500,7 +501,24 @@ export const seedCompanyData = mutation({
         frequency: line.frequency,
         isActive: line.isActive,
       });
+      compLineIds.push(id);
     }
+
+    // Sample splits: Elena Vasquez's Base Salary (index 0) split 75/25
+    await ctx.db.insert("compensationSplits", {
+      compensationLineId: compLineIds[0],
+      employeeId: employeeIds[0],
+      walletAddress: empWallet,
+      amountCents: 60,
+      label: "Main",
+    });
+    await ctx.db.insert("compensationSplits", {
+      compensationLineId: compLineIds[0],
+      employeeId: employeeIds[0],
+      walletAddress: "0x742d35Cc6634C0532925a3b844Bc9e7595f2bD18",
+      amountCents: 20,
+      label: "Savings",
+    });
 
     const customerData = [
       { displayName: "Northwind Labs", customerType: "company" as const, pricingModel: "invoice" as const, billingState: "active" as const, walletReady: true, email: "billing@northwind.io", contactName: "David Kim", walletAddress: "0xaaaa...1111" },

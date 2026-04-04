@@ -40,28 +40,20 @@ export const upcoming = query({
       const entries = [];
 
       for (const emp of employees) {
-        // Resolve compensation: prefer active compensationLines, fall back to flat payoutAmountCents
+        // Sum active compensation lines as source of truth
         const activeLines = await ctx.db
           .query("compensationLines")
           .withIndex("by_employeeId_and_isActive", (q) =>
             q.eq("employeeId", emp._id).eq("isActive", true)
           )
           .take(20);
+        const empPayoutCents = activeLines.reduce(
+          (sum, l) => sum + l.amountCents,
+          0
+        );
 
-        const lineTotal = activeLines.reduce((sum, l) => sum + l.amountCents, 0);
-        const empPayoutCents = lineTotal > 0 ? lineTotal : (emp.payoutAmountCents ?? 0);
-
-        // Skip employees with no compensation configured at all
+        // Skip employees with no compensation configured
         if (empPayoutCents === 0) continue;
-
-        // Only include salary-type employees (skip per-task / freelance-only)
-        const hasNoCompLines = activeLines.length === 0;
-        const isFlatNonSalary =
-          hasNoCompLines &&
-          emp.compensationModel != null &&
-          emp.compensationModel !== "salary" &&
-          emp.compensationModel !== "hourly";
-        if (isFlatNonSalary) continue;
 
         const advances = await ctx.db
           .query("creditRequests")
