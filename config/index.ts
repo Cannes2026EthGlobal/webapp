@@ -45,7 +45,39 @@ export const arcTestnet = defineChain({
   caipNetworkId: "eip155:5042002",
 });
 
-export const networks: [typeof arcTestnet] = [arcTestnet];
+export const arbitrumSepolia = defineChain({
+  id: 421614,
+  name: "Arbitrum Sepolia",
+  network: "arbitrum-sepolia",
+  nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
+  rpcUrls: {
+    default: { http: ["https://sepolia-rollup.arbitrum.io/rpc"] },
+  },
+  blockExplorers: {
+    default: { name: "Arbiscan", url: "https://sepolia.arbiscan.io" },
+  },
+  testnet: true,
+  chainNamespace: "eip155",
+  caipNetworkId: "eip155:421614",
+});
+
+export const baseSepolia = defineChain({
+  id: 84532,
+  name: "Base Sepolia",
+  network: "base-sepolia",
+  nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
+  rpcUrls: {
+    default: { http: ["https://sepolia.base.org"] },
+  },
+  blockExplorers: {
+    default: { name: "BaseScan", url: "https://sepolia.basescan.org" },
+  },
+  testnet: true,
+  chainNamespace: "eip155",
+  caipNetworkId: "eip155:84532",
+});
+
+export const networks = [arcTestnet, arbitrumSepolia, baseSepolia] as const;
 
 export const wagmiAdapter = new WagmiAdapter({
   storage: createStorage({

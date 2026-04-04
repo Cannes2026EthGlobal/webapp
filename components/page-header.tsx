@@ -29,8 +29,6 @@ export function PageHeader({
           )}
         </div>
         <div className="ml-auto flex items-center gap-2">
-          <Badge variant="outline">Arc Testnet</Badge>
-          <Badge variant="secondary">Pseudonymous</Badge>
           {action && (
             <Button size="sm" type="button" onClick={action.onClick}>
               {action.label}
