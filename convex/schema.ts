@@ -12,6 +12,22 @@ export default defineSchema({
     payrollContractAddress: v.string(),
   }).index("by_ownerWallet", ["ownerWallet"]),
 
+  // ─── Onboarding Wizard State (persisted across refreshes) ───
+  onboardingState: defineTable({
+    ownerWallet: v.string(),
+    step: v.union(
+      v.literal("details"),
+      v.literal("deploy"),
+      v.literal("done")
+    ),
+    businessName: v.string(),
+    description: v.optional(v.string()),
+    industry: v.optional(v.string()),
+    website: v.optional(v.string()),
+    deployTxHash: v.optional(v.string()),
+    deployedAddress: v.optional(v.string()),
+  }).index("by_ownerWallet", ["ownerWallet"]),
+
   // ─── Companies ───
   companies: defineTable({
     name: v.string(),

@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useMutation } from "convex/react";
+import { useState, useEffect, useCallback } from "react";
+import { useQuery, useMutation } from "convex/react";
 import { useDeployContract, useWaitForTransactionReceipt } from "wagmi";
 import { api } from "@/convex/_generated/api";
 import {
@@ -23,6 +23,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { Skeleton } from "@/components/ui/skeleton";
 
 type Step = "details" | "deploy" | "done";
 
@@ -33,6 +34,16 @@ export function OnboardingWizard({
   walletAddress: string;
   onComplete: () => void;
 }) {
+  // ─── Persisted state from Convex ───
+  const savedState = useQuery(api.onboardingState.get, {
+    ownerWallet: walletAddress,
+  });
+  const saveState = useMutation(api.onboardingState.save);
+  const removeState = useMutation(api.onboardingState.remove);
+  const createProfile = useMutation(api.businessProfiles.create);
+
+  // ─── Local state (hydrated from Convex) ───
+  const [hydrated, setHydrated] = useState(false);
   const [step, setStep] = useState<Step>("details");
   const [formData, setFormData] = useState({
     businessName: "",
@@ -40,11 +51,63 @@ export function OnboardingWizard({
     industry: "",
     website: "",
   });
-  const [deployedAddress, setDeployedAddress] = useState<string>("");
+  const [deployedAddress, setDeployedAddress] = useState("");
+  const [savedTxHash, setSavedTxHash] = useState("");
 
-  const createProfile = useMutation(api.businessProfiles.create);
+  // Hydrate from Convex on first load
+  useEffect(() => {
+    if (savedState === undefined || hydrated) return;
+    if (savedState) {
+      setStep(savedState.step);
+      setFormData({
+        businessName: savedState.businessName,
+        description: savedState.description ?? "",
+        industry: savedState.industry ?? "",
+        website: savedState.website ?? "",
+      });
+      if (savedState.deployedAddress) {
+        setDeployedAddress(savedState.deployedAddress);
+      }
+      if (savedState.deployTxHash) {
+        setSavedTxHash(savedState.deployTxHash);
+      }
+    }
+    setHydrated(true);
+  }, [savedState, hydrated]);
 
-  // Wagmi contract deployment
+  // ─── Persist helper ───
+  const persist = useCallback(
+    (overrides: {
+      step?: Step;
+      businessName?: string;
+      description?: string;
+      industry?: string;
+      website?: string;
+      deployTxHash?: string;
+      deployedAddress?: string;
+    }) => {
+      void saveState({
+        ownerWallet: walletAddress,
+        step: overrides.step ?? step,
+        businessName: overrides.businessName ?? formData.businessName,
+        description: (overrides.description ?? formData.description) || undefined,
+        industry: (overrides.industry ?? formData.industry) || undefined,
+        website: (overrides.website ?? formData.website) || undefined,
+        deployTxHash: (overrides.deployTxHash ?? savedTxHash) || undefined,
+        deployedAddress: (overrides.deployedAddress ?? deployedAddress) || undefined,
+      });
+    },
+    [
+      walletAddress,
+      step,
+      formData,
+      savedTxHash,
+      deployedAddress,
+      saveState,
+    ]
+  );
+
+  // ─── Contract deployment ───
   const {
     deployContract,
     data: deployHash,
@@ -52,15 +115,38 @@ export function OnboardingWizard({
     error: deployError,
   } = useDeployContract();
 
+  // Use saved tx hash OR fresh deploy hash for receipt tracking
+  const trackingHash = (deployHash ?? (savedTxHash || undefined)) as
+    | `0x${string}`
+    | undefined;
+
   const { data: receipt, isLoading: isWaitingReceipt } =
-    useWaitForTransactionReceipt({
-      hash: deployHash,
-    });
+    useWaitForTransactionReceipt({ hash: trackingHash });
 
   // When receipt arrives, capture the contract address
-  if (receipt?.contractAddress && !deployedAddress) {
-    setDeployedAddress(receipt.contractAddress);
-  }
+  useEffect(() => {
+    if (receipt?.contractAddress && !deployedAddress) {
+      setDeployedAddress(receipt.contractAddress);
+      persist({
+        deployedAddress: receipt.contractAddress,
+        deployTxHash: receipt.transactionHash,
+      });
+    }
+  }, [receipt, deployedAddress, persist]);
+
+  // When fresh deploy hash comes in, save it immediately
+  useEffect(() => {
+    if (deployHash && deployHash !== savedTxHash) {
+      setSavedTxHash(deployHash);
+      persist({ deployTxHash: deployHash });
+    }
+  }, [deployHash, savedTxHash, persist]);
+
+  // ─── Step transitions (persisted) ───
+  const goToStep = (newStep: Step) => {
+    setStep(newStep);
+    persist({ step: newStep });
+  };
 
   const handleDeploy = () => {
     deployContract(
@@ -88,6 +174,7 @@ export function OnboardingWizard({
         website: formData.website || undefined,
         payrollContractAddress: deployedAddress,
       });
+      await removeState({ ownerWallet: walletAddress });
       toast.success("Business profile created");
       onComplete();
     } catch (e) {
@@ -95,16 +182,40 @@ export function OnboardingWizard({
     }
   };
 
+  // ─── Loading until hydrated ───
+  if (!hydrated) {
+    return (
+      <div className="flex min-h-screen items-center justify-center p-4">
+        <Skeleton className="h-64 w-full max-w-lg" />
+      </div>
+    );
+  }
+
   return (
     <div className="flex min-h-screen items-center justify-center p-4">
       <div className="w-full max-w-lg">
         {/* Progress */}
         <div className="mb-8 flex items-center justify-center gap-2">
-          <StepIndicator label="1" title="Details" active={step === "details"} done={step !== "details"} />
+          <StepIndicator
+            label="1"
+            title="Details"
+            active={step === "details"}
+            done={step !== "details"}
+          />
           <div className="h-px w-8 bg-border" />
-          <StepIndicator label="2" title="Deploy" active={step === "deploy"} done={step === "done"} />
+          <StepIndicator
+            label="2"
+            title="Deploy"
+            active={step === "deploy"}
+            done={step === "done"}
+          />
           <div className="h-px w-8 bg-border" />
-          <StepIndicator label="3" title="Ready" active={step === "done"} done={false} />
+          <StepIndicator
+            label="3"
+            title="Ready"
+            active={step === "done"}
+            done={false}
+          />
         </div>
 
         {/* Step 1: Business Details */}
@@ -113,7 +224,8 @@ export function OnboardingWizard({
             <CardHeader>
               <CardTitle>Set up your business</CardTitle>
               <CardDescription>
-                Tell us about your business to create your Arc Counting workspace.
+                Tell us about your business to create your Arc Counting
+                workspace.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -125,6 +237,7 @@ export function OnboardingWizard({
                   onChange={(e) =>
                     setFormData({ ...formData, businessName: e.target.value })
                   }
+                  onBlur={() => persist({})}
                   placeholder="Acme Corp"
                 />
               </div>
@@ -136,6 +249,7 @@ export function OnboardingWizard({
                   onChange={(e) =>
                     setFormData({ ...formData, description: e.target.value })
                   }
+                  onBlur={() => persist({})}
                   placeholder="What does your business do?"
                 />
               </div>
@@ -148,6 +262,7 @@ export function OnboardingWizard({
                     onChange={(e) =>
                       setFormData({ ...formData, industry: e.target.value })
                     }
+                    onBlur={() => persist({})}
                     placeholder="Technology"
                   />
                 </div>
@@ -159,6 +274,7 @@ export function OnboardingWizard({
                     onChange={(e) =>
                       setFormData({ ...formData, website: e.target.value })
                     }
+                    onBlur={() => persist({})}
                     placeholder="https://acme.co"
                   />
                 </div>
@@ -167,7 +283,7 @@ export function OnboardingWizard({
               <Button
                 className="w-full"
                 disabled={!formData.businessName}
-                onClick={() => setStep("deploy")}
+                onClick={() => goToStep("deploy")}
               >
                 Continue
               </Button>
@@ -209,7 +325,7 @@ export function OnboardingWizard({
                 </div>
               </div>
 
-              {!deployHash && !deployedAddress && (
+              {!trackingHash && !deployedAddress && (
                 <Button
                   className="w-full"
                   onClick={handleDeploy}
@@ -221,7 +337,7 @@ export function OnboardingWizard({
                 </Button>
               )}
 
-              {deployHash && !deployedAddress && (
+              {trackingHash && !deployedAddress && (
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
                     <div className="size-2 animate-pulse rounded-full bg-yellow-500" />
@@ -232,12 +348,12 @@ export function OnboardingWizard({
                     </span>
                   </div>
                   <a
-                    href={`https://testnet.arcscan.app/tx/${deployHash}`}
+                    href={`https://testnet.arcscan.app/tx/${trackingHash}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="block text-xs font-mono text-muted-foreground hover:underline"
                   >
-                    {deployHash}
+                    {trackingHash}
                   </a>
                 </div>
               )}
@@ -263,7 +379,10 @@ export function OnboardingWizard({
                       {deployedAddress}
                     </a>
                   </div>
-                  <Button className="w-full" onClick={() => setStep("done")}>
+                  <Button
+                    className="w-full"
+                    onClick={() => goToStep("done")}
+                  >
                     Continue
                   </Button>
                 </div>
@@ -278,7 +397,7 @@ export function OnboardingWizard({
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => setStep("details")}
+                onClick={() => goToStep("details")}
               >
                 Back
               </Button>
@@ -304,7 +423,8 @@ export function OnboardingWizard({
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Contract</span>
                   <span className="font-mono text-xs">
-                    {deployedAddress.slice(0, 10)}...{deployedAddress.slice(-8)}
+                    {deployedAddress.slice(0, 10)}...
+                    {deployedAddress.slice(-8)}
                   </span>
                 </div>
                 <div className="flex justify-between text-sm">
@@ -312,7 +432,10 @@ export function OnboardingWizard({
                   <Badge variant="outline">Arc Testnet</Badge>
                 </div>
               </div>
-              <Button className="w-full" onClick={() => void handleFinish()}>
+              <Button
+                className="w-full"
+                onClick={() => void handleFinish()}
+              >
                 Enter dashboard
               </Button>
             </CardContent>
