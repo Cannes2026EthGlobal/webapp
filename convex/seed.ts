@@ -362,37 +362,6 @@ export const seedDemoData = mutation({
       });
     }
 
-    // Seed treasury balance
-    await ctx.db.insert("companyBalances", {
-      companyId,
-      totalCreditedCents: 48214000,
-      totalDebitedCents: 0,
-      currency: "USD",
-    });
-
-    // Seed a few balance entries
-    await ctx.db.insert("balanceEntries", {
-      companyId,
-      type: "credit",
-      amountCents: 6000000,
-      currency: "USD",
-      reason: "Enterprise License payment - Northwind Labs",
-    });
-    await ctx.db.insert("balanceEntries", {
-      companyId,
-      type: "credit",
-      amountCents: 124800,
-      currency: "USD",
-      reason: "Usage payment - Synthex AI",
-    });
-    await ctx.db.insert("balanceEntries", {
-      companyId,
-      type: "debit",
-      amountCents: 1200000,
-      currency: "USD",
-      reason: "Payroll - Elena Vasquez March 2026",
-    });
-
     return { companyId, alreadySeeded: false };
   },
 });
