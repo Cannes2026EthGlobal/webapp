@@ -65,6 +65,11 @@ const navItems = [
     icon: <HugeiconsIcon icon={ChartHistogramIcon} strokeWidth={2} />,
   },
   {
+    title: "Payroll",
+    url: "/dashboard/payroll",
+    icon: <HugeiconsIcon icon={Analytics01Icon} strokeWidth={2} />,
+  },
+  {
     title: "Customer Payments",
     url: "/dashboard/customer-payments",
     icon: <HugeiconsIcon icon={Folder01Icon} strokeWidth={2} />,
