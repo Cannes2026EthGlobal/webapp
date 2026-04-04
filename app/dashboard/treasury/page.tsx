@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useQuery } from "convex/react";
+import { useQuery, useMutation } from "convex/react";
 import { useSendTransaction, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
 import { parseEther } from "viem";
 import { api } from "@/convex/_generated/api";
@@ -263,6 +263,7 @@ function TreasuryContent() {
         open={showDeposit}
         onOpenChange={setShowDeposit}
         contractAddress={payrollContractAddress}
+        companyId={companyId}
         onSuccess={() => void refetchOnChain()}
       />
     </div>
@@ -273,11 +274,13 @@ function DepositDialog({
   open,
   onOpenChange,
   contractAddress,
+  companyId,
   onSuccess,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   contractAddress: `0x${string}` | undefined;
+  companyId: any;
   onSuccess: () => void;
 }) {
   const [amount, setAmount] = useState("");
@@ -285,17 +288,31 @@ function DepositDialog({
   const { data: receipt, isLoading: isWaiting } = useWaitForTransactionReceipt({
     hash: txHash,
   });
+  const creditBalance = useMutation(api.balances.credit);
+  const [recorded, setRecorded] = useState(false);
 
   useEffect(() => {
-    if (receipt && !isWaiting) {
-      toast.success("Deposit confirmed");
+    if (receipt && !isWaiting && !recorded) {
+      setRecorded(true);
+      const amountCents = Math.round(parseFloat(amount || "0") * 100);
+      if (companyId && amountCents > 0) {
+        void creditBalance({
+          companyId,
+          amountCents,
+          currency: "USD" as const,
+          reason: `Payroll contract deposit — ${amount} USDC`,
+          relatedPaymentId: txHash,
+        });
+      }
+      toast.success("Deposit confirmed and recorded in ledger");
       onSuccess();
       onOpenChange(false);
     }
-  }, [receipt, isWaiting, onSuccess, onOpenChange]);
+  }, [receipt, isWaiting, recorded, amount, companyId, creditBalance, txHash, onSuccess, onOpenChange]);
 
   const handleDeposit = () => {
     if (!contractAddress || !amount) return;
+    setRecorded(false);
     sendTransaction(
       {
         to: contractAddress,
