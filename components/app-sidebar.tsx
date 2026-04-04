@@ -53,19 +53,19 @@ const navItems = [
     icon: <HugeiconsIcon icon={UserGroupIcon} strokeWidth={2} />,
   },
   {
-    title: "Employee Payments",
-    url: "/dashboard/employee-payments",
-    icon: <HugeiconsIcon icon={Analytics01Icon} strokeWidth={2} />,
-  },
-  {
     title: "Customers",
     url: "/dashboard/customers",
     icon: <HugeiconsIcon icon={Menu01Icon} strokeWidth={2} />,
   },
   {
-    title: "Customer Payments",
-    url: "/dashboard/customer-payments",
+    title: "Treasury",
+    url: "/dashboard/treasury",
     icon: <HugeiconsIcon icon={Analytics01Icon} strokeWidth={2} />,
+  },
+  {
+    title: "My Products",
+    url: "/dashboard/products",
+    icon: <HugeiconsIcon icon={Database01Icon} strokeWidth={2} />,
   },
   {
     title: "Agents",
@@ -73,19 +73,9 @@ const navItems = [
     icon: <HugeiconsIcon icon={CommandIcon} strokeWidth={2} />,
   },
   {
-    title: "Payroll",
-    url: "/dashboard/payroll",
-    icon: <HugeiconsIcon icon={Analytics01Icon} strokeWidth={2} />,
-  },
-  {
-    title: "Products & SDK",
-    url: "/dashboard/products",
-    icon: <HugeiconsIcon icon={Database01Icon} strokeWidth={2} />,
-  },
-  {
-    title: "Treasury",
-    url: "/dashboard/treasury",
-    icon: <HugeiconsIcon icon={Analytics01Icon} strokeWidth={2} />,
+    title: "Integration",
+    url: "/dashboard/integration",
+    icon: <HugeiconsIcon icon={CommandIcon} strokeWidth={2} />,
   },
 ];
 
@@ -94,15 +84,6 @@ const secondaryItems = [
     title: "Settings",
     url: "/dashboard/settings",
     icon: <HugeiconsIcon icon={Settings05Icon} strokeWidth={2} />,
-  },
-  {
-    title: "Search",
-    url: "#",
-    icon: <HugeiconsIcon icon={SearchIcon} strokeWidth={2} />,
-  },
-  {
-    title: "Support",
-    url: "#",
     icon: <HugeiconsIcon icon={HelpCircleIcon} strokeWidth={2} />,
   },
 ];
