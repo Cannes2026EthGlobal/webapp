@@ -3,7 +3,9 @@
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useCompany } from "@/hooks/use-company";
-import { formatCents } from "@/lib/format";
+import { useBusinessProfile } from "@/hooks/use-business-profile";
+import { usePayrollBalance } from "@/hooks/use-payroll-contract";
+import { formatCents, formatUsdc } from "@/lib/format";
 
 import { PageHeader } from "@/components/page-header";
 import { CompanyGuard } from "@/components/company-guard";
@@ -22,6 +24,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 function OverviewContent() {
   const { companyId, company } = useCompany();
+  const { payrollContractAddress } = useBusinessProfile();
+  const { balanceUsdc, isLoading: onChainLoading } = usePayrollBalance(payrollContractAddress);
   const stats = useQuery(
     api.overview.stats,
     companyId ? { companyId } : "skip"
@@ -42,10 +46,10 @@ function OverviewContent() {
   const cards = [
     {
       title: "Treasury available",
-      value: formatCents(stats.treasuryAvailableCents),
-      trend: stats.treasuryAvailableCents > 0 ? "Funded" : "Empty",
+      value: onChainLoading ? "..." : formatUsdc(balanceUsdc),
+      trend: balanceUsdc && balanceUsdc > 0 ? "Funded" : "Empty",
       direction: "up" as const,
-      summary: "Operating balances across all settlement assets.",
+      summary: "On-chain payroll contract balance on Arc.",
       note: company?.name ?? "Workspace",
     },
     {

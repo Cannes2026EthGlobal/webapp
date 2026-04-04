@@ -55,10 +55,6 @@ function TreasuryContent() {
 
   const [showDeposit, setShowDeposit] = useState(false);
 
-  const balance = useQuery(
-    api.balances.getForCompany,
-    companyId ? { companyId, currency: "USD" } : "skip"
-  );
   const entries = useQuery(
     api.balances.getEntriesForCompany,
     companyId ? { companyId } : "skip"
@@ -68,16 +64,13 @@ function TreasuryContent() {
     companyId ? { companyId } : "skip"
   );
 
-  if (!balance || !entries || !stats) {
+  if (!entries || !stats) {
     return (
       <div className="p-4 lg:p-6">
         <Skeleton className="h-96" />
       </div>
     );
   }
-
-  const netPosition =
-    balance.availableCents - stats.payrollDueCents + stats.receivablesCents;
 
   return (
     <div className="flex flex-col gap-4 p-4 lg:p-6">
@@ -126,63 +119,6 @@ function TreasuryContent() {
         </Card>
       )}
 
-      {/* ─── Ledger Balance Summary ─── */}
-      <div className="grid grid-cols-1 gap-4 @xl/main:grid-cols-2 @5xl/main:grid-cols-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Ledger balance</CardDescription>
-            <CardTitle className="text-3xl tabular-nums">
-              {formatCents(balance.availableCents)}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-xs text-muted-foreground">
-              Net of all credits and debits in USDC
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Total credited</CardDescription>
-            <CardTitle className="text-2xl tabular-nums">
-              {formatCents(balance.totalCreditedCents)}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-xs text-muted-foreground">
-              All inbound collections
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Total debited</CardDescription>
-            <CardTitle className="text-2xl tabular-nums">
-              {formatCents(balance.totalDebitedCents)}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-xs text-muted-foreground">
-              All outbound settlements
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Net position</CardDescription>
-            <CardTitle
-              className={`text-2xl tabular-nums ${netPosition < 0 ? "text-destructive" : ""}`}
-            >
-              {formatCents(netPosition)}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-xs text-muted-foreground">
-              Balance − payroll due + receivables
-            </p>
-          </CardContent>
-        </Card>
-      </div>
 
       {/* ─── Obligations & Receivables ─── */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">

@@ -1,3 +1,13 @@
+export function formatUsdc(amount: number | undefined): string {
+  if (amount === undefined) return "—";
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 4,
+  }).format(amount);
+}
+
 export function formatCents(cents: number): string {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
