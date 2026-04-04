@@ -42,9 +42,9 @@ function OverviewContent() {
     );
   }
 
-  const cards = [
+  const topCards = [
     {
-      title: "Treasury available",
+      title: "Treasury",
       value: onChainLoading ? "..." : formatUsdc(balanceUsdc),
       trend: balanceUsdc && balanceUsdc > 0 ? "Funded" : "Empty",
       direction: "up" as const,
@@ -52,47 +52,79 @@ function OverviewContent() {
     {
       title: "Payroll due",
       value: formatCents(stats.payrollDueCents),
-      trend: `${stats.payrollDueCount} due`,
+      trend: `${stats.payrollDueCount} pending`,
       direction: "down" as const,
     },
     {
-      title: "Pending receivables",
+      title: "Receivables",
       value: formatCents(stats.receivablesCents),
       trend: `${stats.receivablesCount} pending`,
       direction: "up" as const,
     },
     {
-      title: "Usage revenue today",
+      title: "Revenue today",
       value: formatCents(stats.usageRevenueTodayCents),
       trend: stats.usageRevenueTodayCents > 0 ? "Active" : "No activity",
       direction: "up" as const,
     },
   ];
 
+  const bottomCards = [
+    {
+      title: "Total collected",
+      value: formatCents(stats.totalCollectedCents),
+      trend: `${stats.activeCustomers} customers`,
+      direction: "up" as const,
+    },
+    {
+      title: "Total paid out",
+      value: formatCents(stats.totalPaidOutCents),
+      trend: `${stats.activeEmployees} employees`,
+      direction: "down" as const,
+    },
+    {
+      title: "Overdue",
+      value: formatCents(stats.overdueCents),
+      trend: stats.overdueCount > 0 ? `${stats.overdueCount} overdue` : "None",
+      direction: "down" as const,
+    },
+    {
+      title: "Advance requests",
+      value: String(stats.pendingAdvances),
+      trend: stats.pendingAdvances > 0 ? "Needs review" : "All clear",
+      direction: stats.pendingAdvances > 0 ? "down" as const : "up" as const,
+    },
+  ];
+
+  const renderCards = (cards: typeof topCards) => (
+    <div className="grid grid-cols-1 gap-4 px-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card *:data-[slot=card]:shadow-xs lg:px-6 @xl/main:grid-cols-2 @5xl/main:grid-cols-4 dark:*:data-[slot=card]:bg-card">
+      {cards.map((card) => {
+        const icon =
+          card.direction === "up" ? ChartUpIcon : ChartDownIcon;
+        return (
+          <Card key={card.title} className="@container/card">
+            <CardHeader>
+              <CardDescription>{card.title}</CardDescription>
+              <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
+                {card.value}
+              </CardTitle>
+              <CardAction>
+                <Badge variant="outline">
+                  <HugeiconsIcon icon={icon} strokeWidth={2} />
+                  {card.trend}
+                </Badge>
+              </CardAction>
+            </CardHeader>
+          </Card>
+        );
+      })}
+    </div>
+  );
+
   return (
     <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
-      <div className="grid grid-cols-1 gap-4 px-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card *:data-[slot=card]:shadow-xs lg:px-6 @xl/main:grid-cols-2 @5xl/main:grid-cols-4 dark:*:data-[slot=card]:bg-card">
-        {cards.map((card) => {
-          const icon =
-            card.direction === "up" ? ChartUpIcon : ChartDownIcon;
-          return (
-            <Card key={card.title} className="@container/card">
-              <CardHeader>
-                <CardDescription>{card.title}</CardDescription>
-                <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
-                  {card.value}
-                </CardTitle>
-                <CardAction>
-                  <Badge variant="outline">
-                    <HugeiconsIcon icon={icon} strokeWidth={2} />
-                    {card.trend}
-                  </Badge>
-                </CardAction>
-              </CardHeader>
-            </Card>
-          );
-        })}
-      </div>
+      {renderCards(topCards)}
+      {renderCards(bottomCards)}
       <RecentActivity />
     </div>
   );

@@ -105,22 +105,81 @@ export const stats = query({
     }
 
     let usageRevenueTodayCents = 0;
+    let totalCollectedCents = 0;
     for (const p of paidToday) {
+      totalCollectedCents += p.amountCents;
       if (p.paidAt && p.paidAt >= todayMs) {
         usageRevenueTodayCents += p.amountCents;
       }
     }
 
+    // Settled payroll total
+    const settledPayroll = await ctx.db
+      .query("employeePayments")
+      .withIndex("by_companyId_and_status", (q) =>
+        q.eq("companyId", args.companyId).eq("status", "settled")
+      )
+      .take(200);
+    let totalPaidOutCents = 0;
+    for (const p of settledPayroll) {
+      totalPaidOutCents += p.amountCents;
+    }
+
+    // Overdue receivables
+    const overdueReceivables = await ctx.db
+      .query("customerPayments")
+      .withIndex("by_companyId_and_status", (q) =>
+        q.eq("companyId", args.companyId).eq("status", "overdue")
+      )
+      .take(200);
+    let overdueCents = 0;
+    for (const r of overdueReceivables) {
+      overdueCents += r.amountCents;
+    }
+
+    // Active customers count
+    const activeCustomers = await ctx.db
+      .query("customers")
+      .withIndex("by_companyId_and_billingState", (q) =>
+        q.eq("companyId", args.companyId).eq("billingState", "active")
+      )
+      .take(200);
+
+    // Active products count
+    const activeProducts = await ctx.db
+      .query("products")
+      .withIndex("by_companyId_and_isActive", (q) =>
+        q.eq("companyId", args.companyId).eq("isActive", true)
+      )
+      .take(200);
+
+    // Pending advance requests
+    const pendingAdvances = await ctx.db
+      .query("advanceRequests")
+      .withIndex("by_companyId_and_status", (q) =>
+        q.eq("companyId", args.companyId).eq("status", "pending")
+      )
+      .take(50);
+
     return {
       treasuryAvailableCents: balance
         ? balance.totalCreditedCents - balance.totalDebitedCents
         : 0,
+      totalCreditedCents: balance?.totalCreditedCents ?? 0,
+      totalDebitedCents: balance?.totalDebitedCents ?? 0,
       payrollDueCents,
       payrollDueCount: duePayments.length,
       receivablesCents,
       receivablesCount: allReceivables.length,
       usageRevenueTodayCents,
+      totalCollectedCents,
+      totalPaidOutCents,
+      overdueCents,
+      overdueCount: overdueReceivables.length,
       activeEmployees: employees.length,
+      activeCustomers: activeCustomers.length,
+      activeProducts: activeProducts.length,
+      pendingAdvances: pendingAdvances.length,
     };
   },
 });
