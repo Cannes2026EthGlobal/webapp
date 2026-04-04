@@ -1,5 +1,6 @@
 import { action, internalQuery } from "./_generated/server";
 import { internal, api } from "./_generated/api";
+import { v } from "convex/values";
 
 const WC_PAY_API_URL = process.env.WC_PAY_API_URL ?? "https://api.pay.walletconnect.com";
 const WC_PAY_API_KEY = process.env.WC_PAY_API_KEY ?? "";
@@ -33,12 +34,18 @@ export const getPendingWcPayments = internalQuery({
  */
 export const syncPaymentStatuses = action({
   args: {},
-  handler: async (ctx) => {
+  returns: v.object({
+    synced: v.number(),
+    failed: v.optional(v.number()),
+    pending: v.optional(v.number()),
+    message: v.optional(v.string()),
+  }),
+  handler: async (ctx): Promise<{ synced: number; failed?: number; pending?: number; message?: string }> => {
     if (IS_MOCK) {
       return { synced: 0, message: "Mock mode — skipping sync" };
     }
 
-    const pending = await ctx.runQuery(
+    const pending: Array<{ _id: any; wcPayPaymentId?: string }> = await ctx.runQuery(
       internal.wcpaySync.getPendingWcPayments,
       {}
     );
