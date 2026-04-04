@@ -485,11 +485,11 @@ export default function Page() {
               <div>
                 <p className="text-xs" style={{ color: "var(--tone-green)" }}>Step {i + 1}</p>
                 <h3 className="text-sm font-semibold">{step.title}</h3>
-                <div className="mt-2 flex flex-wrap gap-1.5">
+                <div className="mt-2 flex gap-2 overflow-x-auto">
                   {step.lines.map((line) => (
                     <span
                       key={line}
-                      className="inline-block rounded border px-2 py-1 text-xs"
+                      className="shrink-0 rounded border px-3 py-2 text-xs"
                       style={{ borderColor: "var(--tone-border)", color: "var(--tone-muted)" }}
                     >
                       {line}
