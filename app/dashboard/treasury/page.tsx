@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "convex/react";
-import { useSendTransaction, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
+import { useSendTransaction } from "wagmi";
 import { parseEther } from "viem";
 import { api } from "@/convex/_generated/api";
 import { useCompany } from "@/hooks/use-company";
@@ -63,44 +63,43 @@ function TreasuryContent() {
   } = usePayrollBalance(payrollContractAddress);
 
   const [showDeposit, setShowDeposit] = useState(false);
-
-  // Deposit tx tracking lives here so it survives dialog close
-  const { sendTransaction, data: depositTxHash, isPending: isDepositPending } = useSendTransaction();
-  const { data: depositReceipt, isLoading: isDepositWaiting } = useWaitForTransactionReceipt({ hash: depositTxHash });
+  const [isDepositing, setIsDepositing] = useState(false);
+  const { sendTransactionAsync } = useSendTransaction();
   const creditBalance = useMutation(api.balances.credit);
-  const [depositRecorded, setDepositRecorded] = useState(false);
-  const [depositAmount, setDepositAmount] = useState("");
 
-  useEffect(() => {
-    if (depositReceipt && !isDepositWaiting && !depositRecorded) {
-      setDepositRecorded(true);
-      const amt = depositAmount || "0";
-      const cents = Math.round(parseFloat(amt) * 100);
-      console.log("[Deposit] Receipt confirmed. companyId:", companyId, "cents:", cents, "depositAmount:", depositAmount, "txHash:", depositTxHash);
-      if (companyId && cents > 0) {
-        creditBalance({
-          companyId,
-          amountCents: cents,
-          currency: "USD" as const,
-          reason: `Payroll contract deposit — ${amt} USDC`,
-          relatedPaymentId: depositTxHash,
-        }).then(() => {
-          console.log("[Deposit] Ledger entry written successfully");
-          toast.success("Deposit confirmed and recorded in ledger");
-          void refetchOnChain();
-          setShowDeposit(false);
-        }).catch((err) => {
-          console.error("[Deposit] Ledger write failed:", err);
-          toast.error("On-chain deposit confirmed but ledger update failed");
-          setShowDeposit(false);
-        });
-      } else {
-        console.warn("[Deposit] Skipped ledger write — companyId:", companyId, "cents:", cents);
-        toast.warning("Deposit confirmed but could not record in ledger (missing company or amount)");
-        setShowDeposit(false);
-      }
+  const handleDeposit = async (amount: string) => {
+    if (!payrollContractAddress || !companyId) return;
+    const usdcFloat = parseFloat(amount);
+    if (usdcFloat <= 0) return;
+    // Store in cents, minimum 1 cent for sub-cent amounts
+    const cents = Math.max(1, Math.round(usdcFloat * 100));
+
+    setIsDepositing(true);
+    try {
+      const txHash = await sendTransactionAsync({
+        to: payrollContractAddress,
+        value: parseEther(amount),
+      });
+
+      toast.success("Transaction submitted, recording in ledger...");
+
+      await creditBalance({
+        companyId,
+        amountCents: cents,
+        currency: "USD" as const,
+        reason: `Payroll contract deposit — ${amount} USDC`,
+        relatedPaymentId: txHash,
+      });
+
+      toast.success("Deposit confirmed and recorded in ledger");
+      void refetchOnChain();
+      setShowDeposit(false);
+    } catch (err: any) {
+      toast.error(err?.message?.slice(0, 100) ?? "Deposit failed");
+    } finally {
+      setIsDepositing(false);
     }
-  }, [depositReceipt, isDepositWaiting, depositRecorded, depositAmount, companyId, creditBalance, depositTxHash, refetchOnChain]);
+  };
 
   const entries = useQuery(
     api.balances.getEntriesForCompany,
@@ -300,19 +299,8 @@ function TreasuryContent() {
       <DepositDialog
         open={showDeposit}
         onOpenChange={setShowDeposit}
-        contractAddress={payrollContractAddress}
-        isPending={isDepositPending}
-        isWaiting={isDepositWaiting}
-        txHash={depositTxHash}
-        onDeposit={(amount) => {
-          if (!payrollContractAddress) return;
-          setDepositRecorded(false);
-          setDepositAmount(amount);
-          sendTransaction(
-            { to: payrollContractAddress, value: parseEther(amount) },
-            { onError: (err) => toast.error(err.message.slice(0, 100)) }
-          );
-        }}
+        isDepositing={isDepositing}
+        onDeposit={handleDeposit}
       />
     </div>
   );
@@ -321,18 +309,12 @@ function TreasuryContent() {
 function DepositDialog({
   open,
   onOpenChange,
-  contractAddress,
-  isPending,
-  isWaiting,
-  txHash,
+  isDepositing,
   onDeposit,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  contractAddress: `0x${string}` | undefined;
-  isPending: boolean;
-  isWaiting: boolean;
-  txHash?: string;
+  isDepositing: boolean;
   onDeposit: (amount: string) => void;
 }) {
   const [amount, setAmount] = useState("");
@@ -358,24 +340,22 @@ function DepositDialog({
               onChange={(e) => setAmount(e.target.value)}
             />
           </div>
-          {(isPending || isWaiting) && (
+          {isDepositing && (
             <div className="flex items-center gap-2">
               <div className="size-2 animate-pulse rounded-full bg-yellow-500" />
-              <span className="text-sm">
-                {isPending ? "Confirm in wallet..." : "Waiting for on-chain confirmation..."}
-              </span>
+              <span className="text-sm">Processing deposit...</span>
             </div>
           )}
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isPending || isWaiting}>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isDepositing}>
             Cancel
           </Button>
           <Button
             onClick={() => onDeposit(amount)}
-            disabled={isPending || isWaiting || !amount || parseFloat(amount) <= 0}
+            disabled={isDepositing || !amount || parseFloat(amount) <= 0}
           >
-            {isPending ? "Signing..." : isWaiting ? "Confirming..." : "Deposit"}
+            {isDepositing ? "Depositing..." : "Deposit"}
           </Button>
         </DialogFooter>
       </DialogContent>
