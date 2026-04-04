@@ -193,7 +193,7 @@ function ProductsContent({
                               {prod.pricingModel}
                             </TableCell>
                             <TableCell className="tabular-nums">
-                              {formatCentsDetailed(prod.unitPriceCents)}
+                              ${(prod.unitPriceCents / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 18 })}
                             </TableCell>
                             <TableCell>
                               <div className="flex items-center gap-2">
@@ -377,20 +377,21 @@ function ProductsContent({
               </div>
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="unitPrice">Unit price (USD)</Label>
+              <Label htmlFor="unitPrice">Unit price (USDC)</Label>
               <Input
                 id="unitPrice"
                 type="number"
-                step="0.01"
-                value={formData.unitPriceCents / 100 || ""}
-                onChange={(e) =>
+                step="any"
+                min="0"
+                placeholder="0.0001"
+                value={formData.unitPriceCents > 0 ? formData.unitPriceCents / 100 : ""}
+                onChange={(e) => {
+                  const val = parseFloat(e.target.value || "0");
                   setFormData({
                     ...formData,
-                    unitPriceCents: Math.round(
-                      parseFloat(e.target.value || "0") * 100
-                    ),
-                  })
-                }
+                    unitPriceCents: Math.floor(val * 100 * 1e10) / 1e10,
+                  });
+                }}
               />
             </div>
             <div className="grid grid-cols-2 gap-4">
