@@ -283,10 +283,10 @@ export default function Page() {
 
       {/* ─── Dashboard Preview ─── */}
       <section id="dashboard" className="mx-auto max-w-5xl px-6 pb-24">
-        <h2 className="mb-2 text-center text-2xl font-light tracking-tight">
-          Your operator dashboard
+        <h2 className="mb-2 text-center text-3xl font-light tracking-tight md:text-4xl">
+          Your <span style={{ color: "var(--tone-green)" }}>operator</span> dashboard
         </h2>
-        <p className="mb-8 text-center text-sm" style={{ color: "var(--tone-muted)" }}>
+        <p className="mb-10 text-center text-base" style={{ color: "var(--tone-muted)" }}>
           Everything your finance team needs in one view.
         </p>
         <div
