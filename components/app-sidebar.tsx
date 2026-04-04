@@ -63,7 +63,7 @@ const navItems = [
   // ─── Money ───
   {
     title: "Payroll",
-    url: "/dashboard/employee-payments",
+    url: "/dashboard/payroll",
     icon: <HugeiconsIcon icon={ChartHistogramIcon} strokeWidth={2} />,
   },
   {
