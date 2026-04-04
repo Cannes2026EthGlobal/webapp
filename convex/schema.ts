@@ -226,6 +226,7 @@ export default defineSchema({
     scheduledDate: v.optional(v.number()),
     settledAt: v.optional(v.number()),
     txHash: v.optional(v.string()),
+    txExplorerUrl: v.optional(v.string()),
     batchId: v.optional(v.string()),
     compensationLineId: v.optional(v.id("compensationLines")),
   })
@@ -271,6 +272,7 @@ export default defineSchema({
     dueDate: v.optional(v.number()),
     paidAt: v.optional(v.number()),
     txHash: v.optional(v.string()),
+    txExplorerUrl: v.optional(v.string()),
     referenceId: v.optional(v.string()),
     // WalletConnect Pay fields
     wcPayPaymentId: v.optional(v.string()),

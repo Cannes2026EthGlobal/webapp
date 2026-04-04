@@ -215,7 +215,10 @@ export const confirmPayment = mutation({
     await ctx.db.patch(args.paymentId, {
       status: "paid",
       paidAt: Date.now(),
-      ...(args.txHash ? { txHash: args.txHash } : {}),
+      ...(args.txHash ? {
+        txHash: args.txHash,
+        txExplorerUrl: `https://testnet.arcscan.app/tx/${args.txHash}`,
+      } : {}),
     });
   },
 });

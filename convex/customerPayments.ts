@@ -138,7 +138,10 @@ export const updateStatus = mutation({
     await ctx.db.patch(args.id, {
       status: args.status,
       ...(args.paidAt !== undefined && { paidAt: args.paidAt }),
-      ...(args.txHash !== undefined && { txHash: args.txHash }),
+      ...(args.txHash !== undefined && {
+        txHash: args.txHash,
+        txExplorerUrl: `https://testnet.arcscan.app/tx/${args.txHash}`,
+      }),
     });
   },
 });
