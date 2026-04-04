@@ -146,6 +146,17 @@ export default defineSchema({
     .index("by_companyId", ["companyId"])
     .index("by_employeeId_and_isActive", ["employeeId", "isActive"]),
 
+  // ─── Compensation Splits (employee-controlled payout routing per line) ───
+  compensationSplits: defineTable({
+    compensationLineId: v.id("compensationLines"),
+    employeeId: v.id("employees"),
+    walletAddress: v.string(),
+    amountCents: v.number(),
+    label: v.optional(v.string()),
+  })
+    .index("by_compensationLineId", ["compensationLineId"])
+    .index("by_employeeId", ["employeeId"]),
+
   // ─── Customers ───
   customers: defineTable({
     companyId: v.id("companies"),
@@ -237,6 +248,8 @@ export default defineSchema({
     txExplorerUrl: v.optional(v.string()),
     batchId: v.optional(v.string()),
     compensationLineId: v.optional(v.id("compensationLines")),
+    compensationSplitId: v.optional(v.id("compensationSplits")),
+    walletAddress: v.optional(v.string()),
   })
     .index("by_companyId", ["companyId"])
     .index("by_companyId_and_status", ["companyId", "status"])

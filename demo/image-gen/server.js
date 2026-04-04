@@ -1,10 +1,15 @@
 import "dotenv/config";
 import express from "express";
 import OpenAI from "openai";
+import { readFileSync, writeFileSync, existsSync, mkdirSync, createWriteStream } from "fs";
+import { pipeline } from "stream/promises";
+import { Readable } from "stream";
+import { randomBytes } from "crypto";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
+const DATA_FILE = join(__dirname, "data.json");
 
 const app = express();
 app.use(express.json());
@@ -12,11 +17,49 @@ app.use(express.static(join(__dirname, "public")));
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
+const IMAGES_DIR = join(__dirname, "public", "images");
+if (!existsSync(IMAGES_DIR)) mkdirSync(IMAGES_DIR, { recursive: true });
+
 const ARC_API = process.env.ARC_API_BASE || "http://localhost:3000";
 const COMPANY_ID = process.env.ARC_COMPANY_ID;
 const PRODUCT_ID = process.env.ARC_PRODUCT_ID;
 
-// ─── Arc Counting usage helper ───
+// ─── Persistence ───
+
+function loadData() {
+  if (!existsSync(DATA_FILE)) {
+    return { sessions: {} };
+  }
+  return JSON.parse(readFileSync(DATA_FILE, "utf-8"));
+}
+
+function saveData(data) {
+  writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
+}
+
+function getSession(userId) {
+  const data = loadData();
+  if (!data.sessions[userId]) {
+    data.sessions[userId] = {
+      tabId: null,
+      totalUnits: 0,
+      totalCents: 0,
+      images: [],
+      billedTabs: [],
+    };
+    saveData(data);
+  }
+  return data.sessions[userId];
+}
+
+function updateSession(userId, updates) {
+  const data = loadData();
+  data.sessions[userId] = { ...getSession(userId), ...updates };
+  saveData(data);
+  return data.sessions[userId];
+}
+
+// ─── Arc Counting usage helpers ───
 
 async function recordUsage(customerIdentifier, units, description) {
   const res = await fetch(`${ARC_API}/api/usage/record`, {
@@ -50,13 +93,17 @@ async function billTab(tabId) {
   return res.json();
 }
 
-async function getTab(tabId) {
-  const res = await fetch(`${ARC_API}/api/usage/tab?tabId=${tabId}`);
-  if (!res.ok) return null;
-  return res.json();
-}
-
 // ─── API Routes ───
+
+/**
+ * GET /api/session?userId=...
+ * Restore session state (images, tab, totals).
+ */
+app.get("/api/session", (req, res) => {
+  const userId = req.query.userId || "anonymous-demo-user";
+  const session = getSession(userId);
+  res.json(session);
+});
 
 /**
  * POST /api/generate
@@ -84,10 +131,17 @@ app.post("/api/generate", async (req, res) => {
       quality: "standard",
     });
 
-    const imageUrl = image.data[0].url;
+    const openaiUrl = image.data[0].url;
     const revisedPrompt = image.data[0].revised_prompt;
 
-    // 2. Record usage on Arc Counting (1 image generation = 1 unit)
+    // 2. Download and save image locally (OpenAI URLs expire after ~1h)
+    const filename = `${randomBytes(8).toString("hex")}.png`;
+    const filepath = join(IMAGES_DIR, filename);
+    const imgRes = await fetch(openaiUrl);
+    await pipeline(Readable.fromWeb(imgRes.body), createWriteStream(filepath));
+    const imageUrl = `/images/${filename}`;
+
+    // 3. Record usage on Arc Counting
     const usage = await recordUsage(
       customerIdentifier,
       1,
@@ -97,6 +151,21 @@ app.post("/api/generate", async (req, res) => {
     console.log(
       `[usage] tab=${usage.tabId} total=${usage.totalUnits} units ($${(usage.totalCents / 100).toFixed(2)})`
     );
+
+    // 4. Persist to session
+    const session = getSession(customerIdentifier);
+    session.tabId = usage.tabId;
+    session.totalUnits = usage.totalUnits;
+    session.totalCents = usage.totalCents;
+    session.images.unshift({
+      url: imageUrl,
+      prompt,
+      revisedPrompt,
+      totalUnits: usage.totalUnits,
+      totalCents: usage.totalCents,
+      createdAt: Date.now(),
+    });
+    updateSession(customerIdentifier, session);
 
     res.json({
       imageUrl,
@@ -116,33 +185,39 @@ app.post("/api/generate", async (req, res) => {
 /**
  * POST /api/bill
  * Close the usage tab and get a WC Pay checkout link.
- * Body: { tabId }
+ * Body: { tabId, userId }
  */
 app.post("/api/bill", async (req, res) => {
-  const { tabId } = req.body;
+  const { tabId, userId } = req.body;
   if (!tabId) return res.status(400).json({ error: "Missing tabId" });
+
+  const customerIdentifier = userId || "anonymous-demo-user";
 
   try {
     const billing = await billTab(tabId);
     console.log(
       `[bill] ${billing.amountCents} cents → ${billing.checkoutUrl}`
     );
+
+    // Persist: archive the billed tab and reset
+    const session = getSession(customerIdentifier);
+    session.billedTabs.unshift({
+      tabId,
+      amountCents: billing.amountCents,
+      checkoutUrl: billing.checkoutUrl,
+      imageCount: session.totalUnits,
+      billedAt: Date.now(),
+    });
+    session.tabId = null;
+    session.totalUnits = 0;
+    session.totalCents = 0;
+    updateSession(customerIdentifier, session);
+
     res.json(billing);
   } catch (err) {
     console.error("[bill error]", err.message);
     res.status(500).json({ error: err.message });
   }
-});
-
-/**
- * GET /api/tab?tabId=...
- * Get current tab status.
- */
-app.get("/api/tab", async (req, res) => {
-  const { tabId } = req.query;
-  if (!tabId) return res.status(400).json({ error: "Missing tabId" });
-  const data = await getTab(tabId);
-  res.json(data || { error: "Tab not found" });
 });
 
 // ─── Start ───

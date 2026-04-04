@@ -90,6 +90,23 @@ export const update = mutation({
         updates[key] = value;
       }
     }
+
+    // If amountCents is changing, auto-clear splits (they no longer sum correctly)
+    if (args.amountCents !== undefined) {
+      const existing = await ctx.db.get(id);
+      if (existing && existing.amountCents !== args.amountCents) {
+        const splits = await ctx.db
+          .query("compensationSplits")
+          .withIndex("by_compensationLineId", (q) =>
+            q.eq("compensationLineId", id)
+          )
+          .take(20);
+        for (const split of splits) {
+          await ctx.db.delete(split._id);
+        }
+      }
+    }
+
     await ctx.db.patch(id, updates);
   },
 });
@@ -121,6 +138,17 @@ export const remove = mutation({
       throw new Error(
         "Cannot delete: active payments reference this compensation line"
       );
+    }
+
+    // Cascade-delete splits
+    const splits = await ctx.db
+      .query("compensationSplits")
+      .withIndex("by_compensationLineId", (q) =>
+        q.eq("compensationLineId", args.id)
+      )
+      .take(20);
+    for (const split of splits) {
+      await ctx.db.delete(split._id);
     }
 
     await ctx.db.delete(args.id);

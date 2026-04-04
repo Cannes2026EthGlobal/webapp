@@ -50,20 +50,15 @@ export const listByCompany = query({
 
     // Group active lines by employee
     const totalByEmployee = new Map<string, number>();
-    const linesByEmployee = new Map<string, Array<{ name: string; amountCents: number; frequency: string }>>();
     for (const line of allLines) {
       if (!line.isActive) continue;
       const total = totalByEmployee.get(line.employeeId) ?? 0;
       totalByEmployee.set(line.employeeId, total + line.amountCents);
-      const lines = linesByEmployee.get(line.employeeId) ?? [];
-      lines.push({ name: line.name, amountCents: line.amountCents, frequency: line.frequency });
-      linesByEmployee.set(line.employeeId, lines);
     }
 
     return employees.map((emp) => ({
       ...emp,
-      totalCompensationCents: totalByEmployee.get(emp._id) ?? emp.payoutAmountCents ?? 0,
-      compensationLines: linesByEmployee.get(emp._id) ?? [],
+      totalCompensationCents: totalByEmployee.get(emp._id) ?? 0,
     }));
   },
 });
@@ -86,11 +81,25 @@ export const listByWalletAddress = query({
       )
       .take(20);
 
-    // Attach company name to each result
+    // Attach company name and total active compensation to each result
     return await Promise.all(
       employees.map(async (emp) => {
         const company = await ctx.db.get(emp.companyId);
-        return { ...emp, companyName: company?.name ?? "Unknown" };
+        const activeLines = await ctx.db
+          .query("compensationLines")
+          .withIndex("by_employeeId_and_isActive", (q) =>
+            q.eq("employeeId", emp._id).eq("isActive", true)
+          )
+          .take(20);
+        const totalCompensationCents = activeLines.reduce(
+          (sum, l) => sum + l.amountCents,
+          0
+        );
+        return {
+          ...emp,
+          companyName: company?.name ?? "Unknown",
+          totalCompensationCents,
+        };
       })
     );
   },
@@ -171,6 +180,15 @@ export const update = mutation({
 export const remove = mutation({
   args: { id: v.id("employees") },
   handler: async (ctx, args) => {
+    // Cascade-delete compensation splits
+    const splits = await ctx.db
+      .query("compensationSplits")
+      .withIndex("by_employeeId", (q) => q.eq("employeeId", args.id))
+      .take(200);
+    for (const split of splits) {
+      await ctx.db.delete(split._id);
+    }
+
     // Cascade-delete compensation lines
     const lines = await ctx.db
       .query("compensationLines")

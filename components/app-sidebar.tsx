@@ -31,9 +31,11 @@ import {
   AiChat02Icon,
   Analytics01Icon,
   ArrowDown01Icon,
+  ChartHistogramIcon,
   CommandIcon,
   DashboardSquare01Icon,
   Database01Icon,
+  Folder01Icon,
   HelpCircleIcon,
   Menu01Icon,
   SearchIcon,
@@ -44,6 +46,7 @@ import {
 import { HugeiconsIcon } from "@hugeicons/react";
 
 const navItems = [
+  // ─── Operations ───
   {
     title: "Overview",
     url: "/dashboard",
@@ -59,21 +62,24 @@ const navItems = [
     url: "/dashboard/customers",
     icon: <HugeiconsIcon icon={Menu01Icon} strokeWidth={2} />,
   },
-  {
-    title: "Payroll",
-    url: "/dashboard/payroll",
-    icon: <HugeiconsIcon icon={Analytics01Icon} strokeWidth={2} />,
-  },
-  {
-    title: "Products & SDK",
-    url: "/dashboard/products",
-    icon: <HugeiconsIcon icon={Database01Icon} strokeWidth={2} />,
-  },
+  // ─── Money ───
   {
     title: "Treasury",
     url: "/dashboard/treasury",
     icon: <HugeiconsIcon icon={Analytics01Icon} strokeWidth={2} />,
   },
+  // ─── Platform ───
+  {
+    title: "My Products",
+    url: "/dashboard/products",
+    icon: <HugeiconsIcon icon={Database01Icon} strokeWidth={2} />,
+  },
+  {
+    title: "Integration",
+    url: "/dashboard/integration",
+    icon: <HugeiconsIcon icon={CommandIcon} strokeWidth={2} />,
+  },
+  // ─── AI ───
   {
     title: "AI Insights",
     url: "/dashboard/ai-insights",
@@ -91,16 +97,6 @@ const secondaryItems = [
     title: "Settings",
     url: "/dashboard/settings",
     icon: <HugeiconsIcon icon={Settings05Icon} strokeWidth={2} />,
-  },
-  {
-    title: "Search",
-    url: "#",
-    icon: <HugeiconsIcon icon={SearchIcon} strokeWidth={2} />,
-  },
-  {
-    title: "Support",
-    url: "#",
-    icon: <HugeiconsIcon icon={HelpCircleIcon} strokeWidth={2} />,
   },
 ];
 

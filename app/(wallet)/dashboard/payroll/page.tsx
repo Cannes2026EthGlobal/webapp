@@ -584,6 +584,7 @@ function PaymentsTable({
     description?: string;
     scheduledDate?: number;
     settledAt?: number;
+    txHash?: string;
   }>;
   employeeMap: Map<string, { displayName: string }>;
   onTransition: (id: Id<"employeePayments">, status: "draft" | "approved" | "queued" | "settled" | "failed") => void;
@@ -608,6 +609,7 @@ function PaymentsTable({
             <TableHead>Status</TableHead>
             <TableHead>Description</TableHead>
             <TableHead>Date</TableHead>
+            <TableHead>Tx</TableHead>
             <TableHead />
           </TableRow>
         </TableHeader>
@@ -637,6 +639,20 @@ function PaymentsTable({
                   : p.scheduledDate
                     ? formatDate(p.scheduledDate)
                     : formatDate(p._creationTime)}
+              </TableCell>
+              <TableCell>
+                {p.txHash ? (
+                  <a
+                    href={`https://testnet.arcscan.app/tx/${p.txHash}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-mono text-xs text-muted-foreground hover:text-foreground hover:underline"
+                  >
+                    {p.txHash.slice(0, 6)}…{p.txHash.slice(-4)}
+                  </a>
+                ) : (
+                  <span className="text-muted-foreground">—</span>
+                )}
               </TableCell>
               <TableCell>
                 <div className="flex gap-1">

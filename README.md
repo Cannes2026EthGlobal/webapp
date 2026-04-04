@@ -25,7 +25,21 @@ npx convex dev
 npm run dev
 ```
 
-Open http://localhost:3000, connect your wallet, and click "Create demo workspace" to seed sample data (7 employees, 6 customers, 5 products, payment history).
+Open http://localhost:3000, connect your wallet, and click "Create demo workspace" to seed a basic workspace (employees, customers, products — no fake payments).
+
+### Seed a Fully Populated Mock Company
+
+To create a demo company with realistic data (employees, customers, products, payments, balance ledger, advance settings):
+
+```bash
+npx convex run seedMockCompany:create '{"wallet": "YOUR_WALLET_ADDRESS", "companyName": "My Demo Co"}'
+```
+
+To clear all data for a wallet and start fresh:
+
+```bash
+npx convex run cleanup:clearAllData '{"wallet": "YOUR_WALLET_ADDRESS"}'
+```
 
 ### Employee Portal
 

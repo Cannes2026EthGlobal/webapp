@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useState } from "react";
+import React, { use, useState } from "react";
 import Link from "next/link";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
@@ -59,6 +59,9 @@ export default function EmployeeDetailPage({
     employeeId: id as Id<"employees">,
   });
   const compLines = useQuery(api.compensationLines.listByEmployee, {
+    employeeId: id as Id<"employees">,
+  });
+  const allSplits = useQuery(api.compensationSplits.listByEmployee, {
     employeeId: id as Id<"employees">,
   });
   const updateEmployee = useMutation(api.employees.update);
@@ -276,6 +279,7 @@ export default function EmployeeDetailPage({
           employeeId={employee._id}
           companyId={employee.companyId}
           lines={compLines ?? []}
+          allSplits={allSplits ?? []}
           totalCompCents={totalCompCents}
         />
 
@@ -298,6 +302,7 @@ export default function EmployeeDetailPage({
                       <TableHead>Status</TableHead>
                       <TableHead>Description</TableHead>
                       <TableHead>Date</TableHead>
+                      <TableHead>Tx</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -312,6 +317,20 @@ export default function EmployeeDetailPage({
                         </TableCell>
                         <TableCell className="text-muted-foreground">{p.description ?? "-"}</TableCell>
                         <TableCell className="text-muted-foreground">{p.settledAt ? formatDate(p.settledAt) : formatDate(p._creationTime)}</TableCell>
+                        <TableCell>
+                          {p.txHash ? (
+                            <a
+                              href={`https://testnet.arcscan.app/tx/${p.txHash}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="font-mono text-xs text-muted-foreground hover:text-foreground hover:underline"
+                            >
+                              {p.txHash.slice(0, 6)}…{p.txHash.slice(-4)}
+                            </a>
+                          ) : (
+                            <span className="text-muted-foreground">—</span>
+                          )}
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -344,13 +363,22 @@ function CompensationCard({
   employeeId,
   companyId,
   lines,
+  allSplits,
   totalCompCents,
 }: {
   employeeId: Id<"employees">;
   companyId: Id<"companies">;
   lines: CompLine[];
+  allSplits: any[];
   totalCompCents: number;
 }) {
+  // Group splits by compensationLineId
+  const splitsByLine = new Map<string, any[]>();
+  for (const s of allSplits) {
+    const arr = splitsByLine.get(s.compensationLineId) ?? [];
+    arr.push(s);
+    splitsByLine.set(s.compensationLineId, arr);
+  }
   const createLine = useMutation(api.compensationLines.create);
   const updateLine = useMutation(api.compensationLines.update);
   const toggleActive = useMutation(api.compensationLines.toggleActive);
@@ -466,65 +494,88 @@ function CompensationCard({
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {lines.map((line) => (
-                    <TableRow key={line._id} className={!line.isActive ? "opacity-50" : ""}>
-                      <TableCell>
-                        <div>
-                          <span className="font-medium">{line.name}</span>
-                          {line.description && (
-                            <p className="text-xs text-muted-foreground">{line.description}</p>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell className="tabular-nums">{formatCents(line.amountCents)} <span className="text-xs text-muted-foreground">{line.asset}</span></TableCell>
-                      <TableCell className="capitalize">{line.frequency}</TableCell>
-                      <TableCell className="text-muted-foreground text-xs">
-                        {line.startDate ? formatDateShort(line.startDate) : "No start"}
-                        {" — "}
-                        {line.endDate ? formatDateShort(line.endDate) : "Ongoing"}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={line.isActive ? "default" : "secondary"}>
-                          {line.isActive ? "Active" : "Inactive"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex gap-1">
-                          <Button variant="ghost" size="sm" onClick={() => startEdit(line)}>
-                            Edit
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={async () => {
-                              try {
-                                await toggleActive({ id: line._id, isActive: !line.isActive });
-                                toast.success(line.isActive ? "Line deactivated" : "Line activated");
-                              } catch (e) {
-                                toast.error(e instanceof Error ? e.message : "Failed");
-                              }
-                            }}
-                          >
-                            {line.isActive ? "Deactivate" : "Activate"}
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={async () => {
-                              try {
-                                await removeLine({ id: line._id });
-                                toast.success("Line removed");
-                              } catch (e) {
-                                toast.error(e instanceof Error ? e.message : "Failed to remove");
-                              }
-                            }}
-                          >
-                            Remove
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  {lines.map((line) => {
+                    const lineSplits = splitsByLine.get(line._id);
+                    const hasSplits = lineSplits && lineSplits.length > 0;
+                    return (
+                      <React.Fragment key={line._id}>
+                        <TableRow className={!line.isActive ? "opacity-50" : ""}>
+                          <TableCell>
+                            <div>
+                              <span className="font-medium">{line.name}</span>
+                              {line.description && (
+                                <p className="text-xs text-muted-foreground">{line.description}</p>
+                              )}
+                              {hasSplits && (
+                                <Badge variant="outline" className="mt-1 text-xs">
+                                  {lineSplits.length} split{lineSplits.length !== 1 ? "s" : ""}
+                                </Badge>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell className="tabular-nums">{formatCents(line.amountCents)} <span className="text-xs text-muted-foreground">{line.asset}</span></TableCell>
+                          <TableCell className="capitalize">{line.frequency}</TableCell>
+                          <TableCell className="text-muted-foreground text-xs">
+                            {line.startDate ? formatDateShort(line.startDate) : "No start"}
+                            {" — "}
+                            {line.endDate ? formatDateShort(line.endDate) : "Ongoing"}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={line.isActive ? "default" : "secondary"}>
+                              {line.isActive ? "Active" : "Inactive"}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex gap-1">
+                              <Button variant="ghost" size="sm" onClick={() => startEdit(line)}>
+                                Edit
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={async () => {
+                                  try {
+                                    await toggleActive({ id: line._id, isActive: !line.isActive });
+                                    toast.success(line.isActive ? "Line deactivated" : "Line activated");
+                                  } catch (e) {
+                                    toast.error(e instanceof Error ? e.message : "Failed");
+                                  }
+                                }}
+                              >
+                                {line.isActive ? "Deactivate" : "Activate"}
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={async () => {
+                                  try {
+                                    await removeLine({ id: line._id });
+                                    toast.success("Line removed");
+                                  } catch (e) {
+                                    toast.error(e instanceof Error ? e.message : "Failed to remove");
+                                  }
+                                }}
+                              >
+                                Remove
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                        {hasSplits && lineSplits.map((s: any) => (
+                          <TableRow key={s._id} className="bg-muted/30">
+                            <TableCell colSpan={2} className="pl-8 text-xs text-muted-foreground">
+                              {s.label || "Wallet"}{" "}
+                              <code className="font-mono">
+                                {s.walletAddress.slice(0, 6)}...{s.walletAddress.slice(-4)}
+                              </code>
+                            </TableCell>
+                            <TableCell className="text-xs tabular-nums">{formatCents(s.amountCents)}</TableCell>
+                            <TableCell colSpan={3} />
+                          </TableRow>
+                        ))}
+                      </React.Fragment>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </div>
