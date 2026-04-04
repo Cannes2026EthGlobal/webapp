@@ -84,9 +84,9 @@ const howItWorks = [
 ];
 
 const sponsorStack = [
-  "Arc (Circle)",
-  "Chainlink CRE",
-  "WalletConnect Pay",
+  { name: "Arc", org: "Circle", color: "var(--tone-green)" },
+  { name: "Chainlink CRE", org: "Chainlink", color: "#375BD2" },
+  { name: "WalletConnect Pay", org: "WalletConnect", color: "#3B99FC" },
 ];
 
 export default function Page() {
@@ -482,11 +482,16 @@ export default function Page() {
         <div className="grid grid-cols-3 gap-4">
           {sponsorStack.map((s) => (
             <div
-              key={s}
-              className="rounded-lg border px-6 py-5 text-center"
+              key={s.name}
+              className="relative overflow-hidden rounded-lg border px-6 py-6 text-center"
               style={{ borderColor: "var(--tone-border)", background: "var(--tone-linen)" }}
             >
-              <span className="text-base font-semibold" style={{ color: "var(--tone-carbon)" }}>{s}</span>
+              <div
+                className="absolute inset-x-0 top-0 h-1"
+                style={{ background: s.color }}
+              />
+              <p className="text-lg font-semibold" style={{ color: "var(--tone-ink)" }}>{s.name}</p>
+              <p className="mt-0.5 text-xs" style={{ color: "var(--tone-muted)" }}>by {s.org}</p>
             </div>
           ))}
         </div>
