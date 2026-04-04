@@ -1,6 +1,7 @@
 import { cookieStorage, createStorage } from "@wagmi/core";
 import { WagmiAdapter } from "@reown/appkit-adapter-wagmi";
 import { defineChain } from "@reown/appkit/networks";
+import { arbitrumSepolia, baseSepolia } from "@reown/appkit/networks";
 
 const envProjectId = process.env.NEXT_PUBLIC_PROJECT_ID;
 
@@ -45,7 +46,7 @@ export const arcTestnet = defineChain({
   caipNetworkId: "eip155:5042002",
 });
 
-export const networks: [typeof arcTestnet] = [arcTestnet];
+export const networks = [arcTestnet, arbitrumSepolia, baseSepolia] as const;
 
 export const wagmiAdapter = new WagmiAdapter({
   storage: createStorage({
