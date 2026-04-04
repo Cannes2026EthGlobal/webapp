@@ -290,29 +290,40 @@ function DepositDialog({
   });
   const creditBalance = useMutation(api.balances.credit);
   const [recorded, setRecorded] = useState(false);
+  const [depositedAmount, setDepositedAmount] = useState("");
 
   useEffect(() => {
     if (receipt && !isWaiting && !recorded) {
       setRecorded(true);
-      const amountCents = Math.round(parseFloat(amount || "0") * 100);
-      if (companyId && amountCents > 0) {
-        void creditBalance({
+      const cents = Math.round(parseFloat(depositedAmount || "0") * 100);
+      if (companyId && cents > 0) {
+        creditBalance({
           companyId,
-          amountCents,
+          amountCents: cents,
           currency: "USD" as const,
-          reason: `Payroll contract deposit — ${amount} USDC`,
+          reason: `Payroll contract deposit — ${depositedAmount} USDC`,
           relatedPaymentId: txHash,
+        }).then(() => {
+          toast.success("Deposit confirmed and recorded in ledger");
+          onSuccess();
+          onOpenChange(false);
+        }).catch((err) => {
+          toast.error(`Deposit confirmed on-chain but ledger update failed: ${err}`);
+          onSuccess();
+          onOpenChange(false);
         });
+      } else {
+        toast.success("Deposit confirmed");
+        onSuccess();
+        onOpenChange(false);
       }
-      toast.success("Deposit confirmed and recorded in ledger");
-      onSuccess();
-      onOpenChange(false);
     }
-  }, [receipt, isWaiting, recorded, amount, companyId, creditBalance, txHash, onSuccess, onOpenChange]);
+  }, [receipt, isWaiting, recorded, depositedAmount, companyId, creditBalance, txHash, onSuccess, onOpenChange]);
 
   const handleDeposit = () => {
     if (!contractAddress || !amount) return;
     setRecorded(false);
+    setDepositedAmount(amount);
     sendTransaction(
       {
         to: contractAddress,
