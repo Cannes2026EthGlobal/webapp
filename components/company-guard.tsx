@@ -1,18 +1,13 @@
 "use client";
 
 import { useCompany } from "@/hooks/use-company";
-import { useBusinessProfile } from "@/hooks/use-business-profile";
-import { OnboardingWizard } from "@/components/onboarding-wizard";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export function CompanyGuard({ children }: { children: React.ReactNode }) {
-  const { profile, hasProfile, isLoading: profileLoading, isConnected, walletAddress } =
-    useBusinessProfile();
-  const { company, isLoading: companyLoading, seed } = useCompany();
+  const { company, isLoading, seed, isConnected } = useCompany();
 
-  // Loading state
-  if (profileLoading || companyLoading) {
+  if (isLoading) {
     return (
       <div className="flex flex-1 flex-col gap-4 p-4 lg:p-6">
         <div className="space-y-3">
@@ -29,19 +24,6 @@ export function CompanyGuard({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // No business profile — show onboarding wizard
-  if (!hasProfile && isConnected && walletAddress) {
-    return (
-      <OnboardingWizard
-        walletAddress={walletAddress}
-        onComplete={() => {
-          // Profile is reactive — Convex query will re-fire automatically
-        }}
-      />
-    );
-  }
-
-  // Has profile but no company/workspace — offer to create one
   if (!company) {
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-4 p-8">
