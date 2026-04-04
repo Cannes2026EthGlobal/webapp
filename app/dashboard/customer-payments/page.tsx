@@ -5,6 +5,7 @@ import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useCompany } from "@/hooks/use-company";
 import { formatCents, formatDate } from "@/lib/format";
+import { toast } from "sonner";
 import type { Id } from "@/convex/_generated/dataModel";
 
 import { PageHeader } from "@/components/page-header";
@@ -196,14 +197,26 @@ function CustomerPaymentsContent({ showCreate, setShowCreate }: { showCreate: bo
                 <CustomerPaymentsTable
                   payments={modeGroups[tab]}
                   customerMap={customerMap}
-                  onTransition={(id, status) =>
-                    void updateStatus({
-                      id,
-                      status,
-                      ...(status === "paid" ? { paidAt: Date.now() } : {}),
-                    })
-                  }
-                  onRemove={(id) => void removePayment({ id })}
+                  onTransition={async (id, status) => {
+                    try {
+                      await updateStatus({
+                        id,
+                        status,
+                        ...(status === "paid" ? { paidAt: Date.now() } : {}),
+                      });
+                      toast.success(status === "paid" ? "Payment collected — treasury credited" : `Payment ${status}`);
+                    } catch (e) {
+                      toast.error(e instanceof Error ? e.message : "Failed to update status");
+                    }
+                  }}
+                  onRemove={async (id) => {
+                    try {
+                      await removePayment({ id });
+                      toast.success("Payment removed");
+                    } catch (e) {
+                      toast.error(e instanceof Error ? e.message : "Failed to remove");
+                    }
+                  }}
                 />
               </TabsContent>
             ))}

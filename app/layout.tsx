@@ -4,6 +4,7 @@ import { Geist } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { Toaster } from "sonner";
 import ContextProvider from "@/context";
 import { ConvexClientProvider } from "./ConvexClientProvider";
 
@@ -28,7 +29,10 @@ export default async function RootLayout({
         <ConvexClientProvider>
           <ContextProvider cookies={cookies}>
             <ThemeProvider>
-              <TooltipProvider>{children}</TooltipProvider>
+              <TooltipProvider>
+                {children}
+                <Toaster richColors position="bottom-right" />
+              </TooltipProvider>
             </ThemeProvider>
           </ContextProvider>
         </ConvexClientProvider>

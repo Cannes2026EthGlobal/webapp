@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 import { useCompany } from "@/hooks/use-company";
+import { CreateCompanyDialog } from "@/components/create-company-dialog";
 import { NavMain } from "@/components/nav-main";
 import { NavSecondary } from "@/components/nav-secondary";
 import { NavUser } from "@/components/nav-user";
@@ -26,6 +27,7 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 import {
+  Add01Icon,
   Analytics01Icon,
   ArrowDown01Icon,
   ChartHistogramIcon,
@@ -100,6 +102,7 @@ const secondaryItems = [
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const pathname = usePathname();
   const { company, companies, switchCompany } = useCompany();
+  const [showCreateCompany, setShowCreateCompany] = React.useState(false);
 
   const navWithActive = navItems.map((item) => ({
     ...item,
@@ -110,6 +113,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   }));
 
   return (
+    <>
     <Sidebar collapsible="offcanvas" {...props}>
       <SidebarHeader>
         <SidebarMenu>
@@ -165,6 +169,15 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                       )}
                     </DropdownMenuItem>
                   ))}
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onSelect={() => setShowCreateCompany(true)}>
+                    <HugeiconsIcon
+                      icon={Add01Icon}
+                      strokeWidth={2}
+                      className="mr-2 size-4"
+                    />
+                    <span className="text-sm font-medium">New workspace</span>
+                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
@@ -200,5 +213,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <NavUser />
       </SidebarFooter>
     </Sidebar>
+    <CreateCompanyDialog
+      open={showCreateCompany}
+      onOpenChange={setShowCreateCompany}
+    />
+  </>
   );
 }
