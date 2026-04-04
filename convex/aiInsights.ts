@@ -8,8 +8,90 @@ const insightTypeValidator = v.union(
   v.literal("churn_risk"),
   v.literal("cashflow_optimization"),
   v.literal("payroll_efficiency"),
+  v.literal("chat"),
   v.literal("custom")
 );
+
+// ─── Chat Session CRUD ───
+
+/**
+ * Create a new chat session.
+ */
+export const createChatSession = mutation({
+  args: {
+    companyId: v.id("companies"),
+    title: v.string(),
+    messages: v.string(),
+  },
+  handler: async (ctx, args) => {
+    return await ctx.db.insert("aiChatSessions", {
+      companyId: args.companyId,
+      title: args.title,
+      messages: args.messages,
+      lastMessageAt: Date.now(),
+    });
+  },
+});
+
+/**
+ * Update chat session messages.
+ */
+export const updateChatSession = mutation({
+  args: {
+    sessionId: v.id("aiChatSessions"),
+    messages: v.string(),
+    title: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const updates: { messages: string; lastMessageAt: number; title?: string } = {
+      messages: args.messages,
+      lastMessageAt: Date.now(),
+    };
+    if (args.title) updates.title = args.title;
+    await ctx.db.patch(args.sessionId, updates);
+  },
+});
+
+/**
+ * Delete a chat session.
+ */
+export const deleteChatSession = mutation({
+  args: { sessionId: v.id("aiChatSessions") },
+  handler: async (ctx, args) => {
+    await ctx.db.delete(args.sessionId);
+  },
+});
+
+/**
+ * List chat sessions for a company.
+ */
+export const listChatSessions = query({
+  args: { companyId: v.id("companies") },
+  handler: async (ctx, args) => {
+    const sessions = await ctx.db
+      .query("aiChatSessions")
+      .withIndex("by_companyId", (q) => q.eq("companyId", args.companyId))
+      .order("desc")
+      .take(50);
+    // Return without messages blob for the list view
+    return sessions.map((s) => ({
+      _id: s._id,
+      _creationTime: s._creationTime,
+      title: s.title,
+      lastMessageAt: s.lastMessageAt,
+    }));
+  },
+});
+
+/**
+ * Get a single chat session with messages.
+ */
+export const getChatSession = query({
+  args: { sessionId: v.id("aiChatSessions") },
+  handler: async (ctx, args) => {
+    return await ctx.db.get(args.sessionId);
+  },
+});
 
 /**
  * Record an AI insight request (called by the API route after Claude responds).

@@ -357,6 +357,15 @@ export default defineSchema({
     autoDisabled: v.boolean(), // set by cron when threshold breached
   }).index("by_companyId", ["companyId"]),
 
+  // ─── AI Chat Sessions (persisted chat history) ───
+  aiChatSessions: defineTable({
+    companyId: v.id("companies"),
+    title: v.string(),
+    messages: v.string(), // JSON-serialized UIMessage[]
+    lastMessageAt: v.number(),
+  })
+    .index("by_companyId", ["companyId"]),
+
   // ─── AI Insight Requests (usage tracking for Claude AI analysis) ───
   aiInsightRequests: defineTable({
     companyId: v.id("companies"),
@@ -367,6 +376,7 @@ export default defineSchema({
       v.literal("churn_risk"),
       v.literal("cashflow_optimization"),
       v.literal("payroll_efficiency"),
+      v.literal("chat"),
       v.literal("custom")
     ),
     prompt: v.string(),

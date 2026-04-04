@@ -29,6 +29,7 @@ type InsightType =
   | "churn_risk"
   | "cashflow_optimization"
   | "payroll_efficiency"
+  | "chat"
   | "custom";
 
 const INSIGHT_CARDS: {
@@ -402,22 +403,28 @@ function AIInsightsContent() {
         </Card>
       </div>
 
-      {/* Billing history */}
-      {bills && bills.length > 0 && (
-        <div className="px-4 lg:px-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>AI Usage Bills</CardTitle>
-              <CardDescription>
-                Payment history for AI analysis usage
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
+      {/* Billing history — always show, with pending bills highlighted */}
+      <div className="px-4 lg:px-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>AI Usage Invoices</CardTitle>
+            <CardDescription>
+              Payment history and outstanding invoices for AI usage (analysis + chat)
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {(!bills || bills.length === 0) ? (
+              <p className="py-6 text-center text-sm text-muted-foreground">
+                No invoices yet. AI usage will be billed when you click &quot;Pay now&quot; above.
+              </p>
+            ) : (
               <div className="divide-y">
-                {bills.map((bill) => (
+                {bills.map((bill) => {
+                  const isPending = bill.status === "pending" || bill.status === "billed";
+                  return (
                   <div
                     key={bill._id}
-                    className="flex items-center justify-between py-3"
+                    className={`flex items-center justify-between py-3 ${isPending ? "bg-amber-500/5 -mx-6 px-6" : ""}`}
                   >
                     <div className="flex items-center gap-3">
                       <Badge
@@ -426,11 +433,11 @@ function AIInsightsContent() {
                             ? "default"
                             : bill.status === "billed"
                               ? "outline"
-                              : "secondary"
+                              : "destructive"
                         }
                         className="text-xs capitalize"
                       >
-                        {bill.status}
+                        {bill.status === "pending" ? "Unpaid" : bill.status === "billed" ? "Awaiting Payment" : bill.status}
                       </Badge>
                       <span className="text-sm">
                         {bill.totalRequests} requests &middot;{" "}
@@ -439,30 +446,46 @@ function AIInsightsContent() {
                         ).toLocaleString()}{" "}
                         tokens
                       </span>
+                      {bill.billedAt && (
+                        <span className="text-xs text-muted-foreground">
+                          {new Date(bill.billedAt).toLocaleDateString()}
+                        </span>
+                      )}
                     </div>
                     <div className="flex items-center gap-3">
                       <span className="text-sm font-medium tabular-nums">
                         {formatCents(bill.totalCostCents)}
                       </span>
-                      {bill.status === "billed" && bill.checkoutUrl && (
+                      {isPending && bill.checkoutUrl && (
                         <Button
                           size="sm"
-                          variant="outline"
+                          variant="default"
                           onClick={() =>
                             window.open(bill.checkoutUrl!, "_blank")
                           }
                         >
-                          Pay
+                          Pay Now
                         </Button>
+                      )}
+                      {isPending && !bill.checkoutUrl && (
+                        <Badge variant="secondary" className="text-xs">
+                          No checkout link
+                        </Badge>
+                      )}
+                      {bill.status === "paid" && bill.paidAt && (
+                        <span className="text-xs text-muted-foreground">
+                          Paid {new Date(bill.paidAt).toLocaleDateString()}
+                        </span>
                       )}
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

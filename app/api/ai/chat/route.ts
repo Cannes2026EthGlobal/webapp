@@ -5,6 +5,10 @@ import { ConvexHttpClient } from "convex/browser";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 
+// Pricing per 1M tokens (in cents) — Sonnet
+const INPUT_COST_PER_M = 300;
+const OUTPUT_COST_PER_M = 1500;
+
 const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
 const anthropic = createAnthropic({
@@ -377,6 +381,26 @@ export async function POST(req: Request) {
     messages: modelMessages,
     tools: { ...readTools, ...writeTools },
     stopWhen: stepCountIs(10),
+    onFinish: async ({ usage }) => {
+      const inputTokens = usage.inputTokens ?? 0;
+      const outputTokens = usage.outputTokens ?? 0;
+      const inputCost = (inputTokens / 1_000_000) * INPUT_COST_PER_M;
+      const outputCost = (outputTokens / 1_000_000) * OUTPUT_COST_PER_M;
+      const costCents = Math.ceil(inputCost + outputCost);
+
+      if (inputTokens > 0 || outputTokens > 0) {
+        await convex.mutation(api.aiInsights.recordRequest, {
+          companyId: cidParam as Id<"companies">,
+          insightType: "chat",
+          prompt: "Chat conversation",
+          response: `Chat response (${outputTokens} tokens)`,
+          inputTokens,
+          outputTokens,
+          costCents,
+          model: "claude-sonnet-4-20250514",
+        });
+      }
+    },
   });
 
   return result.toUIMessageStreamResponse();
