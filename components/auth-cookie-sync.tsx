@@ -10,14 +10,12 @@ export function AuthCookieSync() {
 
   useEffect(() => {
     if (isConnected) {
-      document.cookie = `${AUTH_COOKIE}=1; path=/; SameSite=Lax`;
-      return;
+      document.cookie = `${AUTH_COOKIE}=1; path=/; SameSite=Lax; Max-Age=86400`;
     }
-
-    if (status === "disconnected") {
-      document.cookie = `${AUTH_COOKIE}=; Max-Age=0; path=/; SameSite=Lax`;
-    }
-  }, [isConnected, status]);
+    // Don't clear cookie on disconnect — AppKit flashes "disconnected" briefly
+    // during reconnection which causes the server-side layout check to fail.
+    // The client-side DashboardAuthGuard handles the actual redirect.
+  }, [isConnected]);
 
   return null;
 }
