@@ -2,6 +2,7 @@
 
 import { useChat, type UIMessage } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
+import ReactMarkdown from "react-markdown";
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { useCompany } from "@/hooks/use-company";
 import { formatCents } from "@/lib/format";
@@ -295,7 +296,14 @@ function AIChatContent() {
                   <div className="space-y-2">
                     {msg.parts.map((part, i: number) => {
                       if (part.type === "text" && part.text) {
-                        return (
+                        return msg.role === "assistant" ? (
+                          <div
+                            key={i}
+                            className="prose prose-sm dark:prose-invert max-w-none leading-relaxed"
+                          >
+                            <ReactMarkdown>{part.text}</ReactMarkdown>
+                          </div>
+                        ) : (
                           <div
                             key={i}
                             className="whitespace-pre-wrap leading-relaxed"

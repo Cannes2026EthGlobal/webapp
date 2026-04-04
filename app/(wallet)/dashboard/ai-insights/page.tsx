@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from "react";
 import { useQuery } from "convex/react";
+import ReactMarkdown from "react-markdown";
 import { api } from "@/convex/_generated/api";
 import { useCompany } from "@/hooks/use-company";
 import { formatCents } from "@/lib/format";
@@ -319,8 +320,8 @@ function AIInsightsContent() {
                   <Skeleton className="h-4 w-3/4" />
                 </div>
               ) : (
-                <div className="prose prose-sm dark:prose-invert max-w-none whitespace-pre-wrap text-sm leading-relaxed">
-                  {analysisResult}
+                <div className="prose prose-sm dark:prose-invert max-w-none text-sm leading-relaxed">
+                  <ReactMarkdown>{analysisResult ?? ""}</ReactMarkdown>
                 </div>
               )}
             </CardContent>
