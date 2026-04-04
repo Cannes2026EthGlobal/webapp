@@ -2,16 +2,25 @@
 
 import { useState } from "react";
 import { useQuery } from "convex/react";
-import { useSendTransaction, useWaitForTransactionReceipt } from "wagmi";
+import { useSendTransaction, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
 import { parseEther } from "viem";
 import { api } from "@/convex/_generated/api";
 import { useCompany } from "@/hooks/use-company";
 import { useBusinessProfile } from "@/hooks/use-business-profile";
 import { usePayrollBalance } from "@/hooks/use-payroll-contract";
+import { useCctpBridge } from "@/hooks/use-cctp-bridge";
+import { centsToWei } from "@/lib/contracts";
 import { formatCents, formatDate } from "@/lib/format";
 import { PAYROLL_ABI } from "@/lib/payroll-contract";
 import { toast } from "sonner";
 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { PageHeader } from "@/components/page-header";
 import { CompanyGuard } from "@/components/company-guard";
 import { Badge } from "@/components/ui/badge";
@@ -247,6 +256,9 @@ function TreasuryContent() {
         </CardContent>
       </Card>
 
+      {/* ─── CCTP Bridge ─── */}
+      <CctpBridgeCard />
+
       <DepositDialog
         open={showDeposit}
         onOpenChange={setShowDeposit}
@@ -336,6 +348,78 @@ function DepositDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function CctpBridgeCard() {
+  const { bridge, state, reset } = useCctpBridge();
+  const [amount, setAmount] = useState("");
+  const [recipient, setRecipient] = useState("");
+  const [destination, setDestination] = useState<"arbitrum" | "base">("arbitrum");
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>CCTP Bridge</CardTitle>
+        <CardDescription>
+          Bridge USDC from Arc to {destination === "arbitrum" ? "Arbitrum" : "Base"} via Circle CCTP V2
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <div className="flex gap-2">
+          <Select value={destination} onValueChange={(v) => setDestination(v as "arbitrum" | "base")}>
+            <SelectTrigger className="w-36">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="arbitrum">Arbitrum</SelectItem>
+              <SelectItem value="base">Base</SelectItem>
+            </SelectContent>
+          </Select>
+          <Input
+            placeholder="Recipient 0x..."
+            value={recipient}
+            onChange={(e) => setRecipient(e.target.value)}
+            className="flex-1"
+          />
+          <Input
+            type="number"
+            placeholder="USDC amount"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+          />
+        </div>
+        <div className="flex items-center gap-3">
+          <Button
+            onClick={() => {
+              const wei = centsToWei(Math.round(parseFloat(amount) * 100));
+              bridge(wei, recipient as `0x${string}`, destination);
+            }}
+            disabled={state.step !== "idle" && state.step !== "done" && state.step !== "error"}
+          >
+            {state.step === "idle" || state.step === "done" || state.step === "error"
+              ? "Bridge USDC"
+              : `${state.step}...`}
+          </Button>
+          {(state.step === "done" || state.step === "error") && (
+            <Button variant="outline" size="sm" onClick={reset}>Reset</Button>
+          )}
+        </div>
+        {state.step === "error" && (
+          <p className="text-xs text-destructive">{state.error}</p>
+        )}
+        {state.step === "done" && (
+          <p className="text-xs text-green-600">
+            Bridge complete! Burn tx: {state.burnTxHash?.slice(0, 14)}...
+          </p>
+        )}
+        {state.step === "attesting" && (
+          <p className="text-xs text-muted-foreground">
+            Waiting for Circle attestation (may take 1-2 minutes)...
+          </p>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
