@@ -122,4 +122,11 @@ crons.interval(
   {}
 );
 
+crons.interval(
+  "sync wcpay payment statuses",
+  { minutes: 2 },
+  internal.wcpaySync.syncPaymentStatuses,
+  {}
+);
+
 export default crons;
