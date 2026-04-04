@@ -66,19 +66,19 @@ const howItWorks = [
   {
     title: "Set up your workspace",
     description:
-      "Add employees with salary details, onboard customers, and create billable products — all from one dashboard.",
+      "Add employees with salaries, onboard customers, and create products with checkout links. Configure advance rates and treasury thresholds.",
     icon: BriefcaseBusiness,
   },
   {
     title: "Collect and pay",
     description:
-      "Generate checkout links with custom reception parameters per invoice — amount, currency, and description. Approve payroll batches. Employees can request salary advances with interest deducted upfront.",
+      "Customers pay via WalletConnect Pay checkout links. Approve payroll batches and salary advance requests. Interest is deducted upfront.",
     icon: ReceiptText,
   },
   {
     title: "Settle on-chain",
     description:
-      "Chainlink CRE automatically executes approved payments on Arc. WalletConnect Pay handles customer checkout with per-invoice customization that standard WC Pay doesn't support out of the box.",
+      "Chainlink CRE executes approved payments through the Payroll contract on Arc. Customer payments settle via WalletConnect Pay.",
     icon: Workflow,
   },
 ];
