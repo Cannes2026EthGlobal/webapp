@@ -28,7 +28,7 @@ const productLanes = [
     icon: Bot,
     points: [
       "Checkout links with WalletConnect Pay",
-      "Invoices, usage billing, and one-time payments",
+      "Custom reception parameters per invoice (amount, currency, metadata)",
       "Real-time treasury balance tracking",
     ],
   },
@@ -66,19 +66,19 @@ const howItWorks = [
   {
     title: "Set up your workspace",
     description:
-      "Add employees with salary details, onboard customers, and create billable products. Deploy your Payroll smart contract on Arc.",
+      "Add employees with salary details, onboard customers, and create billable products — all from one dashboard.",
     icon: BriefcaseBusiness,
   },
   {
     title: "Collect and pay",
     description:
-      "Generate checkout links for customers. Approve payroll batches. Employees can request salary advances — interest is deducted upfront.",
+      "Generate checkout links with custom reception parameters per invoice — amount, currency, and description. Approve payroll batches. Employees can request salary advances with interest deducted upfront.",
     icon: ReceiptText,
   },
   {
     title: "Settle on-chain",
     description:
-      "Chainlink CRE automatically executes approved payments through the Payroll contract on Arc. WalletConnect Pay handles customer checkout.",
+      "Chainlink CRE automatically executes approved payments on Arc. WalletConnect Pay handles customer checkout with per-invoice customization that standard WC Pay doesn't support out of the box.",
     icon: Workflow,
   },
 ];
