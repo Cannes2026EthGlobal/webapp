@@ -68,7 +68,7 @@ const navItems = [
   },
   {
     title: "Receivables",
-    url: "/dashboard/customer-payments",
+    url: "/dashboard/customers",
     icon: <HugeiconsIcon icon={Folder01Icon} strokeWidth={2} />,
   },
   {
