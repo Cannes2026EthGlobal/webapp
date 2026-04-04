@@ -274,4 +274,42 @@ export default defineSchema({
   })
     .index("by_keyHash", ["keyHash"])
     .index("by_companyId", ["companyId"]),
+
+  // ─── Advance Settings (per company) ───
+  advanceSettings: defineTable({
+    companyId: v.id("companies"),
+    enabled: v.boolean(),
+    interestRateBps: v.number(),
+    maxAdvancePercent: v.number(),
+    autoDisableThresholdMonths: v.number(),
+    autoDisabled: v.boolean(),
+  }).index("by_companyId", ["companyId"]),
+
+  // ─── Advance Requests (employee → company) ───
+  advanceRequests: defineTable({
+    companyId: v.id("companies"),
+    employeeId: v.id("employees"),
+    requestedAmountCents: v.number(),
+    interestAmountCents: v.number(),
+    netAmountCents: v.number(),
+    currency: v.union(v.literal("USD"), v.literal("EUR")),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("approved"),
+      v.literal("denied"),
+      v.literal("settled"),
+      v.literal("deducted"),
+      v.literal("cancelled")
+    ),
+    reason: v.optional(v.string()),
+    denyReason: v.optional(v.string()),
+    advancePaymentId: v.optional(v.id("employeePayments")),
+    deductedFromPaymentId: v.optional(v.id("employeePayments")),
+    nextPaycheckDate: v.number(),
+    nextPaycheckAmountCents: v.number(),
+  })
+    .index("by_companyId", ["companyId"])
+    .index("by_companyId_and_status", ["companyId", "status"])
+    .index("by_employeeId", ["employeeId"])
+    .index("by_employeeId_and_status", ["employeeId", "status"]),
 });
