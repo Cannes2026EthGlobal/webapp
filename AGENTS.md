@@ -1,6 +1,6 @@
 # Arc Counting
 
-Arc Counting is a SaaS accounting platform for private payment, payroll, invoicing, and real-time usage settlement using Unlink on Arc. It is designed for businesses that need one system for outbound payroll, inbound receivables, and programmable pay-per-use payments.
+Arc Counting is a SaaS accounting platform for private payment, payroll, invoicing, and real-time usage settlement using Chainlink on Arc. It is designed for businesses that need one system for outbound payroll, inbound receivables, and programmable pay-per-use payments.
 
 ## Core Problem
 
@@ -15,7 +15,7 @@ Businesses still handle payroll, invoices, and usage billing with slow, fragment
 ## Core Infrastructure And Sponsors
 
 - `Arc`: primary blockchain and settlement rail.
-- `Chainlink`: privacy-first transaction logic and automation through Chainlink Runtime Execution workflows; also used for valuation via price feeds.
+- `Chainlink`: programmable payment routing, privacy-first transaction logic, automation through Chainlink Runtime Execution workflows, and valuation via price feeds.
 - `WalletConnect`: customer payment UX and checkout surface through WalletConnect Pay.
 - `Reown Auth`: operator entry into the workspace.
 - Bonus flow: small businesses can tokenize invoices or inventory as Hedera HTS tokens, access instant liquidity from a Uniswap v4 pool, and use ENS names for business identity.
