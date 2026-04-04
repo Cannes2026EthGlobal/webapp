@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createAppKit } from "@reown/appkit/react";
 import { cookieToInitialState, type Config, WagmiProvider } from "wagmi";
 import { arcTestnet, networks, projectId, wagmiAdapter } from "@/config";
+import { AuthCookieSync } from "@/components/auth-cookie-sync";
 
 const queryClient = new QueryClient();
 
@@ -44,7 +45,10 @@ export default function ContextProvider({
       config={wagmiAdapter.wagmiConfig as Config}
       initialState={initialState}
     >
-      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+      <QueryClientProvider client={queryClient}>
+        <AuthCookieSync />
+        {children}
+      </QueryClientProvider>
     </WagmiProvider>
   );
 }

@@ -1,21 +1,20 @@
-import { headers } from "next/headers";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { cookieToInitialState } from "wagmi";
-import { config } from "@/config";
+import { DashboardAuthGuard } from "@/components/dashboard-auth-guard";
 
 export default async function DashboardPage() {
-  const headersList = await headers();
-  const cookieHeader = headersList.get("cookie");
-  const initialState = cookieToInitialState(config, cookieHeader);
+  const cookieStore = await cookies();
+  const isAuthorized = cookieStore.get("arc-counting-auth")?.value === "1";
 
-  if (
-    !initialState ||
-    initialState.status !== "connected" ||
-    !initialState.current ||
-    initialState.connections.size === 0
-  ) {
+  if (!isAuthorized) {
     redirect("/");
   }
 
-  return null;
+  return (
+    <DashboardAuthGuard>
+      <main className="flex min-h-screen items-center justify-center">
+        <h1 className="text-4xl font-semibold">hello world</h1>
+      </main>
+    </DashboardAuthGuard>
+  );
 }
