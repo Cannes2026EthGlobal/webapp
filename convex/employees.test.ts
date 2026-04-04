@@ -18,10 +18,6 @@ const baseEmployee = {
   displayName: "Test Employee",
   role: "Engineer",
   employmentType: "full-time" as const,
-  compensationModel: "salary" as const,
-  payoutAsset: "USDC",
-  payoutAmountCents: 1000000,
-  payoutFrequency: "monthly" as const,
   walletVerified: true,
   privacyLevel: "pseudonymous" as const,
   status: "active" as const,
@@ -74,6 +70,37 @@ describe("employees", () => {
     expect(active[0].displayName).toBe("Test Employee");
   });
 
+  test("list returns totalCompensationCents from comp lines", async () => {
+    const t = convexTest(schema, modules);
+    const companyId = await createTestCompany(t);
+    const empId = await t.mutation(api.employees.create, {
+      companyId,
+      ...baseEmployee,
+    });
+    await t.mutation(api.compensationLines.create, {
+      employeeId: empId,
+      companyId,
+      name: "Base Salary",
+      type: "salary",
+      amountCents: 1000000,
+      asset: "USDC",
+      frequency: "monthly",
+      isActive: true,
+    });
+    await t.mutation(api.compensationLines.create, {
+      employeeId: empId,
+      companyId,
+      name: "Bonus",
+      type: "bonus",
+      amountCents: 200000,
+      asset: "USDC",
+      frequency: "one-time",
+      isActive: true,
+    });
+    const list = await t.query(api.employees.listByCompany, { companyId });
+    expect(list[0].totalCompensationCents).toBe(1200000);
+  });
+
   test("update employee", async () => {
     const t = convexTest(schema, modules);
     const companyId = await createTestCompany(t);
@@ -86,15 +113,29 @@ describe("employees", () => {
     expect(updated!.role).toBe("Senior Engineer");
   });
 
-  test("remove employee", async () => {
+  test("remove employee cascades compensation lines", async () => {
     const t = convexTest(schema, modules);
     const companyId = await createTestCompany(t);
     const id = await t.mutation(api.employees.create, {
       companyId,
       ...baseEmployee,
     });
+    await t.mutation(api.compensationLines.create, {
+      employeeId: id,
+      companyId,
+      name: "Base Salary",
+      type: "salary",
+      amountCents: 1000000,
+      asset: "USDC",
+      frequency: "monthly",
+      isActive: true,
+    });
     await t.mutation(api.employees.remove, { id });
     const result = await t.query(api.employees.getById, { id });
     expect(result).toBeNull();
+    const lines = await t.query(api.compensationLines.listByEmployee, {
+      employeeId: id,
+    });
+    expect(lines).toHaveLength(0);
   });
 });

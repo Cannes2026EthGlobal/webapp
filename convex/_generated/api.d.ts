@@ -10,6 +10,7 @@
 
 import type * as balances from "../balances.js";
 import type * as companies from "../companies.js";
+import type * as compensationLines from "../compensationLines.js";
 import type * as customerPayments from "../customerPayments.js";
 import type * as customers from "../customers.js";
 import type * as employeePayments from "../employeePayments.js";
@@ -17,6 +18,7 @@ import type * as employees from "../employees.js";
 import type * as overview from "../overview.js";
 import type * as products from "../products.js";
 import type * as seed from "../seed.js";
+import type * as seedHistory from "../seedHistory.js";
 
 import type {
   ApiFromModules,
@@ -27,6 +29,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   balances: typeof balances;
   companies: typeof companies;
+  compensationLines: typeof compensationLines;
   customerPayments: typeof customerPayments;
   customers: typeof customers;
   employeePayments: typeof employeePayments;
@@ -34,6 +37,7 @@ declare const fullApi: ApiFromModules<{
   overview: typeof overview;
   products: typeof products;
   seed: typeof seed;
+  seedHistory: typeof seedHistory;
 }>;
 
 /**

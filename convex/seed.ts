@@ -22,103 +22,53 @@ export const seedDemoData = mutation({
 
     // Seed employees
     const employeeData = [
-      {
-        displayName: "Elena Vasquez",
-        role: "Lead Engineer",
-        employmentType: "full-time" as const,
-        compensationModel: "salary" as const,
-        payoutAsset: "USDC",
-        payoutAmountCents: 1200000,
-        payoutFrequency: "monthly" as const,
-        walletVerified: true,
-        privacyLevel: "verified" as const,
-        status: "active" as const,
-        email: "elena@arcdemo.co",
-        walletAddress: "0x1234...abcd",
-      },
-      {
-        displayName: "Marcus Chen",
-        role: "Product Designer",
-        employmentType: "full-time" as const,
-        compensationModel: "salary" as const,
-        payoutAsset: "USDC",
-        payoutAmountCents: 950000,
-        payoutFrequency: "monthly" as const,
-        walletVerified: true,
-        privacyLevel: "pseudonymous" as const,
-        status: "active" as const,
-      },
-      {
-        displayName: "Aria Nakamura",
-        role: "Backend Developer",
-        employmentType: "contractor" as const,
-        compensationModel: "hourly" as const,
-        payoutAsset: "USDC",
-        payoutAmountCents: 8500,
-        payoutFrequency: "biweekly" as const,
-        walletVerified: true,
-        privacyLevel: "shielded" as const,
-        status: "active" as const,
-        walletAddress: "0x5678...efgh",
-      },
-      {
-        displayName: "James Whitfield",
-        role: "DevOps",
-        employmentType: "full-time" as const,
-        compensationModel: "salary" as const,
-        payoutAsset: "USDC",
-        payoutAmountCents: 1100000,
-        payoutFrequency: "monthly" as const,
-        walletVerified: false,
-        privacyLevel: "pseudonymous" as const,
-        status: "active" as const,
-      },
-      {
-        displayName: "Sofia Reyes",
-        role: "Data Analyst",
-        employmentType: "part-time" as const,
-        compensationModel: "hourly" as const,
-        payoutAsset: "USDC",
-        payoutAmountCents: 6500,
-        payoutFrequency: "biweekly" as const,
-        walletVerified: true,
-        privacyLevel: "verified" as const,
-        status: "active" as const,
-        email: "sofia@arcdemo.co",
-      },
-      {
-        displayName: "Kai Tanaka",
-        role: "Smart Contract Auditor",
-        employmentType: "freelance" as const,
-        compensationModel: "per-task" as const,
-        payoutAsset: "USDC",
-        payoutAmountCents: 500000,
-        payoutFrequency: "per-task" as const,
-        walletVerified: true,
-        privacyLevel: "shielded" as const,
-        status: "active" as const,
-      },
-      {
-        displayName: "Luna Park",
-        role: "Marketing Lead",
-        employmentType: "full-time" as const,
-        compensationModel: "salary" as const,
-        payoutAsset: "USDC",
-        payoutAmountCents: 900000,
-        payoutFrequency: "monthly" as const,
-        walletVerified: true,
-        privacyLevel: "verified" as const,
-        status: "onboarding" as const,
-      },
+      { displayName: "Elena Vasquez", role: "Lead Engineer", employmentType: "full-time" as const, walletVerified: true, privacyLevel: "verified" as const, status: "active" as const, email: "elena@arcdemo.co", walletAddress: "0x1234...abcd" },
+      { displayName: "Marcus Chen", role: "Product Designer", employmentType: "full-time" as const, walletVerified: true, privacyLevel: "pseudonymous" as const, status: "active" as const },
+      { displayName: "Aria Nakamura", role: "Backend Developer", employmentType: "contractor" as const, walletVerified: true, privacyLevel: "shielded" as const, status: "active" as const, walletAddress: "0x5678...efgh" },
+      { displayName: "James Whitfield", role: "DevOps", employmentType: "full-time" as const, walletVerified: false, privacyLevel: "pseudonymous" as const, status: "active" as const },
+      { displayName: "Sofia Reyes", role: "Data Analyst", employmentType: "part-time" as const, walletVerified: true, privacyLevel: "verified" as const, status: "active" as const, email: "sofia@arcdemo.co" },
+      { displayName: "Kai Tanaka", role: "Smart Contract Auditor", employmentType: "freelance" as const, walletVerified: true, privacyLevel: "shielded" as const, status: "active" as const },
+      { displayName: "Luna Park", role: "Marketing Lead", employmentType: "full-time" as const, walletVerified: true, privacyLevel: "verified" as const, status: "onboarding" as const },
     ];
 
     const employeeIds = [];
     for (const emp of employeeData) {
-      const id = await ctx.db.insert("employees", {
-        companyId,
-        ...emp,
-      });
+      const id = await ctx.db.insert("employees", { companyId, ...emp });
       employeeIds.push(id);
+    }
+
+    // Seed compensation lines (one-to-many per employee)
+    const compLines: Array<{
+      employeeIndex: number;
+      name: string;
+      type: "salary" | "hourly" | "per-task" | "milestone" | "bonus";
+      amountCents: number;
+      frequency: "monthly" | "biweekly" | "weekly" | "per-task" | "one-time";
+      isActive: boolean;
+      description?: string;
+    }> = [
+      { employeeIndex: 0, name: "Base Salary", type: "salary", amountCents: 1200000, frequency: "monthly", isActive: true },
+      { employeeIndex: 0, name: "Q1 Performance Bonus", type: "bonus", amountCents: 250000, frequency: "one-time", isActive: true, description: "Quarterly performance incentive" },
+      { employeeIndex: 1, name: "Base Salary", type: "salary", amountCents: 950000, frequency: "monthly", isActive: true },
+      { employeeIndex: 2, name: "Contract Rate", type: "hourly", amountCents: 8500, frequency: "biweekly", isActive: true },
+      { employeeIndex: 3, name: "Base Salary", type: "salary", amountCents: 1100000, frequency: "monthly", isActive: true },
+      { employeeIndex: 4, name: "Part-time Rate", type: "hourly", amountCents: 6500, frequency: "biweekly", isActive: true },
+      { employeeIndex: 5, name: "Audit Fee", type: "per-task", amountCents: 500000, frequency: "per-task", isActive: true },
+      { employeeIndex: 6, name: "Base Salary", type: "salary", amountCents: 900000, frequency: "monthly", isActive: true },
+    ];
+
+    for (const line of compLines) {
+      await ctx.db.insert("compensationLines", {
+        employeeId: employeeIds[line.employeeIndex],
+        companyId,
+        name: line.name,
+        description: line.description,
+        type: line.type,
+        amountCents: line.amountCents,
+        asset: "USDC",
+        frequency: line.frequency,
+        isActive: line.isActive,
+      });
     }
 
     // Seed customers

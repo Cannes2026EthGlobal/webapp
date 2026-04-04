@@ -5,7 +5,8 @@ import Link from "next/link";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
-import { formatCents, formatDate } from "@/lib/format";
+import { formatCents, formatDate, formatDateShort } from "@/lib/format";
+import { toast } from "sonner";
 
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
@@ -17,6 +18,14 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -49,17 +58,14 @@ export default function EmployeeDetailPage({
   const payments = useQuery(api.employeePayments.listByEmployee, {
     employeeId: id as Id<"employees">,
   });
+  const compLines = useQuery(api.compensationLines.listByEmployee, {
+    employeeId: id as Id<"employees">,
+  });
   const updateEmployee = useMutation(api.employees.update);
 
   const [identityRevealed, setIdentityRevealed] = useState(false);
   const [editing, setEditing] = useState(false);
-  const [editData, setEditData] = useState<{
-    displayName: string;
-    role: string;
-    email: string;
-    walletAddress: string;
-    backupWalletAddress: string;
-  }>({
+  const [editData, setEditData] = useState({
     displayName: "",
     role: "",
     email: "",
@@ -115,13 +121,13 @@ export default function EmployeeDetailPage({
       backupWalletAddress: editData.backupWalletAddress || undefined,
     });
     setEditing(false);
+    toast.success("Employee updated");
   };
 
   const settledPayments = payments?.filter((p) => p.status === "settled") ?? [];
-  const totalPaidCents = settledPayments.reduce(
-    (s, p) => s + p.amountCents,
-    0
-  );
+  const totalPaidCents = settledPayments.reduce((s, p) => s + p.amountCents, 0);
+  const activeLines = compLines?.filter((l) => l.isActive) ?? [];
+  const totalCompCents = activeLines.reduce((s, l) => s + l.amountCents, 0);
 
   return (
     <>
@@ -162,31 +168,15 @@ export default function EmployeeDetailPage({
                 <>
                   <div className="grid gap-2">
                     <Label>Display name</Label>
-                    <Input
-                      value={editData.displayName}
-                      onChange={(e) =>
-                        setEditData({ ...editData, displayName: e.target.value })
-                      }
-                    />
+                    <Input value={editData.displayName} onChange={(e) => setEditData({ ...editData, displayName: e.target.value })} />
                   </div>
                   <div className="grid gap-2">
                     <Label>Role</Label>
-                    <Input
-                      value={editData.role}
-                      onChange={(e) =>
-                        setEditData({ ...editData, role: e.target.value })
-                      }
-                    />
+                    <Input value={editData.role} onChange={(e) => setEditData({ ...editData, role: e.target.value })} />
                   </div>
                   <div className="grid gap-2">
                     <Label>Email</Label>
-                    <Input
-                      type="email"
-                      value={editData.email}
-                      onChange={(e) =>
-                        setEditData({ ...editData, email: e.target.value })
-                      }
-                    />
+                    <Input type="email" value={editData.email} onChange={(e) => setEditData({ ...editData, email: e.target.value })} />
                   </div>
                 </>
               ) : (
@@ -194,69 +184,34 @@ export default function EmployeeDetailPage({
                   <div className="grid grid-cols-2 gap-4">
                     <Field label="Display name" value={employee.displayName} />
                     <Field label="Role" value={employee.role} />
-                    <Field
-                      label="Employment type"
-                      value={employee.employmentType}
-                    />
-                    <Field
-                      label="Compensation"
-                      value={`${formatCents(employee.payoutAmountCents)} / ${employee.payoutFrequency}`}
-                    />
-                    <Field label="Payout asset" value={employee.payoutAsset} />
-                    <Field
-                      label="Status"
-                      value={employee.status}
-                      badge
-                    />
+                    <Field label="Employment type" value={employee.employmentType} />
+                    <Field label="Status" value={employee.status} badge />
                   </div>
-
                   <Separator />
-
                   <div className="flex items-center justify-between">
                     <p className="text-sm font-medium">Legal identity</p>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setIdentityRevealed(!identityRevealed)}
-                    >
+                    <Button variant="outline" size="sm" onClick={() => setIdentityRevealed(!identityRevealed)}>
                       {identityRevealed ? "Conceal" : "Reveal"}
                     </Button>
                   </div>
-
                   {identityRevealed ? (
                     <div className="grid grid-cols-2 gap-4">
-                      <Field
-                        label="Legal name"
-                        value={employee.legalName ?? "Not provided"}
-                      />
-                      <Field
-                        label="Tax ID"
-                        value={employee.taxId ?? "Not provided"}
-                      />
-                      <Field
-                        label="Jurisdiction"
-                        value={employee.jurisdiction ?? "Not provided"}
-                      />
-                      <Field
-                        label="Email"
-                        value={employee.email ?? "Not provided"}
-                      />
+                      <Field label="Legal name" value={employee.legalName ?? "Not provided"} />
+                      <Field label="Tax ID" value={employee.taxId ?? "Not provided"} />
+                      <Field label="Jurisdiction" value={employee.jurisdiction ?? "Not provided"} />
+                      <Field label="Email" value={employee.email ?? "Not provided"} />
                     </div>
                   ) : (
                     <p className="text-sm text-muted-foreground">
-                      Identity data is concealed. Click reveal to view legal
-                      name, tax ID, and jurisdiction.
+                      Identity data is concealed. Click reveal to view.
                     </p>
                   )}
-
                   {employee.notes && (
                     <>
                       <Separator />
                       <div>
                         <p className="text-sm font-medium">Notes</p>
-                        <p className="mt-1 text-sm text-muted-foreground">
-                          {employee.notes}
-                        </p>
+                        <p className="mt-1 text-sm text-muted-foreground">{employee.notes}</p>
                       </div>
                     </>
                   )}
@@ -269,38 +224,18 @@ export default function EmployeeDetailPage({
           <Card>
             <CardHeader>
               <CardTitle>Wallet Profile</CardTitle>
-              <CardDescription>
-                Wallet addresses and verification status
-              </CardDescription>
+              <CardDescription>Wallet addresses and verification status</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               {editing ? (
                 <>
                   <div className="grid gap-2">
                     <Label>Primary wallet</Label>
-                    <Input
-                      value={editData.walletAddress}
-                      onChange={(e) =>
-                        setEditData({
-                          ...editData,
-                          walletAddress: e.target.value,
-                        })
-                      }
-                      placeholder="0x..."
-                    />
+                    <Input value={editData.walletAddress} onChange={(e) => setEditData({ ...editData, walletAddress: e.target.value })} placeholder="0x..." />
                   </div>
                   <div className="grid gap-2">
                     <Label>Backup wallet</Label>
-                    <Input
-                      value={editData.backupWalletAddress}
-                      onChange={(e) =>
-                        setEditData({
-                          ...editData,
-                          backupWalletAddress: e.target.value,
-                        })
-                      }
-                      placeholder="0x..."
-                    />
+                    <Input value={editData.backupWalletAddress} onChange={(e) => setEditData({ ...editData, backupWalletAddress: e.target.value })} placeholder="0x..." />
                   </div>
                 </>
               ) : (
@@ -309,55 +244,25 @@ export default function EmployeeDetailPage({
                     <div className="flex items-center justify-between rounded-lg border p-3">
                       <div>
                         <p className="text-sm font-medium">Primary wallet</p>
-                        <p className="text-xs font-mono text-muted-foreground">
-                          {employee.walletAddress ?? "Not configured"}
-                        </p>
+                        <p className="text-xs font-mono text-muted-foreground">{employee.walletAddress ?? "Not configured"}</p>
                       </div>
-                      <Badge
-                        variant={
-                          employee.walletVerified ? "default" : "secondary"
-                        }
-                      >
+                      <Badge variant={employee.walletVerified ? "default" : "secondary"}>
                         {employee.walletVerified ? "Verified" : "Unverified"}
                       </Badge>
                     </div>
                     <div className="flex items-center justify-between rounded-lg border p-3">
                       <div>
                         <p className="text-sm font-medium">Backup wallet</p>
-                        <p className="text-xs font-mono text-muted-foreground">
-                          {employee.backupWalletAddress ?? "Not configured"}
-                        </p>
+                        <p className="text-xs font-mono text-muted-foreground">{employee.backupWalletAddress ?? "Not configured"}</p>
                       </div>
                     </div>
                   </div>
-
                   <Separator />
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <Field label="Payout asset" value={employee.payoutAsset} />
-                    <Field
-                      label="Next payment"
-                      value={
-                        employee.nextPaymentDate
-                          ? formatDate(employee.nextPaymentDate)
-                          : "Not scheduled"
-                      }
-                    />
-                  </div>
-
-                  <Separator />
-
                   <div>
                     <p className="text-sm font-medium">Payment summary</p>
                     <div className="mt-2 grid grid-cols-2 gap-4">
-                      <Field
-                        label="Total paid"
-                        value={formatCents(totalPaidCents)}
-                      />
-                      <Field
-                        label="Payments"
-                        value={`${settledPayments.length} settled`}
-                      />
+                      <Field label="Total paid" value={formatCents(totalPaidCents)} />
+                      <Field label="Payments" value={`${settledPayments.length} settled`} />
                     </div>
                   </div>
                 </>
@@ -366,19 +271,23 @@ export default function EmployeeDetailPage({
           </Card>
         </div>
 
+        {/* ─── Compensation Lines ─── */}
+        <CompensationCard
+          employeeId={employee._id}
+          companyId={employee.companyId}
+          lines={compLines ?? []}
+          totalCompCents={totalCompCents}
+        />
+
         {/* ─── Payment History ─── */}
         <Card>
           <CardHeader>
             <CardTitle>Payment History</CardTitle>
-            <CardDescription>
-              All payments associated with this employee
-            </CardDescription>
+            <CardDescription>All payments associated with this employee</CardDescription>
           </CardHeader>
           <CardContent>
             {!payments || payments.length === 0 ? (
-              <p className="py-6 text-center text-sm text-muted-foreground">
-                No payment history
-              </p>
+              <p className="py-6 text-center text-sm text-muted-foreground">No payment history</p>
             ) : (
               <div className="overflow-x-auto">
                 <Table>
@@ -395,31 +304,14 @@ export default function EmployeeDetailPage({
                     {payments.map((p) => (
                       <TableRow key={p._id}>
                         <TableCell className="capitalize">{p.type}</TableCell>
-                        <TableCell className="tabular-nums">
-                          {formatCents(p.amountCents)}
-                        </TableCell>
+                        <TableCell className="tabular-nums">{formatCents(p.amountCents)}</TableCell>
                         <TableCell>
-                          <Badge
-                            variant={
-                              p.status === "settled"
-                                ? "default"
-                                : p.status === "failed"
-                                  ? "destructive"
-                                  : "outline"
-                            }
-                            className="capitalize"
-                          >
+                          <Badge variant={p.status === "settled" ? "default" : p.status === "failed" ? "destructive" : "outline"} className="capitalize">
                             {p.status}
                           </Badge>
                         </TableCell>
-                        <TableCell className="text-muted-foreground">
-                          {p.description ?? "-"}
-                        </TableCell>
-                        <TableCell className="text-muted-foreground">
-                          {p.settledAt
-                            ? formatDate(p.settledAt)
-                            : formatDate(p._creationTime)}
-                        </TableCell>
+                        <TableCell className="text-muted-foreground">{p.description ?? "-"}</TableCell>
+                        <TableCell className="text-muted-foreground">{p.settledAt ? formatDate(p.settledAt) : formatDate(p._creationTime)}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -433,22 +325,290 @@ export default function EmployeeDetailPage({
   );
 }
 
-function Field({
-  label,
-  value,
-  badge,
+// ─── Compensation Lines Card ───
+
+type CompLine = {
+  _id: Id<"compensationLines">;
+  _creationTime: number;
+  name: string;
+  description?: string;
+  type: string;
+  amountCents: number;
+  asset: string;
+  frequency: string;
+  startDate?: number;
+  endDate?: number;
+  isActive: boolean;
+};
+
+function CompensationCard({
+  employeeId,
+  companyId,
+  lines,
+  totalCompCents,
 }: {
-  label: string;
-  value: string;
-  badge?: boolean;
+  employeeId: Id<"employees">;
+  companyId: Id<"companies">;
+  lines: CompLine[];
+  totalCompCents: number;
 }) {
+  const createLine = useMutation(api.compensationLines.create);
+  const updateLine = useMutation(api.compensationLines.update);
+  const toggleActive = useMutation(api.compensationLines.toggleActive);
+  const removeLine = useMutation(api.compensationLines.remove);
+
+  const [showAdd, setShowAdd] = useState(false);
+  const [editingLine, setEditingLine] = useState<CompLine | null>(null);
+  const [form, setForm] = useState({
+    name: "",
+    description: "",
+    type: "salary" as string,
+    amountCents: 0,
+    asset: "USDC",
+    frequency: "monthly" as string,
+  });
+
+  const resetForm = () => {
+    setForm({ name: "", description: "", type: "salary", amountCents: 0, asset: "USDC", frequency: "monthly" });
+  };
+
+  const handleAdd = async () => {
+    if (!form.name || !form.amountCents) return;
+    try {
+      await createLine({
+        employeeId,
+        companyId,
+        name: form.name,
+        description: form.description || undefined,
+        type: form.type as "salary" | "hourly" | "per-task" | "milestone" | "bonus",
+        amountCents: form.amountCents,
+        asset: form.asset,
+        frequency: form.frequency as "monthly" | "biweekly" | "weekly" | "per-task" | "one-time",
+        isActive: true,
+      });
+      toast.success("Compensation line added");
+      setShowAdd(false);
+      resetForm();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to add line");
+    }
+  };
+
+  const handleEditSave = async () => {
+    if (!editingLine) return;
+    try {
+      await updateLine({
+        id: editingLine._id,
+        name: form.name,
+        description: form.description || undefined,
+        type: form.type as "salary" | "hourly" | "per-task" | "milestone" | "bonus",
+        amountCents: form.amountCents,
+        asset: form.asset,
+        frequency: form.frequency as "monthly" | "biweekly" | "weekly" | "per-task" | "one-time",
+      });
+      toast.success("Compensation line updated");
+      setEditingLine(null);
+      resetForm();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to update");
+    }
+  };
+
+  const startEdit = (line: CompLine) => {
+    setForm({
+      name: line.name,
+      description: line.description ?? "",
+      type: line.type,
+      amountCents: line.amountCents,
+      asset: line.asset,
+      frequency: line.frequency,
+    });
+    setEditingLine(line);
+  };
+
+  const isDialogOpen = showAdd || !!editingLine;
+
+  return (
+    <>
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Compensation</CardTitle>
+              <CardDescription>
+                {lines.length} line{lines.length !== 1 ? "s" : ""} — Total active: {formatCents(totalCompCents)}
+              </CardDescription>
+            </div>
+            <Button size="sm" onClick={() => { resetForm(); setShowAdd(true); }}>
+              Add line
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {lines.length === 0 ? (
+            <p className="py-6 text-center text-sm text-muted-foreground">
+              No compensation lines. Add one to define this employee's pay structure.
+            </p>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Amount</TableHead>
+                    <TableHead>Asset</TableHead>
+                    <TableHead>Frequency</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead />
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {lines.map((line) => (
+                    <TableRow key={line._id} className={!line.isActive ? "opacity-50" : ""}>
+                      <TableCell>
+                        <div>
+                          <span className="font-medium">{line.name}</span>
+                          {line.description && (
+                            <p className="text-xs text-muted-foreground">{line.description}</p>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="capitalize">{line.type}</Badge>
+                      </TableCell>
+                      <TableCell className="tabular-nums">{formatCents(line.amountCents)}</TableCell>
+                      <TableCell>{line.asset}</TableCell>
+                      <TableCell className="capitalize">{line.frequency}</TableCell>
+                      <TableCell>
+                        <Badge variant={line.isActive ? "default" : "secondary"}>
+                          {line.isActive ? "Active" : "Inactive"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex gap-1">
+                          <Button variant="ghost" size="sm" onClick={() => startEdit(line)}>
+                            Edit
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={async () => {
+                              try {
+                                await toggleActive({ id: line._id, isActive: !line.isActive });
+                                toast.success(line.isActive ? "Line deactivated" : "Line activated");
+                              } catch (e) {
+                                toast.error(e instanceof Error ? e.message : "Failed");
+                              }
+                            }}
+                          >
+                            {line.isActive ? "Deactivate" : "Activate"}
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={async () => {
+                              try {
+                                await removeLine({ id: line._id });
+                                toast.success("Line removed");
+                              } catch (e) {
+                                toast.error(e instanceof Error ? e.message : "Failed to remove");
+                              }
+                            }}
+                          >
+                            Remove
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Dialog open={isDialogOpen} onOpenChange={(open) => { if (!open) { setShowAdd(false); setEditingLine(null); resetForm(); } }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{editingLine ? "Edit compensation line" : "Add compensation line"}</DialogTitle>
+            <DialogDescription>
+              {editingLine ? "Update the compensation details." : "Define a new compensation arrangement for this employee."}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label>Name</Label>
+              <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Base Salary" />
+            </div>
+            <div className="grid gap-2">
+              <Label>Description (optional)</Label>
+              <Input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Monthly base compensation" />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label>Type</Label>
+                <Select value={form.type} onValueChange={(v) => setForm({ ...form, type: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="salary">Salary</SelectItem>
+                    <SelectItem value="hourly">Hourly</SelectItem>
+                    <SelectItem value="per-task">Per task</SelectItem>
+                    <SelectItem value="milestone">Milestone</SelectItem>
+                    <SelectItem value="bonus">Bonus</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid gap-2">
+                <Label>Frequency</Label>
+                <Select value={form.frequency} onValueChange={(v) => setForm({ ...form, frequency: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="monthly">Monthly</SelectItem>
+                    <SelectItem value="biweekly">Biweekly</SelectItem>
+                    <SelectItem value="weekly">Weekly</SelectItem>
+                    <SelectItem value="per-task">Per task</SelectItem>
+                    <SelectItem value="one-time">One-time</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label>Amount (USD)</Label>
+                <Input
+                  type="number"
+                  value={form.amountCents / 100 || ""}
+                  onChange={(e) => setForm({ ...form, amountCents: Math.round(parseFloat(e.target.value || "0") * 100) })}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label>Asset</Label>
+                <Input value={form.asset} onChange={(e) => setForm({ ...form, asset: e.target.value })} />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setShowAdd(false); setEditingLine(null); resetForm(); }}>
+              Cancel
+            </Button>
+            <Button onClick={() => void (editingLine ? handleEditSave() : handleAdd())}>
+              {editingLine ? "Save changes" : "Add line"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
+function Field({ label, value, badge }: { label: string; value: string; badge?: boolean }) {
   return (
     <div>
       <p className="text-xs text-muted-foreground">{label}</p>
       {badge ? (
-        <Badge variant="outline" className="mt-0.5 capitalize">
-          {value}
-        </Badge>
+        <Badge variant="outline" className="mt-0.5 capitalize">{value}</Badge>
       ) : (
         <p className="text-sm font-medium capitalize">{value}</p>
       )}

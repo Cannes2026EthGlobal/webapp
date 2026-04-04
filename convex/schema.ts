@@ -26,19 +26,24 @@ export default defineSchema({
       v.literal("contractor"),
       v.literal("freelance")
     ),
-    compensationModel: v.union(
-      v.literal("salary"),
-      v.literal("hourly"),
-      v.literal("per-task"),
-      v.literal("milestone")
+    // Legacy flat comp fields — optional for backward compat; new employees use compensationLines
+    compensationModel: v.optional(
+      v.union(
+        v.literal("salary"),
+        v.literal("hourly"),
+        v.literal("per-task"),
+        v.literal("milestone")
+      )
     ),
-    payoutAsset: v.string(),
-    payoutAmountCents: v.number(),
-    payoutFrequency: v.union(
-      v.literal("monthly"),
-      v.literal("biweekly"),
-      v.literal("weekly"),
-      v.literal("per-task")
+    payoutAsset: v.optional(v.string()),
+    payoutAmountCents: v.optional(v.number()),
+    payoutFrequency: v.optional(
+      v.union(
+        v.literal("monthly"),
+        v.literal("biweekly"),
+        v.literal("weekly"),
+        v.literal("per-task")
+      )
     ),
     nextPaymentDate: v.optional(v.number()),
     walletAddress: v.optional(v.string()),
@@ -63,6 +68,36 @@ export default defineSchema({
   })
     .index("by_companyId", ["companyId"])
     .index("by_companyId_and_status", ["companyId", "status"]),
+
+  // ─── Compensation Lines (one-to-many per employee) ───
+  compensationLines: defineTable({
+    employeeId: v.id("employees"),
+    companyId: v.id("companies"),
+    name: v.string(),
+    description: v.optional(v.string()),
+    type: v.union(
+      v.literal("salary"),
+      v.literal("hourly"),
+      v.literal("per-task"),
+      v.literal("milestone"),
+      v.literal("bonus")
+    ),
+    amountCents: v.number(),
+    asset: v.string(),
+    frequency: v.union(
+      v.literal("monthly"),
+      v.literal("biweekly"),
+      v.literal("weekly"),
+      v.literal("per-task"),
+      v.literal("one-time")
+    ),
+    startDate: v.optional(v.number()),
+    endDate: v.optional(v.number()),
+    isActive: v.boolean(),
+  })
+    .index("by_employeeId", ["employeeId"])
+    .index("by_companyId", ["companyId"])
+    .index("by_employeeId_and_isActive", ["employeeId", "isActive"]),
 
   // ─── Customers ───
   customers: defineTable({
@@ -151,10 +186,12 @@ export default defineSchema({
     settledAt: v.optional(v.number()),
     txHash: v.optional(v.string()),
     batchId: v.optional(v.string()),
+    compensationLineId: v.optional(v.id("compensationLines")),
   })
     .index("by_companyId", ["companyId"])
     .index("by_companyId_and_status", ["companyId", "status"])
-    .index("by_employeeId", ["employeeId"]),
+    .index("by_employeeId", ["employeeId"])
+    .index("by_compensationLineId", ["compensationLineId"]),
 
   // ─── Customer Payments (inbound) ───
   customerPayments: defineTable({
