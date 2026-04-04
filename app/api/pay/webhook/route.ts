@@ -11,7 +11,15 @@ export async function POST(req: NextRequest) {
     const { paymentId, referenceId, buyer, transaction } = body as {
       paymentId?: string;
       referenceId?: string;
-      buyer?: { accountCaip10?: string };
+      buyer?: {
+        accountCaip10?: string;
+        fullName?: string;
+        name?: string;
+        dateOfBirth?: string;
+        country?: string;
+        email?: string;
+        accountProviderName?: string;
+      };
       transaction?: { hash?: string };
     };
 
@@ -39,11 +47,15 @@ export async function POST(req: NextRequest) {
       buyerWallet = parts[parts.length - 1];
     }
 
-    // Confirm the payment — credits treasury and auto-registers customer
+    // Confirm the payment with full buyer details for CRM registration
     await convex.mutation(api.checkout.confirmPayment, {
       paymentId: payment._id,
       buyerWallet,
       txHash: transaction?.hash,
+      buyerFullName: buyer?.fullName ?? buyer?.name,
+      buyerDateOfBirth: buyer?.dateOfBirth,
+      buyerCountry: buyer?.country,
+      buyerEmail: buyer?.email,
     });
 
     return NextResponse.json({ received: true, confirmed: true });

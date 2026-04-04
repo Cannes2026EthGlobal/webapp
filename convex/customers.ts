@@ -106,6 +106,10 @@ export const findOrCreateByWallet = mutation({
     companyId: v.id("companies"),
     walletAddress: v.string(),
     displayName: v.optional(v.string()),
+    fullName: v.optional(v.string()),
+    dateOfBirth: v.optional(v.string()),
+    country: v.optional(v.string()),
+    email: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const existing = await ctx.db
@@ -115,16 +119,36 @@ export const findOrCreateByWallet = mutation({
       )
       .unique();
 
-    if (existing) return existing._id;
+    if (existing) {
+      // Update with any new details from this transaction
+      const updates: Record<string, string> = {};
+      if (args.fullName && !existing.fullName) updates.fullName = args.fullName;
+      if (args.dateOfBirth && !existing.dateOfBirth) updates.dateOfBirth = args.dateOfBirth;
+      if (args.country && !existing.country) updates.country = args.country;
+      if (args.email && !existing.email) updates.email = args.email;
+      if (args.fullName && existing.displayName.includes("...")) {
+        updates.displayName = args.fullName;
+      }
+      if (Object.keys(updates).length > 0) {
+        await ctx.db.patch(existing._id, updates);
+      }
+      return existing._id;
+    }
+
+    const displayName = args.fullName ?? args.displayName ?? `${args.walletAddress.slice(0, 6)}...${args.walletAddress.slice(-4)}`;
 
     return await ctx.db.insert("customers", {
       companyId: args.companyId,
-      displayName: args.displayName ?? `${args.walletAddress.slice(0, 6)}...${args.walletAddress.slice(-4)}`,
+      displayName,
       customerType: "buyer",
       pricingModel: "one-time",
       billingState: "active",
       walletAddress: args.walletAddress,
       walletReady: true,
+      fullName: args.fullName,
+      dateOfBirth: args.dateOfBirth,
+      country: args.country,
+      email: args.email,
     });
   },
 });

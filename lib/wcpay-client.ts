@@ -112,6 +112,18 @@ async function realGetPaymentStatus(paymentId: string): Promise<PaymentStatus> {
   return res.json();
 }
 
+async function realGetPaymentDetails(paymentId: string): Promise<PaymentRecord | null> {
+  const res = await fetch(
+    `${API_URL}/v1/payments/${paymentId}`,
+    { method: "GET", headers: headers() }
+  );
+  if (!res.ok) {
+    if (res.status === 404) return null;
+    throw new Error(`WC Pay getPaymentDetails failed: ${res.status}`);
+  }
+  return res.json();
+}
+
 async function realListAllPayments(
   params?: {
     status?: string;
@@ -175,6 +187,18 @@ function mockGetPaymentStatus(): PaymentStatus {
   return { status: "succeeded", isFinal: true, pollInMs: 0 };
 }
 
+function mockGetPaymentDetails(): PaymentRecord {
+  return {
+    paymentId: "pay_mock",
+    referenceId: "arc-mock",
+    status: "succeeded",
+    isTerminal: true,
+    fiatAmount: { value: "1000", unit: "iso4217/USD", display: { formatted: "$10.00", assetSymbol: "USD" } },
+    createdAt: new Date().toISOString(),
+    lastUpdatedAt: new Date().toISOString(),
+  };
+}
+
 function mockListAllPayments(): ListPaymentsResponse {
   return { data: [], nextCursor: null };
 }
@@ -189,6 +213,10 @@ export const createPayment = IS_MOCK
 export const getPaymentStatus = IS_MOCK
   ? (_id: string) => Promise.resolve(mockGetPaymentStatus())
   : realGetPaymentStatus;
+
+export const getPaymentDetails = IS_MOCK
+  ? (_id: string) => Promise.resolve(mockGetPaymentDetails())
+  : realGetPaymentDetails;
 
 export const listAllPayments = IS_MOCK
   ? (_p?: Parameters<typeof realListAllPayments>[0]) =>

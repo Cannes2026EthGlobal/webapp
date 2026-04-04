@@ -165,20 +165,30 @@ export const confirmPayment = mutation({
     paymentId: v.id("customerPayments"),
     txHash: v.optional(v.string()),
     buyerWallet: v.optional(v.string()),
+    buyerFullName: v.optional(v.string()),
+    buyerDateOfBirth: v.optional(v.string()),
+    buyerCountry: v.optional(v.string()),
+    buyerEmail: v.optional(v.string()),
   },
   handler: async (ctx, args): Promise<void> => {
     const payment = await ctx.db.get(args.paymentId);
     if (!payment) throw new Error("Payment not found");
     if (payment.status === "paid") return; // idempotent
 
-    // Auto-register customer if wallet provided and no customer yet
+    // Auto-register customer with full details from the transaction
     let resolvedCustomerId = payment.customerId;
-    if (args.buyerWallet && !resolvedCustomerId) {
+    if (args.buyerWallet) {
       resolvedCustomerId = await ctx.runMutation(api.customers.findOrCreateByWallet, {
         companyId: payment.companyId,
         walletAddress: args.buyerWallet,
+        fullName: args.buyerFullName,
+        dateOfBirth: args.buyerDateOfBirth,
+        country: args.buyerCountry,
+        email: args.buyerEmail,
       });
-      await ctx.db.patch(args.paymentId, { customerId: resolvedCustomerId });
+      if (resolvedCustomerId !== payment.customerId) {
+        await ctx.db.patch(args.paymentId, { customerId: resolvedCustomerId });
+      }
     }
 
     // Credit treasury

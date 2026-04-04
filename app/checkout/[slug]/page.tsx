@@ -47,14 +47,30 @@ export default function CheckoutPage() {
       try {
         const res = await fetch(`/api/pay/status?paymentId=${wcPaymentId}`);
         if (!res.ok) return;
-        const data = await res.json() as { status: string; isFinal: boolean };
+        const data = await res.json() as {
+          status: string;
+          isFinal: boolean;
+          buyer?: {
+            wallet?: string;
+            fullName?: string;
+            dateOfBirth?: string;
+            country?: string;
+            email?: string;
+          };
+          txHash?: string;
+        };
 
         if (data.status === "succeeded") {
           // Confirm the payment in Convex (credits treasury + registers customer)
           if (convexPaymentId) {
             await confirmPayment({
               paymentId: convexPaymentId,
-              buyerWallet: walletAddress || undefined,
+              buyerWallet: data.buyer?.wallet ?? walletAddress || undefined,
+              txHash: data.txHash,
+              buyerFullName: data.buyer?.fullName,
+              buyerDateOfBirth: data.buyer?.dateOfBirth,
+              buyerCountry: data.buyer?.country,
+              buyerEmail: data.buyer?.email,
             });
           }
           setStatus("confirmed");

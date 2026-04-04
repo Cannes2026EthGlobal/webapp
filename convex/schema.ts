@@ -162,6 +162,9 @@ export default defineSchema({
     walletReady: v.boolean(),
     email: v.optional(v.string()),
     contactName: v.optional(v.string()),
+    fullName: v.optional(v.string()),
+    dateOfBirth: v.optional(v.string()),
+    country: v.optional(v.string()),
     notes: v.optional(v.string()),
   })
     .index("by_companyId", ["companyId"])
