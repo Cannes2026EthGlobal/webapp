@@ -8,9 +8,19 @@ const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { paymentId, referenceId } = body as {
+    const { paymentId, referenceId, buyer, transaction } = body as {
       paymentId?: string;
       referenceId?: string;
+      buyer?: {
+        accountCaip10?: string;
+        fullName?: string;
+        name?: string;
+        dateOfBirth?: string;
+        country?: string;
+        email?: string;
+        accountProviderName?: string;
+      };
+      transaction?: { hash?: string };
     };
 
     if (!paymentId || !referenceId) {
@@ -30,9 +40,22 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Payment not found" }, { status: 404 });
     }
 
-    // Confirm the payment
+    // Extract buyer wallet from CAIP-10 format (e.g. "eip155:1:0xabc...")
+    let buyerWallet: string | undefined;
+    if (buyer?.accountCaip10) {
+      const parts = buyer.accountCaip10.split(":");
+      buyerWallet = parts[parts.length - 1];
+    }
+
+    // Confirm the payment with full buyer details for CRM registration
     await convex.mutation(api.checkout.confirmPayment, {
       paymentId: payment._id,
+      buyerWallet,
+      txHash: transaction?.hash,
+      buyerFullName: buyer?.fullName ?? buyer?.name,
+      buyerDateOfBirth: buyer?.dateOfBirth,
+      buyerCountry: buyer?.country,
+      buyerEmail: buyer?.email,
     });
 
     return NextResponse.json({ received: true, confirmed: true });

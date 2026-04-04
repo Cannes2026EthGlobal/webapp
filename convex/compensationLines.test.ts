@@ -7,10 +7,11 @@ import schema from "./schema";
 const modules = import.meta.glob("./**/*.ts");
 
 async function setup(t: ReturnType<typeof convexTest>) {
+  const userId = await t.mutation(api.users.getOrCreateByWallet, { walletAddress: "0xtest" });
   const companyId = await t.mutation(api.companies.create, {
     name: "Test Corp",
     slug: "test-comp-" + Math.random().toString(36).slice(2),
-    ownerWallet: "0xtest",
+    userId,
   });
   const employeeId = await t.mutation(api.employees.create, {
     companyId,

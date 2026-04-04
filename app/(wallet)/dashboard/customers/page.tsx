@@ -266,12 +266,10 @@ function CustomersContent({
                       <TableCell>
                         <BillingBadge state={cust.billingState} />
                       </TableCell>
-                      <TableCell>
-                        <Badge
-                          variant={cust.walletReady ? "default" : "secondary"}
-                        >
-                          {cust.walletReady ? "Ready" : "Not ready"}
-                        </Badge>
+                      <TableCell className="font-mono text-xs text-muted-foreground">
+                        {cust.walletAddress
+                          ? `${cust.walletAddress.slice(0, 6)}...${cust.walletAddress.slice(-4)}`
+                          : "-"}
                       </TableCell>
                       <TableCell className="text-muted-foreground">
                         {cust.email ?? cust.contactName ?? "-"}

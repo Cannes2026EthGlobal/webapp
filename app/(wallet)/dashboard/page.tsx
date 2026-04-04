@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useCompany } from "@/hooks/use-company";
@@ -9,7 +10,9 @@ import { formatCents, formatUsdc } from "@/lib/format";
 
 import { PageHeader } from "@/components/page-header";
 import { CompanyGuard } from "@/components/company-guard";
+import { DepositDialog } from "@/components/deposit-dialog";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardAction,
@@ -24,7 +27,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 function OverviewContent() {
   const { companyId, company } = useCompany();
   const { payrollContractAddress } = useBusinessProfile();
-  const { balanceUsdc, isLoading: onChainLoading } = usePayrollBalance(payrollContractAddress);
+  const { balanceUsdc, isLoading: onChainLoading, refetch: refetchOnChain } = usePayrollBalance(payrollContractAddress);
+  const [showDeposit, setShowDeposit] = useState(false);
   const stats = useQuery(
     api.overview.stats,
     companyId ? { companyId } : "skip"
@@ -42,9 +46,9 @@ function OverviewContent() {
     );
   }
 
-  const topCards = [
+  const cards = [
     {
-      title: "Treasury",
+      title: "Treasury available",
       value: onChainLoading ? "..." : formatUsdc(balanceUsdc),
       trend: balanceUsdc && balanceUsdc > 0 ? "Funded" : "Empty",
       direction: "up" as const,
@@ -52,80 +56,65 @@ function OverviewContent() {
     {
       title: "Payroll due",
       value: formatCents(stats.payrollDueCents),
-      trend: `${stats.payrollDueCount} pending`,
+      trend: `${stats.payrollDueCount} due`,
       direction: "down" as const,
     },
     {
-      title: "Receivables",
+      title: "Pending receivables",
       value: formatCents(stats.receivablesCents),
       trend: `${stats.receivablesCount} pending`,
       direction: "up" as const,
     },
     {
-      title: "Revenue today",
+      title: "Usage revenue today",
       value: formatCents(stats.usageRevenueTodayCents),
       trend: stats.usageRevenueTodayCents > 0 ? "Active" : "No activity",
       direction: "up" as const,
     },
   ];
 
-  const bottomCards = [
-    {
-      title: "Total collected",
-      value: formatCents(stats.totalCollectedCents),
-      trend: `${stats.activeCustomers} customers`,
-      direction: "up" as const,
-    },
-    {
-      title: "Total paid out",
-      value: formatCents(stats.totalPaidOutCents),
-      trend: `${stats.activeEmployees} employees`,
-      direction: "down" as const,
-    },
-    {
-      title: "Overdue",
-      value: formatCents(stats.overdueCents),
-      trend: stats.overdueCount > 0 ? `${stats.overdueCount} overdue` : "None",
-      direction: "down" as const,
-    },
-    {
-      title: "Advance requests",
-      value: String(stats.pendingAdvances),
-      trend: stats.pendingAdvances > 0 ? "Needs review" : "All clear",
-      direction: stats.pendingAdvances > 0 ? "down" as const : "up" as const,
-    },
-  ];
-
-  const renderCards = (cards: typeof topCards) => (
-    <div className="grid grid-cols-1 gap-4 px-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card *:data-[slot=card]:shadow-xs lg:px-6 @xl/main:grid-cols-2 @5xl/main:grid-cols-4 dark:*:data-[slot=card]:bg-card">
-      {cards.map((card) => {
-        const icon =
-          card.direction === "up" ? ChartUpIcon : ChartDownIcon;
-        return (
-          <Card key={card.title} className="@container/card">
-            <CardHeader>
-              <CardDescription>{card.title}</CardDescription>
-              <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
-                {card.value}
-              </CardTitle>
-              <CardAction>
-                <Badge variant="outline">
-                  <HugeiconsIcon icon={icon} strokeWidth={2} />
-                  {card.trend}
-                </Badge>
-              </CardAction>
-            </CardHeader>
-          </Card>
-        );
-      })}
-    </div>
-  );
-
   return (
     <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
-      {renderCards(topCards)}
-      {renderCards(bottomCards)}
+      <div className="grid grid-cols-1 gap-4 px-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card *:data-[slot=card]:shadow-xs lg:px-6 @xl/main:grid-cols-2 @5xl/main:grid-cols-4 dark:*:data-[slot=card]:bg-card">
+        {cards.map((card) => {
+          const icon =
+            card.direction === "up" ? ChartUpIcon : ChartDownIcon;
+          const isTreasury = card.title === "Treasury available";
+          return (
+            <Card key={card.title} className="@container/card">
+              <CardHeader>
+                <CardDescription>{card.title}</CardDescription>
+                <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
+                  {card.value}
+                </CardTitle>
+                <CardAction>
+                  {isTreasury && payrollContractAddress ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowDeposit(true)}
+                    >
+                      Deposit
+                    </Button>
+                  ) : (
+                    <Badge variant="outline">
+                      <HugeiconsIcon icon={icon} strokeWidth={2} />
+                      {card.trend}
+                    </Badge>
+                  )}
+                </CardAction>
+              </CardHeader>
+            </Card>
+          );
+        })}
+      </div>
       <RecentActivity />
+      <DepositDialog
+        open={showDeposit}
+        onOpenChange={setShowDeposit}
+        contractAddress={payrollContractAddress}
+        onSuccess={() => void refetchOnChain()}
+      />
     </div>
   );
 }

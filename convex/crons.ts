@@ -3,9 +3,7 @@ import { internalAction, internalQuery, internalMutation } from "./_generated/se
 import { internal, api } from "./_generated/api";
 import { v } from "convex/values";
 
-// ═══════════════════════════════════════════════════════════════════════
-// ADVANCE THRESHOLD CHECK
-// ═══════════════════════════════════════════════════════════════════════
+// ─── Internal helpers (called by the action) ───
 
 export const listAllCompanies = internalQuery({
   args: {},
@@ -14,11 +12,11 @@ export const listAllCompanies = internalQuery({
   },
 });
 
-export const getAdvanceSettingsInternal = internalQuery({
+export const getCreditSettingsInternal = internalQuery({
   args: { companyId: v.id("companies") },
   handler: async (ctx, args) => {
     return await ctx.db
-      .query("advanceSettings")
+      .query("creditSettings")
       .withIndex("by_companyId", (q) => q.eq("companyId", args.companyId))
       .unique();
   },
@@ -67,7 +65,7 @@ export const setAutoDisabledInternal = internalMutation({
   },
   handler: async (ctx, args) => {
     const existing = await ctx.db
-      .query("advanceSettings")
+      .query("creditSettings")
       .withIndex("by_companyId", (q) => q.eq("companyId", args.companyId))
       .unique();
     if (existing) {
@@ -76,14 +74,16 @@ export const setAutoDisabledInternal = internalMutation({
   },
 });
 
-export const checkAdvanceThresholds = internalAction({
+// ─── Main cron action ───
+
+export const checkCreditThresholds = internalAction({
   args: {},
   handler: async (ctx) => {
     const companies = await ctx.runQuery(internal.crons.listAllCompanies, {});
 
     for (const company of companies) {
       const settings = await ctx.runQuery(
-        internal.crons.getAdvanceSettingsInternal,
+        internal.crons.getCreditSettingsInternal,
         { companyId: company._id }
       );
       if (!settings) continue;
@@ -111,6 +111,17 @@ export const checkAdvanceThresholds = internalAction({
   },
 });
 
+// ─── Cron schedule ───
+
+const crons = cronJobs();
+
+crons.interval(
+  "check credit thresholds",
+  { hours: 1 },
+  internal.crons.checkCreditThresholds,
+  {}
+);
+
 // ═══════════════════════════════════════════════════════════════════════
 // WC PAY PAYMENT SYNC
 // ═══════════════════════════════════════════════════════════════════════
@@ -123,12 +134,8 @@ const IS_MOCK = process.env.WC_PAY_MOCK === "true";
 export const getPendingWcPayments = internalQuery({
   args: {},
   handler: async (ctx) => {
-    const all = await ctx.db
-      .query("customerPayments")
-      .take(200);
-    return all.filter(
-      (p) => p.status === "pending" && p.wcPayPaymentId
-    );
+    const all = await ctx.db.query("customerPayments").take(200);
+    return all.filter((p) => p.status === "pending" && p.wcPayPaymentId);
   },
 });
 
@@ -142,7 +149,6 @@ export const syncWcPayStatuses = internalAction({
 
     for (const payment of pending) {
       if (!payment.wcPayPaymentId) continue;
-
       try {
         const res = await fetch(
           `${WC_PAY_API_URL}/v1/merchants/payment/${payment.wcPayPaymentId}/status`,
@@ -154,26 +160,12 @@ export const syncWcPayStatuses = internalAction({
             },
           }
         );
-
         if (!res.ok) continue;
-
-        const data = (await res.json()) as {
-          status: string;
-          isFinal: boolean;
-        };
-
+        const data = (await res.json()) as { status: string; isFinal: boolean };
         if (data.status === "succeeded") {
-          await ctx.runMutation(api.checkout.confirmPayment, {
-            paymentId: payment._id,
-          });
-        } else if (
-          data.isFinal &&
-          (data.status === "failed" || data.status === "expired")
-        ) {
-          await ctx.runMutation(api.customerPayments.updateStatus, {
-            id: payment._id,
-            status: "cancelled",
-          });
+          await ctx.runMutation(api.checkout.confirmPayment, { paymentId: payment._id });
+        } else if (data.isFinal && (data.status === "failed" || data.status === "expired")) {
+          await ctx.runMutation(api.customerPayments.updateStatus, { id: payment._id, status: "cancelled" });
         }
       } catch {
         // Skip failures, retry next cycle
@@ -181,19 +173,6 @@ export const syncWcPayStatuses = internalAction({
     }
   },
 });
-
-// ═══════════════════════════════════════════════════════════════════════
-// CRON SCHEDULE
-// ═══════════════════════════════════════════════════════════════════════
-
-const crons = cronJobs();
-
-crons.interval(
-  "check advance thresholds",
-  { hours: 1 },
-  internal.crons.checkAdvanceThresholds,
-  {}
-);
 
 crons.interval(
   "sync wcpay payment statuses",

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { useDeployContract, useWaitForTransactionReceipt } from "wagmi";
 import { api } from "@/convex/_generated/api";
@@ -28,19 +28,22 @@ import { Skeleton } from "@/components/ui/skeleton";
 type Step = "details" | "deploy" | "done";
 
 export function OnboardingWizard({
+  userId,
   walletAddress,
   onComplete,
 }: {
+  userId: string;
   walletAddress: string;
   onComplete: () => void;
 }) {
   // ─── Persisted state from Convex ───
   const savedState = useQuery(api.onboardingState.get, {
-    ownerWallet: walletAddress,
+    userId: userId as import("../convex/_generated/dataModel").Id<"users">,
   });
   const saveState = useMutation(api.onboardingState.save);
   const removeState = useMutation(api.onboardingState.remove);
-  const createProfile = useMutation(api.businessProfiles.create);
+  const completeOnboarding = useMutation(api.onboarding.complete);
+  const seedCompanyData = useMutation(api.seed.seedCompanyData);
 
   // ─── Local state (hydrated from Convex) ───
   const [hydrated, setHydrated] = useState(false);
@@ -87,7 +90,7 @@ export function OnboardingWizard({
       deployedAddress?: string;
     }) => {
       void saveState({
-        ownerWallet: walletAddress,
+        userId: userId as import("../convex/_generated/dataModel").Id<"users">,
         step: overrides.step ?? step,
         businessName: overrides.businessName ?? formData.businessName,
         description: (overrides.description ?? formData.description) || undefined,
@@ -98,7 +101,7 @@ export function OnboardingWizard({
       });
     },
     [
-      walletAddress,
+      userId,
       step,
       formData,
       savedTxHash,
@@ -163,22 +166,33 @@ export function OnboardingWizard({
     );
   };
 
-  const handleFinish = async () => {
+  const [isFinishing, setIsFinishing] = useState(false);
+
+  const handleFinish = async (withDemoData: boolean) => {
     if (!deployedAddress) return;
+    setIsFinishing(true);
     try {
-      await createProfile({
-        ownerWallet: walletAddress,
+      const result = await completeOnboarding({
+        userId: userId as import("../convex/_generated/dataModel").Id<"users">,
         businessName: formData.businessName,
         description: formData.description || undefined,
         industry: formData.industry || undefined,
         website: formData.website || undefined,
         payrollContractAddress: deployedAddress,
+        walletAddress,
       });
-      await removeState({ ownerWallet: walletAddress });
-      toast.success("Business profile created");
+      if (withDemoData && result.companyId) {
+        await seedCompanyData({
+          companyId: result.companyId as import("../convex/_generated/dataModel").Id<"companies">,
+        });
+      }
+      await removeState({ userId: userId as import("../convex/_generated/dataModel").Id<"users"> });
+      toast.success(withDemoData ? "Workspace created with demo data" : "Business profile created");
       onComplete();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to save profile");
+    } finally {
+      setIsFinishing(false);
     }
   };
 
@@ -432,12 +446,26 @@ export function OnboardingWizard({
                   <Badge variant="outline">Arc Testnet</Badge>
                 </div>
               </div>
-              <Button
-                className="w-full"
-                onClick={() => void handleFinish()}
-              >
-                Enter dashboard
-              </Button>
+              <div className="flex flex-col gap-2">
+                <Button
+                  className="w-full"
+                  disabled={isFinishing}
+                  onClick={() => void handleFinish(false)}
+                >
+                  {isFinishing ? "Setting up..." : "Enter dashboard"}
+                </Button>
+                <Button
+                  className="w-full"
+                  variant="outline"
+                  disabled={isFinishing}
+                  onClick={() => void handleFinish(true)}
+                >
+                  {isFinishing ? "Setting up..." : "Fill with demo data"}
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground text-center">
+                Demo adds sample employees, customers, products, and payments to your workspace.
+              </p>
             </CardContent>
           </Card>
         )}

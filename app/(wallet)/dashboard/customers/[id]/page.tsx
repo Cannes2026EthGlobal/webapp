@@ -249,20 +249,23 @@ export default function CustomerDetailPage({
                 <>
                   <div className="grid grid-cols-2 gap-4">
                     <Field label="Display name" value={customer.displayName} />
+                    <Field label="Full name" value={customer.fullName ?? "Not provided"} />
                     <Field label="Customer type" value={customer.customerType} />
-                    <Field label="Pricing model" value={customer.pricingModel} />
                     <Field
                       label="Billing state"
                       value={customer.billingState}
                       badge
                     />
-                    <Field
-                      label="Contact"
-                      value={customer.contactName ?? "Not provided"}
-                    />
+                    <Field label="Pricing model" value={customer.pricingModel} />
+                    <Field label="Country" value={customer.country ?? "Not provided"} />
+                    <Field label="Date of birth" value={customer.dateOfBirth ?? "Not provided"} />
                     <Field
                       label="Email"
                       value={customer.email ?? "Not provided"}
+                    />
+                    <Field
+                      label="Contact"
+                      value={customer.contactName ?? "Not provided"}
                     />
                   </div>
                   {customer.notes && (

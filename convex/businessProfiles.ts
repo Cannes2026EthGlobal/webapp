@@ -1,32 +1,32 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 
-export const getByWallet = query({
-  args: { wallet: v.string() },
+export const getByUserId = query({
+  args: { userId: v.id("users") },
   handler: async (ctx, args) => {
     return await ctx.db
       .query("businessProfiles")
-      .withIndex("by_ownerWallet", (q) => q.eq("ownerWallet", args.wallet))
+      .withIndex("by_userId", (q) => q.eq("userId", args.userId))
       .unique();
   },
 });
 
 export const create = mutation({
   args: {
-    ownerWallet: v.string(),
+    userId: v.id("users"),
     businessName: v.string(),
     description: v.optional(v.string()),
     industry: v.optional(v.string()),
     website: v.optional(v.string()),
-    payrollContractAddress: v.string(),
+    payrollContractAddress: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const existing = await ctx.db
       .query("businessProfiles")
-      .withIndex("by_ownerWallet", (q) => q.eq("ownerWallet", args.ownerWallet))
+      .withIndex("by_userId", (q) => q.eq("userId", args.userId))
       .unique();
     if (existing) {
-      throw new Error("Business profile already exists for this wallet");
+      throw new Error("Business profile already exists for this user");
     }
     return await ctx.db.insert("businessProfiles", args);
   },

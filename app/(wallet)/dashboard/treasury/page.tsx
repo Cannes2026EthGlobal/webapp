@@ -1,40 +1,18 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useQuery, useMutation } from "convex/react";
-import { useSendTransaction } from "wagmi";
-import { parseEther } from "viem";
+import { useState } from "react";
+import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useCompany } from "@/hooks/use-company";
 import { useBusinessProfile } from "@/hooks/use-business-profile";
 import { usePayrollBalance } from "@/hooks/use-payroll-contract";
-import { useCctpBridge } from "@/hooks/use-cctp-bridge";
-import { centsToWei } from "@/lib/contracts";
 import { formatCents, formatDate } from "@/lib/format";
-import { PAYROLL_ABI } from "@/lib/payroll-contract";
-import { toast } from "sonner";
 
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { PageHeader } from "@/components/page-header";
 import { CompanyGuard } from "@/components/company-guard";
+import { DepositDialog } from "@/components/deposit-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import {
   Card,
   CardContent,
@@ -50,7 +28,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 
 function TreasuryContent() {
@@ -63,43 +40,6 @@ function TreasuryContent() {
   } = usePayrollBalance(payrollContractAddress);
 
   const [showDeposit, setShowDeposit] = useState(false);
-  const [isDepositing, setIsDepositing] = useState(false);
-  const { sendTransactionAsync } = useSendTransaction();
-  const creditBalance = useMutation(api.balances.credit);
-
-  const handleDeposit = async (amount: string) => {
-    if (!payrollContractAddress || !companyId) return;
-    const usdcFloat = parseFloat(amount);
-    if (usdcFloat <= 0) return;
-    // Store in cents, minimum 1 cent for sub-cent amounts
-    const cents = Math.max(1, Math.round(usdcFloat * 100));
-
-    setIsDepositing(true);
-    try {
-      const txHash = await sendTransactionAsync({
-        to: payrollContractAddress,
-        value: parseEther(amount),
-      });
-
-      toast.success("Transaction submitted, recording in ledger...");
-
-      await creditBalance({
-        companyId,
-        amountCents: cents,
-        currency: "USD" as const,
-        reason: `Payroll contract deposit — ${amount} USDC`,
-        relatedPaymentId: txHash,
-      });
-
-      toast.success("Deposit confirmed and recorded in ledger");
-      void refetchOnChain();
-      setShowDeposit(false);
-    } catch (err: any) {
-      toast.error(err?.message?.slice(0, 100) ?? "Deposit failed");
-    } finally {
-      setIsDepositing(false);
-    }
-  };
 
   const entries = useQuery(
     api.balances.getEntriesForCompany,
@@ -149,6 +89,19 @@ function TreasuryContent() {
               </div>
             </div>
           </CardHeader>
+          <CardContent>
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <Badge variant="outline">Arc Testnet</Badge>
+              <a
+                href={`https://testnet.arcscan.app/address/${payrollContractAddress}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-mono hover:underline"
+              >
+                {payrollContractAddress.slice(0, 10)}...{payrollContractAddress.slice(-8)}
+              </a>
+            </div>
+          </CardContent>
         </Card>
       )}
 
@@ -280,140 +233,13 @@ function TreasuryContent() {
         </CardContent>
       </Card>
 
-      {/* ─── CCTP Bridge ─── */}
-      <CctpBridgeCard />
-
       <DepositDialog
         open={showDeposit}
         onOpenChange={setShowDeposit}
-        isDepositing={isDepositing}
-        onDeposit={handleDeposit}
+        contractAddress={payrollContractAddress}
+        onSuccess={() => void refetchOnChain()}
       />
     </div>
-  );
-}
-
-function DepositDialog({
-  open,
-  onOpenChange,
-  isDepositing,
-  onDeposit,
-}: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  isDepositing: boolean;
-  onDeposit: (amount: string) => void;
-}) {
-  const [amount, setAmount] = useState("");
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Deposit USDC to payroll contract</DialogTitle>
-          <DialogDescription>
-            Send native USDC to fund your payroll contract on Arc testnet.
-          </DialogDescription>
-        </DialogHeader>
-        <div className="grid gap-4 py-4">
-          <div className="grid gap-2">
-            <Label>Amount (USDC)</Label>
-            <Input
-              type="number"
-              step="0.01"
-              min="0"
-              placeholder="5.00"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-            />
-          </div>
-          {isDepositing && (
-            <div className="flex items-center gap-2">
-              <div className="size-2 animate-pulse rounded-full bg-yellow-500" />
-              <span className="text-sm">Processing deposit...</span>
-            </div>
-          )}
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isDepositing}>
-            Cancel
-          </Button>
-          <Button
-            onClick={() => onDeposit(amount)}
-            disabled={isDepositing || !amount || parseFloat(amount) <= 0}
-          >
-            {isDepositing ? "Depositing..." : "Deposit"}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-function CctpBridgeCard() {
-  const { bridge, state, reset } = useCctpBridge();
-  const [amount, setAmount] = useState("");
-  const [recipient, setRecipient] = useState("");
-  const [destination, setDestination] = useState<"arbitrum" | "base">("arbitrum");
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>CCTP Bridge</CardTitle>
-        <CardDescription>
-          Bridge USDC from Arc to {destination === "arbitrum" ? "Arbitrum" : "Base"} via Circle CCTP V2
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        <div className="flex gap-2">
-          <Select value={destination} onValueChange={(v) => setDestination(v as "arbitrum" | "base")}>
-            <SelectTrigger className="w-36">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="arbitrum">Arbitrum</SelectItem>
-              <SelectItem value="base">Base</SelectItem>
-            </SelectContent>
-          </Select>
-          <Input
-            type="number"
-            placeholder="USDC amount"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            className="flex-1"
-          />
-        </div>
-        <div className="flex items-center gap-3">
-          <Button
-            onClick={() => {
-              const wei = centsToWei(Math.round(parseFloat(amount) * 100));
-              bridge(wei, recipient as `0x${string}`, destination);
-            }}
-            disabled={state.step !== "idle" && state.step !== "done" && state.step !== "error"}
-          >
-            {state.step === "idle" || state.step === "done" || state.step === "error"
-              ? "Bridge USDC"
-              : `${state.step}...`}
-          </Button>
-          {(state.step === "done" || state.step === "error") && (
-            <Button variant="outline" size="sm" onClick={reset}>Reset</Button>
-          )}
-        </div>
-        {state.step === "error" && (
-          <p className="text-xs text-destructive">{state.error}</p>
-        )}
-        {state.step === "done" && (
-          <p className="text-xs text-green-600">
-            Bridge complete! Burn tx: {state.burnTxHash?.slice(0, 14)}...
-          </p>
-        )}
-        {state.step === "attesting" && (
-          <p className="text-xs text-muted-foreground">
-            Waiting for Circle attestation (may take 1-2 minutes)...
-          </p>
-        )}
-      </CardContent>
-    </Card>
   );
 }
 

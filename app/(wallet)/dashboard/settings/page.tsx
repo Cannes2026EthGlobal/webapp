@@ -49,9 +49,9 @@ function SettingsContent() {
               <p className="text-sm text-muted-foreground">{company.slug}</p>
             </div>
             <div>
-              <p className="text-sm font-medium">Owner wallet</p>
+              <p className="text-sm font-medium">Owner</p>
               <p className="text-sm text-muted-foreground font-mono">
-                {company.ownerWallet}
+                {walletAddress ?? company.ownerId}
               </p>
             </div>
             <div>

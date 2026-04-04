@@ -1,8 +1,8 @@
 import { mutation, query } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
 import { v } from "convex/values";
-import { api } from "./_generated/api";
 import { creditBalance } from "./balances";
+import { findOrCreateCustomerByWallet } from "./customers";
 
 /** Generate a short referenceId that fits WC Pay's 35-char limit. */
 function shortRef(): string {
@@ -23,6 +23,9 @@ export const initiateCheckout = mutation({
     slug: v.string(),
     quantity: v.optional(v.number()),
     buyerWallet: v.optional(v.string()),
+    buyerFullName: v.optional(v.string()),
+    buyerEmail: v.optional(v.string()),
+    buyerCountry: v.optional(v.string()),
   },
   handler: async (ctx, args): Promise<{
     paymentId: Id<"customerPayments">;
@@ -49,9 +52,12 @@ export const initiateCheckout = mutation({
     // Auto-register customer if wallet provided
     let customerId = undefined;
     if (args.buyerWallet) {
-      customerId = await ctx.runMutation(api.customers.findOrCreateByWallet, {
+      customerId = await findOrCreateCustomerByWallet(ctx, {
         companyId: link.companyId,
         walletAddress: args.buyerWallet,
+        fullName: args.buyerFullName,
+        email: args.buyerEmail,
+        country: args.buyerCountry,
       });
     }
 
@@ -108,7 +114,7 @@ export const initiateUsagePayment = mutation({
 
     let customerId = undefined;
     if (args.buyerWallet) {
-      customerId = await ctx.runMutation(api.customers.findOrCreateByWallet, {
+      customerId = await findOrCreateCustomerByWallet(ctx, {
         companyId: args.companyId,
         walletAddress: args.buyerWallet,
       });
@@ -165,25 +171,36 @@ export const confirmPayment = mutation({
     paymentId: v.id("customerPayments"),
     txHash: v.optional(v.string()),
     buyerWallet: v.optional(v.string()),
+    buyerFullName: v.optional(v.string()),
+    buyerDateOfBirth: v.optional(v.string()),
+    buyerCountry: v.optional(v.string()),
+    buyerEmail: v.optional(v.string()),
   },
   handler: async (ctx, args): Promise<void> => {
     const payment = await ctx.db.get(args.paymentId);
     if (!payment) throw new Error("Payment not found");
     if (payment.status === "paid") return; // idempotent
 
-    // Auto-register customer if wallet provided and no customer yet
-    if (args.buyerWallet && !payment.customerId) {
-      const customerId = await ctx.runMutation(api.customers.findOrCreateByWallet, {
+    // Auto-register customer with full details from the transaction
+    let resolvedCustomerId = payment.customerId;
+    if (args.buyerWallet) {
+      resolvedCustomerId = await findOrCreateCustomerByWallet(ctx, {
         companyId: payment.companyId,
         walletAddress: args.buyerWallet,
+        fullName: args.buyerFullName,
+        dateOfBirth: args.buyerDateOfBirth,
+        country: args.buyerCountry,
+        email: args.buyerEmail,
       });
-      await ctx.db.patch(args.paymentId, { customerId });
+      if (resolvedCustomerId !== payment.customerId) {
+        await ctx.db.patch(args.paymentId, { customerId: resolvedCustomerId });
+      }
     }
 
     // Credit treasury
     let customerName = "Anonymous";
-    if (payment.customerId) {
-      const customer = await ctx.db.get(payment.customerId);
+    if (resolvedCustomerId) {
+      const customer = await ctx.db.get(resolvedCustomerId);
       customerName = customer?.displayName ?? "Unknown";
     }
 
@@ -198,7 +215,10 @@ export const confirmPayment = mutation({
     await ctx.db.patch(args.paymentId, {
       status: "paid",
       paidAt: Date.now(),
-      ...(args.txHash ? { txHash: args.txHash } : {}),
+      ...(args.txHash ? {
+        txHash: args.txHash,
+        txExplorerUrl: `https://testnet.arcscan.app/tx/${args.txHash}`,
+      } : {}),
     });
   },
 });

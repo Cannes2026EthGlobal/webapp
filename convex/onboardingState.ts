@@ -8,20 +8,18 @@ const stepValidator = v.union(
 );
 
 export const get = query({
-  args: { ownerWallet: v.string() },
+  args: { userId: v.id("users") },
   handler: async (ctx, args) => {
     return await ctx.db
       .query("onboardingState")
-      .withIndex("by_ownerWallet", (q) =>
-        q.eq("ownerWallet", args.ownerWallet)
-      )
+      .withIndex("by_userId", (q) => q.eq("userId", args.userId))
       .unique();
   },
 });
 
 export const save = mutation({
   args: {
-    ownerWallet: v.string(),
+    userId: v.id("users"),
     step: stepValidator,
     businessName: v.string(),
     description: v.optional(v.string()),
@@ -33,9 +31,7 @@ export const save = mutation({
   handler: async (ctx, args) => {
     const existing = await ctx.db
       .query("onboardingState")
-      .withIndex("by_ownerWallet", (q) =>
-        q.eq("ownerWallet", args.ownerWallet)
-      )
+      .withIndex("by_userId", (q) => q.eq("userId", args.userId))
       .unique();
 
     if (existing) {
@@ -56,13 +52,11 @@ export const save = mutation({
 });
 
 export const remove = mutation({
-  args: { ownerWallet: v.string() },
+  args: { userId: v.id("users") },
   handler: async (ctx, args) => {
     const existing = await ctx.db
       .query("onboardingState")
-      .withIndex("by_ownerWallet", (q) =>
-        q.eq("ownerWallet", args.ownerWallet)
-      )
+      .withIndex("by_userId", (q) => q.eq("userId", args.userId))
       .unique();
     if (existing) {
       await ctx.db.delete(existing._id);

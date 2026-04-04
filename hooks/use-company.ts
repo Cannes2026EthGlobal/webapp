@@ -11,9 +11,23 @@ const ACTIVE_COMPANY_KEY = "arc-counting-active-company";
 export function useCompany() {
   const { address, isConnected } = useAppKitAccount();
 
+  // Step 1: resolve wallet → user record
+  const user = useQuery(
+    api.users.getByWallet,
+    address ? { walletAddress: address } : "skip"
+  );
+  const ensureUser = useMutation(api.users.getOrCreateByWallet);
+
+  // Create user record on first connect (user === null means loaded but missing)
+  useEffect(() => {
+    if (!address || user === undefined || user !== null) return;
+    void ensureUser({ walletAddress: address });
+  }, [address, user, ensureUser]);
+
+  // Step 2: resolve userId → companies (via companyMembers)
   const companies = useQuery(
-    api.companies.getByWallet,
-    address ? { wallet: address } : "skip"
+    api.companies.getByUserId,
+    user?._id ? { userId: user._id } : "skip"
   );
 
   const seedMutation = useMutation(api.seed.seedDemoData);
@@ -44,7 +58,7 @@ export function useCompany() {
 
   const seed = useCallback(async () => {
     if (!address) return null;
-    return await seedMutation({ ownerWallet: address });
+    return await seedMutation({ walletAddress: address });
   }, [address, seedMutation]);
 
   const company = useMemo(() => {
@@ -56,13 +70,17 @@ export function useCompany() {
     return companies[0];
   }, [companies, activeCompanyId]);
 
+  // isLoading: true while user record or companies are still being fetched
+  const isLoading = isConnected && (user === undefined || companies === undefined);
+
   return {
     company,
     companyId: company?._id as Id<"companies"> | null,
     companies: companies ?? [],
-    isLoading: companies === undefined,
+    isLoading,
     isConnected,
     walletAddress: address,
+    userId: user?._id ?? null,
     seed,
     hasCompany: !!company,
     switchCompany,

@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Arc Counting — AI Image Generation Demo</title>
+  <style>
+    :root {
+      --bg: #09090b;
+      --surface: #18181b;
+      --border: #27272a;
+      --text: #fafafa;
+      --muted: #71717a;
+      --accent: #3b82f6;
+      --accent-hover: #2563eb;
+      --success: #22c55e;
+      --warn: #eab308;
+      --danger: #ef4444;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+    .container { max-width: 720px; margin: 0 auto; padding: 2rem 1.5rem; }
+    h1 { font-size: 1.5rem; font-weight: 600; }
+    .subtitle { color: var(--muted); font-size: 0.875rem; margin-top: 0.25rem; margin-bottom: 2rem; }
+
+    .prompt-form { display: flex; gap: 0.5rem; margin-bottom: 1.5rem; }
+    .prompt-form input {
+      flex: 1; padding: 0.75rem 1rem; background: var(--surface);
+      border: 1px solid var(--border); border-radius: 10px; color: var(--text);
+      font-size: 0.9375rem; outline: none; transition: border-color 0.15s;
+    }
+    .prompt-form input:focus { border-color: var(--accent); }
+    .prompt-form input::placeholder { color: var(--muted); }
+    .prompt-form button {
+      padding: 0.75rem 1.5rem; background: var(--accent); color: white;
+      border: none; border-radius: 10px; font-size: 0.875rem; font-weight: 500;
+      cursor: pointer; white-space: nowrap; transition: background 0.15s;
+    }
+    .prompt-form button:hover { background: var(--accent-hover); }
+    .prompt-form button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .usage-bar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0.875rem 1rem; background: var(--surface);
+      border: 1px solid var(--border); border-radius: 10px; margin-bottom: 1.5rem;
+    }
+    .usage-bar .left { display: flex; align-items: center; gap: 1rem; }
+    .usage-stat { text-align: center; }
+    .usage-stat .val { font-size: 1.125rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+    .usage-stat .lbl { font-size: 0.6875rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+    .usage-bar button {
+      padding: 0.5rem 1rem; border-radius: 8px; border: none;
+      font-size: 0.8125rem; font-weight: 500; cursor: pointer;
+    }
+    .btn-pay { background: var(--success); color: #052e16; }
+    .btn-pay:hover { background: #16a34a; }
+    .btn-pay:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .gallery { display: flex; flex-direction: column; gap: 1.5rem; }
+    .image-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 12px; overflow: hidden;
+    }
+    .image-card img { width: 100%; display: block; aspect-ratio: 1; object-fit: cover; }
+    .image-card .meta { padding: 1rem; }
+    .image-card .prompt-text { font-size: 0.875rem; line-height: 1.5; margin-bottom: 0.5rem; }
+    .image-card .revised { font-size: 0.75rem; color: var(--muted); font-style: italic; }
+    .image-card .usage-tag {
+      display: inline-block; margin-top: 0.5rem; padding: 0.125rem 0.5rem;
+      border-radius: 9999px; font-size: 0.6875rem; background: #14532d; color: #86efac;
+    }
+
+    .loading {
+      display: flex; align-items: center; justify-content: center;
+      padding: 3rem; color: var(--muted); font-size: 0.875rem;
+    }
+    .loading .spinner {
+      width: 20px; height: 20px; border: 2px solid var(--border);
+      border-top-color: var(--accent); border-radius: 50%;
+      animation: spin 0.8s linear infinite; margin-right: 0.75rem;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .error-msg {
+      padding: 0.75rem 1rem; background: #2d1215; border: 1px solid #7f1d1d;
+      border-radius: 8px; color: #fca5a5; font-size: 0.8125rem; margin-bottom: 1rem;
+    }
+    .pay-link {
+      display: block; margin-bottom: 1rem; padding: 0.875rem 1rem;
+      background: #0c1929; border: 1px solid #1e3a5f; border-radius: 10px;
+      color: #93c5fd; font-size: 0.875rem; text-decoration: none;
+      text-align: center; transition: background 0.15s;
+    }
+    .pay-link:hover { background: #122640; }
+
+    .history-section { margin-top: 1.5rem; }
+    .history-section h3 { font-size: 0.8125rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.75rem; }
+    .history-item {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 0.625rem 0.75rem; background: var(--surface);
+      border: 1px solid var(--border); border-radius: 8px; margin-bottom: 0.5rem;
+      font-size: 0.8125rem;
+    }
+    .history-item .amount { font-weight: 600; font-variant-numeric: tabular-nums; }
+    .history-item a { color: var(--accent); text-decoration: none; font-size: 0.75rem; }
+    .history-item a:hover { text-decoration: underline; }
+
+    .empty { text-align: center; padding: 4rem 1rem; color: var(--muted); }
+    .empty p { font-size: 0.875rem; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>AI Image Generator</h1>
+    <p class="subtitle">
+      Powered by DALL-E 3 &middot; Usage billed via Arc Counting &middot; Pay with WalletConnect
+    </p>
+
+    <div class="prompt-form">
+      <input type="text" id="prompt" placeholder="Describe the image you want to generate..." autofocus />
+      <button id="generate-btn" onclick="generate()">Generate</button>
+    </div>
+
+    <div id="error"></div>
+    <div id="pay-section"></div>
+
+    <div class="usage-bar">
+      <div class="left">
+        <div class="usage-stat">
+          <div class="val" id="total-images">0</div>
+          <div class="lbl">Images</div>
+        </div>
+        <div class="usage-stat">
+          <div class="val" id="total-cost">$0.00</div>
+          <div class="lbl">Running total</div>
+        </div>
+      </div>
+      <button class="btn-pay" id="pay-btn" onclick="payNow()" disabled>Pay &amp; settle</button>
+    </div>
+
+    <div id="loading" style="display:none;">
+      <div class="loading"><div class="spinner"></div>Generating image...</div>
+    </div>
+
+    <div id="gallery" class="gallery">
+      <div class="empty" id="empty-state">
+        <p>No images yet. Type a prompt above to get started.</p>
+      </div>
+    </div>
+
+    <div id="history" class="history-section" style="display:none;">
+      <h3>Previous invoices</h3>
+      <div id="history-list"></div>
+    </div>
+  </div>
+
+  <script>
+    const USER_ID = "demo-user@arc.app";
+    let tabId = null;
+    let totalImages = 0;
+    let totalCents = 0;
+    let images = [];
+    let billedTabs = [];
+
+    function fmt(cents) { return "$" + (cents / 100).toFixed(2); }
+
+    function updateUsageBar() {
+      document.getElementById("total-images").textContent = totalImages;
+      document.getElementById("total-cost").textContent = fmt(totalCents);
+      document.getElementById("pay-btn").disabled = totalImages === 0 || !tabId;
+    }
+
+    function showError(msg) {
+      const el = document.getElementById("error");
+      if (!msg) { el.innerHTML = ""; return; }
+      el.innerHTML = `<div class="error-msg">${msg}</div>`;
+    }
+
+    function escHtml(s) {
+      const el = document.createElement("span");
+      el.textContent = s;
+      return el.innerHTML;
+    }
+
+    function renderGallery() {
+      const gallery = document.getElementById("gallery");
+      if (images.length === 0) {
+        gallery.innerHTML = '<div class="empty" id="empty-state"><p>No images yet. Type a prompt above to get started.</p></div>';
+        return;
+      }
+      gallery.innerHTML = images.map((img, i) => `
+        <div class="image-card">
+          <img src="${img.url}" alt="${escHtml(img.prompt)}" loading="lazy" />
+          <div class="meta">
+            <div class="prompt-text">${escHtml(img.prompt)}</div>
+            ${img.revisedPrompt ? `<div class="revised">${escHtml(img.revisedPrompt)}</div>` : ""}
+            <span class="usage-tag">Image #${images.length - i} &middot; Running: ${fmt(img.totalCents)}</span>
+          </div>
+        </div>
+      `).join("");
+    }
+
+    function renderHistory() {
+      if (billedTabs.length === 0) {
+        document.getElementById("history").style.display = "none";
+        return;
+      }
+      document.getElementById("history").style.display = "block";
+      document.getElementById("history-list").innerHTML = billedTabs.map((t) => `
+        <div class="history-item">
+          <div>
+            <span class="amount">${fmt(t.amountCents)}</span>
+            <span style="color:var(--muted);margin-left:0.5rem;">${t.imageCount} image${t.imageCount !== 1 ? "s" : ""}</span>
+          </div>
+          <a href="${t.checkoutUrl}" target="_blank">Pay &rarr;</a>
+        </div>
+      `).join("");
+    }
+
+    // ─── Restore session on load ───
+    async function restoreSession() {
+      try {
+        const res = await fetch(`/api/session?userId=${encodeURIComponent(USER_ID)}`);
+        if (!res.ok) return;
+        const session = await res.json();
+
+        tabId = session.tabId;
+        totalImages = session.totalUnits || 0;
+        totalCents = session.totalCents || 0;
+        images = session.images || [];
+        billedTabs = session.billedTabs || [];
+
+        updateUsageBar();
+        renderGallery();
+        renderHistory();
+      } catch {
+        // First load, no session yet
+      }
+    }
+
+    async function generate() {
+      const input = document.getElementById("prompt");
+      const prompt = input.value.trim();
+      if (!prompt) return;
+
+      const btn = document.getElementById("generate-btn");
+      btn.disabled = true;
+      btn.textContent = "Generating...";
+      document.getElementById("loading").style.display = "block";
+      document.getElementById("empty-state") && (document.getElementById("empty-state").style.display = "none");
+      showError("");
+
+      try {
+        const res = await fetch("/api/generate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ prompt, userId: USER_ID }),
+        });
+
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.error || "Generation failed");
+        }
+
+        const data = await res.json();
+
+        tabId = data.usage.tabId;
+        totalImages = data.usage.totalUnits;
+        totalCents = data.usage.totalCents;
+
+        images.unshift({
+          url: data.imageUrl,
+          prompt,
+          revisedPrompt: data.revisedPrompt,
+          totalUnits: data.usage.totalUnits,
+          totalCents: data.usage.totalCents,
+        });
+
+        updateUsageBar();
+        renderGallery();
+        input.value = "";
+      } catch (err) {
+        showError(err.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "Generate";
+        document.getElementById("loading").style.display = "none";
+      }
+    }
+
+    async function payNow() {
+      if (!tabId) return;
+      const btn = document.getElementById("pay-btn");
+      btn.disabled = true;
+      btn.textContent = "Billing...";
+      showError("");
+
+      try {
+        const res = await fetch("/api/bill", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ tabId, userId: USER_ID }),
+        });
+
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.error || "Billing failed");
+        }
+
+        const data = await res.json();
+
+        document.getElementById("pay-section").innerHTML =
+          `<a class="pay-link" href="${data.checkoutUrl}" target="_blank">` +
+          `Pay ${fmt(data.amountCents)} for ${totalImages} image(s) via WalletConnect Pay &rarr;</a>`;
+
+        // Add to local history immediately
+        billedTabs.unshift({
+          amountCents: data.amountCents,
+          checkoutUrl: data.checkoutUrl,
+          imageCount: totalImages,
+        });
+        renderHistory();
+
+        tabId = null;
+        totalImages = 0;
+        totalCents = 0;
+        updateUsageBar();
+        btn.textContent = "Pay & settle";
+      } catch (err) {
+        showError(err.message);
+        btn.disabled = false;
+        btn.textContent = "Pay & settle";
+      }
+    }
+
+    document.getElementById("prompt").addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); generate(); }
+    });
+
+    // Init
+    restoreSession();
+  </script>
+</body>
+</html>

@@ -32,7 +32,7 @@ export function CreateCompanyDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
-  const { walletAddress, switchCompany } = useCompany();
+  const { userId, switchCompany } = useCompany();
   const createCompany = useMutation(api.companies.create);
 
   const [formData, setFormData] = useState({
@@ -52,12 +52,12 @@ export function CreateCompanyDialog({
   };
 
   const handleCreate = async () => {
-    if (!walletAddress || !formData.name || !formData.slug) return;
+    if (!userId || !formData.name || !formData.slug) return;
     try {
       const id = await createCompany({
         name: formData.name,
         slug: formData.slug,
-        ownerWallet: walletAddress,
+        userId,
         industry: formData.industry || undefined,
         website: formData.website || undefined,
       });
@@ -138,7 +138,7 @@ export function CreateCompanyDialog({
           </Button>
           <Button
             onClick={() => void handleCreate()}
-            disabled={!formData.name || !formData.slug}
+            disabled={!formData.name || !formData.slug || !userId}
           >
             Create workspace
           </Button>

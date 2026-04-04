@@ -7,7 +7,7 @@ const paymentTypeValidator = v.union(
   v.literal("freelance"),
   v.literal("bonus"),
   v.literal("reimbursement"),
-  v.literal("advance")
+  v.literal("credit")
 );
 
 const statusValidator = v.union(
@@ -123,7 +123,10 @@ export const updateStatus = mutation({
     await ctx.db.patch(args.id, {
       status: args.status,
       ...(args.settledAt !== undefined && { settledAt: args.settledAt }),
-      ...(args.txHash !== undefined && { txHash: args.txHash }),
+      ...(args.txHash !== undefined && {
+        txHash: args.txHash,
+        txExplorerUrl: `https://testnet.arcscan.app/tx/${args.txHash}`,
+      }),
     });
   },
 });

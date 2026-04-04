@@ -1,11 +1,10 @@
 "use client";
 
 import { useCompany } from "@/hooks/use-company";
-import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export function CompanyGuard({ children }: { children: React.ReactNode }) {
-  const { company, isLoading, seed, isConnected } = useCompany();
+  const { company, isLoading } = useCompany();
 
   if (isLoading) {
     return (
@@ -27,19 +26,9 @@ export function CompanyGuard({ children }: { children: React.ReactNode }) {
   if (!company) {
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-4 p-8">
-        <div className="text-center">
-          <h2 className="text-lg font-semibold">Welcome to Arc Counting</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {isConnected
-              ? "No workspace found for this wallet. Create a demo workspace to get started."
-              : "Connect your wallet to access the operator desk."}
-          </p>
-        </div>
-        {isConnected && (
-          <Button onClick={() => void seed()} size="lg">
-            Create demo workspace
-          </Button>
-        )}
+        <p className="text-sm text-muted-foreground">
+          No workspace found. Please refresh or reconnect your wallet.
+        </p>
       </div>
     );
   }

@@ -298,6 +298,7 @@ export default function EmployeeDetailPage({
                       <TableHead>Status</TableHead>
                       <TableHead>Description</TableHead>
                       <TableHead>Date</TableHead>
+                      <TableHead>Tx</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -312,6 +313,20 @@ export default function EmployeeDetailPage({
                         </TableCell>
                         <TableCell className="text-muted-foreground">{p.description ?? "-"}</TableCell>
                         <TableCell className="text-muted-foreground">{p.settledAt ? formatDate(p.settledAt) : formatDate(p._creationTime)}</TableCell>
+                        <TableCell>
+                          {p.txHash ? (
+                            <a
+                              href={`https://testnet.arcscan.app/tx/${p.txHash}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="font-mono text-xs text-muted-foreground hover:text-foreground hover:underline"
+                            >
+                              {p.txHash.slice(0, 6)}…{p.txHash.slice(-4)}
+                            </a>
+                          ) : (
+                            <span className="text-muted-foreground">—</span>
+                          )}
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
