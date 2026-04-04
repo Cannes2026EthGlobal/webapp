@@ -116,7 +116,7 @@ describe("advanceRequests", () => {
     const payments = await t.query(api.employeePayments.listByEmployee, {
       employeeId,
     });
-    const advancePayment = payments.find((p) => p.type === "advance");
+    const advancePayment = payments.find((p: { type: string }) => p.type === "advance");
     expect(advancePayment).toBeTruthy();
     expect(advancePayment!.amountCents).toBe(490000);
     expect(advancePayment!.status).toBe("approved");
