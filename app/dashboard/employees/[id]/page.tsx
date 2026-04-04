@@ -366,10 +366,12 @@ function CompensationCard({
     amountCents: 0,
     asset: "USDC",
     frequency: "monthly" as string,
+    startDate: "",
+    endDate: "",
   });
 
   const resetForm = () => {
-    setForm({ name: "", description: "", type: "salary", amountCents: 0, asset: "USDC", frequency: "monthly" });
+    setForm({ name: "", description: "", type: "salary", amountCents: 0, asset: "USDC", frequency: "monthly", startDate: "", endDate: "" });
   };
 
   const handleAdd = async () => {
@@ -384,6 +386,8 @@ function CompensationCard({
         amountCents: form.amountCents,
         asset: form.asset,
         frequency: form.frequency as "monthly" | "biweekly" | "weekly" | "per-task" | "one-time",
+        startDate: form.startDate ? new Date(form.startDate).getTime() : undefined,
+        endDate: form.endDate ? new Date(form.endDate).getTime() : undefined,
         isActive: true,
       });
       toast.success("Compensation line added");
@@ -405,6 +409,8 @@ function CompensationCard({
         amountCents: form.amountCents,
         asset: form.asset,
         frequency: form.frequency as "monthly" | "biweekly" | "weekly" | "per-task" | "one-time",
+        startDate: form.startDate ? new Date(form.startDate).getTime() : undefined,
+        endDate: form.endDate ? new Date(form.endDate).getTime() : undefined,
       });
       toast.success("Compensation line updated");
       setEditingLine(null);
@@ -422,6 +428,8 @@ function CompensationCard({
       amountCents: line.amountCents,
       asset: line.asset,
       frequency: line.frequency,
+      startDate: line.startDate ? new Date(line.startDate).toISOString().slice(0, 10) : "",
+      endDate: line.endDate ? new Date(line.endDate).toISOString().slice(0, 10) : "",
     });
     setEditingLine(line);
   };
@@ -457,8 +465,8 @@ function CompensationCard({
                     <TableHead>Name</TableHead>
                     <TableHead>Type</TableHead>
                     <TableHead>Amount</TableHead>
-                    <TableHead>Asset</TableHead>
                     <TableHead>Frequency</TableHead>
+                    <TableHead>Period</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead />
                   </TableRow>
@@ -477,9 +485,13 @@ function CompensationCard({
                       <TableCell>
                         <Badge variant="outline" className="capitalize">{line.type}</Badge>
                       </TableCell>
-                      <TableCell className="tabular-nums">{formatCents(line.amountCents)}</TableCell>
-                      <TableCell>{line.asset}</TableCell>
+                      <TableCell className="tabular-nums">{formatCents(line.amountCents)} <span className="text-xs text-muted-foreground">{line.asset}</span></TableCell>
                       <TableCell className="capitalize">{line.frequency}</TableCell>
+                      <TableCell className="text-muted-foreground text-xs">
+                        {line.startDate ? formatDateShort(line.startDate) : "No start"}
+                        {" — "}
+                        {line.endDate ? formatDateShort(line.endDate) : "Ongoing"}
+                      </TableCell>
                       <TableCell>
                         <Badge variant={line.isActive ? "default" : "secondary"}>
                           {line.isActive ? "Active" : "Inactive"}
@@ -586,6 +598,24 @@ function CompensationCard({
               <div className="grid gap-2">
                 <Label>Asset</Label>
                 <Input value={form.asset} onChange={(e) => setForm({ ...form, asset: e.target.value })} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label>Start date</Label>
+                <Input
+                  type="date"
+                  value={form.startDate}
+                  onChange={(e) => setForm({ ...form, startDate: e.target.value })}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label>End date (leave empty for ongoing)</Label>
+                <Input
+                  type="date"
+                  value={form.endDate}
+                  onChange={(e) => setForm({ ...form, endDate: e.target.value })}
+                />
               </div>
             </div>
           </div>
