@@ -81,7 +81,7 @@ async function realCreatePayment(
   amountCents: number,
   currency: "USD" | "EUR" = "USD"
 ): Promise<CreatePaymentResponse> {
-  const res = await fetch(`${API_URL}/v1/merchants/payment`, {
+  const res = await fetch(`${API_URL}/v1/payments`, {
     method: "POST",
     headers: headers(),
     body: JSON.stringify({
@@ -103,7 +103,7 @@ async function realCreatePayment(
 
 async function realGetPaymentStatus(paymentId: string): Promise<PaymentStatus> {
   const res = await fetch(
-    `${API_URL}/v1/merchants/payment/${paymentId}/status`,
+    `${API_URL}/v1/payments/${paymentId}/status`,
     { method: "GET", headers: headers() }
   );
   if (!res.ok) {
@@ -133,7 +133,7 @@ async function realListAllPayments(
   if (params?.sortDir) qs.set("sortDir", params.sortDir);
 
   const res = await fetch(
-    `${API_URL}/v1/merchants/payments?${qs.toString()}`,
+    `${API_URL}/v1/payments?${qs.toString()}`,
     { method: "GET", headers: headers() }
   );
   if (!res.ok) {

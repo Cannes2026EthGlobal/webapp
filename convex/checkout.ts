@@ -4,6 +4,16 @@ import { v } from "convex/values";
 import { api } from "./_generated/api";
 import { creditBalance } from "./balances";
 
+/** Generate a short referenceId that fits WC Pay's 35-char limit. */
+function shortRef(): string {
+  const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
+  let id = "arc-";
+  for (let i = 0; i < 16; i++) {
+    id += chars[Math.floor(Math.random() * chars.length)];
+  }
+  return id; // 20 chars total, well under 35
+}
+
 /**
  * Initiate a checkout for a per-unit product via checkout link slug.
  * Creates a customer payment record and returns info needed for WC Pay.
@@ -58,7 +68,7 @@ export const initiateCheckout = mutation({
       quantity: qty,
     });
 
-    const referenceId = `arc::${link.companyId}::${paymentId}`;
+    const referenceId = shortRef();
     await ctx.db.patch(paymentId, { referenceId });
 
     return {
@@ -115,7 +125,7 @@ export const initiateUsagePayment = mutation({
       description: args.description ?? `${product.name} — usage`,
     });
 
-    const referenceId = `arc::${args.companyId}::${paymentId}`;
+    const referenceId = shortRef();
     await ctx.db.patch(paymentId, { referenceId });
 
     return {
