@@ -1,6 +1,34 @@
 import { mutation } from "./_generated/server";
 import { v } from "convex/values";
 
+/**
+ * Delete stale legacy documents that don't match the new schema.
+ * Run once: npx convex run cleanup:deleteStaleDocuments
+ */
+export const deleteStaleDocuments = mutation({
+  args: {},
+  handler: async (ctx) => {
+    let deleted = 0;
+    // Delete businessProfiles without userId
+    const profiles = await ctx.db.query("businessProfiles").take(100);
+    for (const p of profiles) {
+      if (!p.userId) {
+        await ctx.db.delete(p._id);
+        deleted++;
+      }
+    }
+    // Delete companies without ownerId
+    const companies = await ctx.db.query("companies").take(100);
+    for (const c of companies) {
+      if (!c.ownerId) {
+        await ctx.db.delete(c._id);
+        deleted++;
+      }
+    }
+    return { deleted };
+  },
+});
+
 export const clearAllData = mutation({
   args: { wallet: v.string() },
   handler: async (ctx, args) => {

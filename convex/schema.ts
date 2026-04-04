@@ -51,7 +51,8 @@ export default defineSchema({
   companies: defineTable({
     name: v.string(),
     slug: v.string(),
-    ownerId: v.id("users"),
+    ownerId: v.optional(v.id("users")),
+    ownerWallet: v.optional(v.string()), // legacy
     treasuryAddress: v.optional(v.string()),
     industry: v.optional(v.string()),
     website: v.optional(v.string()),
