@@ -147,11 +147,11 @@ function EmployeesContent({
   const toggleAdvance = async (id: Id<"employees">, currentNotes?: string) => {
     if (isAdvanceEnabled(currentNotes)) {
       await updateEmployee({ id, notes: `[no-advance]${currentNotes ?? ""}` });
-      toast.success("Advance requests disabled for this employee");
+      toast.success("Salary in advance disabled for this employee");
     } else {
       const cleaned = (currentNotes ?? "").replace("[no-advance]", "");
       await updateEmployee({ id, notes: cleaned || undefined });
-      toast.success("Advance requests enabled for this employee");
+      toast.success("Salary in advance enabled for this employee");
     }
   };
 
@@ -275,7 +275,7 @@ function EmployeesContent({
                     <TableHead>Type</TableHead>
                     <TableHead>Payout</TableHead>
                     <TableHead>Next payment</TableHead>
-                    <TableHead>Advance</TableHead>
+                    <TableHead>Salary in Advance</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead />
                   </TableRow>
