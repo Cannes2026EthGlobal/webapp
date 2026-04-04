@@ -172,18 +172,19 @@ export const confirmPayment = mutation({
     if (payment.status === "paid") return; // idempotent
 
     // Auto-register customer if wallet provided and no customer yet
-    if (args.buyerWallet && !payment.customerId) {
-      const customerId = await ctx.runMutation(api.customers.findOrCreateByWallet, {
+    let resolvedCustomerId = payment.customerId;
+    if (args.buyerWallet && !resolvedCustomerId) {
+      resolvedCustomerId = await ctx.runMutation(api.customers.findOrCreateByWallet, {
         companyId: payment.companyId,
         walletAddress: args.buyerWallet,
       });
-      await ctx.db.patch(args.paymentId, { customerId });
+      await ctx.db.patch(args.paymentId, { customerId: resolvedCustomerId });
     }
 
     // Credit treasury
     let customerName = "Anonymous";
-    if (payment.customerId) {
-      const customer = await ctx.db.get(payment.customerId);
+    if (resolvedCustomerId) {
+      const customer = await ctx.db.get(resolvedCustomerId);
       customerName = customer?.displayName ?? "Unknown";
     }
 
