@@ -65,7 +65,7 @@ export default function CheckoutPage() {
           if (convexPaymentId) {
             await confirmPayment({
               paymentId: convexPaymentId,
-              buyerWallet: data.buyer?.wallet ?? walletAddress || undefined,
+              buyerWallet: data.buyer?.wallet ?? (walletAddress || undefined),
               txHash: data.txHash,
               buyerFullName: data.buyer?.fullName,
               buyerDateOfBirth: data.buyer?.dateOfBirth,
