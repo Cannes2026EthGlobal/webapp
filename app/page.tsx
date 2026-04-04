@@ -405,7 +405,7 @@ export default function Page() {
 
       {/* ─── Under the hood ─── */}
       <section className="mx-auto max-w-4xl px-6 pb-24">
-        <h2 className="mb-6 text-center text-2xl font-light tracking-tight">
+        <h2 className="mb-8 text-center text-3xl font-light tracking-tight md:text-4xl">
           Under the hood
         </h2>
         <div className="grid gap-4 md:grid-cols-3">
