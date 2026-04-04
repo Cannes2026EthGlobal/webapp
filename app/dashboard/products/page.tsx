@@ -559,14 +559,12 @@ POST ${typeof window !== "undefined" ? window.location.origin : ""}/api/pay/webh
               <Input
                 id="unitPrice"
                 type="number"
-                step="0.01"
+                step="any"
                 value={formData.unitPriceCents / 100 || ""}
                 onChange={(e) =>
                   setFormData({
                     ...formData,
-                    unitPriceCents: Math.round(
-                      parseFloat(e.target.value || "0") * 100
-                    ),
+                    unitPriceCents: parseFloat(e.target.value || "0") * 100,
                   })
                 }
               />

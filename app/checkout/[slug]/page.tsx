@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useParams } from "next/navigation";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { formatCents } from "@/lib/format";
+import { formatCentsDetailed } from "@/lib/format";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -113,7 +113,7 @@ export default function CheckoutPage() {
           <CardHeader>
             <CardTitle>Complete your payment</CardTitle>
             <CardDescription>
-              You are paying {formatCents(totalCents)} for {product.name}
+              You are paying {formatCentsDetailed(totalCents)} for {product.name}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -162,7 +162,7 @@ export default function CheckoutPage() {
               </p>
             </div>
             <p className="text-xl font-semibold tabular-nums">
-              {formatCents(product.unitPriceCents)}
+              {formatCentsDetailed(product.unitPriceCents)}
             </p>
           </div>
 
@@ -195,7 +195,7 @@ export default function CheckoutPage() {
           <div className="flex items-center justify-between rounded-lg bg-muted p-4">
             <p className="font-medium">Total</p>
             <p className="text-2xl font-semibold tabular-nums">
-              {formatCents(totalCents)}
+              {formatCentsDetailed(totalCents)}
             </p>
           </div>
 
