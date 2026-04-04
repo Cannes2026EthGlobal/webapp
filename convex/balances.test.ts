@@ -117,7 +117,7 @@ describe("balances", () => {
       companyId,
     });
     expect(entries).toHaveLength(2);
-    const types = entries.map((e) => e.type);
+    const types = entries.map((e: { type: string }) => e.type);
     expect(types).toContain("credit");
     expect(types).toContain("debit");
   });

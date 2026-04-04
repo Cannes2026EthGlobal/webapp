@@ -262,4 +262,42 @@ export default defineSchema({
     relatedPaymentId: v.optional(v.string()),
     occurredAt: v.optional(v.number()),
   }).index("by_companyId", ["companyId"]),
+
+  // ─── Advance Settings (per company) ───
+  advanceSettings: defineTable({
+    companyId: v.id("companies"),
+    enabled: v.boolean(),
+    interestRateBps: v.number(), // basis points, e.g. 200 = 2%
+    maxAdvancePercent: v.number(), // 0-100, max % of next paycheck
+    autoDisableThresholdMonths: v.number(), // disable advances if treasury < N months of payroll
+    autoDisabled: v.boolean(), // set by cron when threshold breached
+  }).index("by_companyId", ["companyId"]),
+
+  // ─── Advance Requests (employee → company) ───
+  advanceRequests: defineTable({
+    companyId: v.id("companies"),
+    employeeId: v.id("employees"),
+    requestedAmountCents: v.number(),
+    interestAmountCents: v.number(), // calculated at request time
+    netAmountCents: v.number(), // requestedAmountCents - interestAmountCents
+    currency: v.union(v.literal("USD"), v.literal("EUR")),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("approved"),
+      v.literal("denied"),
+      v.literal("settled"), // advance paid out
+      v.literal("deducted"), // deducted from next paycheck
+      v.literal("cancelled")
+    ),
+    reason: v.optional(v.string()),
+    denyReason: v.optional(v.string()),
+    advancePaymentId: v.optional(v.id("employeePayments")),
+    deductedFromPaymentId: v.optional(v.id("employeePayments")),
+    nextPaycheckDate: v.number(),
+    nextPaycheckAmountCents: v.number(),
+  })
+    .index("by_companyId", ["companyId"])
+    .index("by_companyId_and_status", ["companyId", "status"])
+    .index("by_employeeId", ["employeeId"])
+    .index("by_employeeId_and_status", ["employeeId", "status"]),
 });
