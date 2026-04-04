@@ -9,6 +9,7 @@
  */
 
 import type * as balances from "../balances.js";
+import type * as businessProfiles from "../businessProfiles.js";
 import type * as companies from "../companies.js";
 import type * as compensationLines from "../compensationLines.js";
 import type * as customerPayments from "../customerPayments.js";
@@ -28,6 +29,7 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   balances: typeof balances;
+  businessProfiles: typeof businessProfiles;
   companies: typeof companies;
   compensationLines: typeof compensationLines;
   customerPayments: typeof customerPayments;

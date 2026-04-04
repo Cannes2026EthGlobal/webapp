@@ -1,0 +1,3 @@
+[submodule "contracts/arccounting-cre-prod"]
+	path = contracts/arccounting-cre-prod
+	url = https://github.com/Cannes2026EthGlobal/arccounting-cre-prod.git

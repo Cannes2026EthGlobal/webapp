@@ -2,6 +2,16 @@ import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
 export default defineSchema({
+  // ─── Business Profiles (1:1 per wallet, gates dashboard access) ───
+  businessProfiles: defineTable({
+    ownerWallet: v.string(),
+    businessName: v.string(),
+    description: v.optional(v.string()),
+    industry: v.optional(v.string()),
+    website: v.optional(v.string()),
+    payrollContractAddress: v.string(),
+  }).index("by_ownerWallet", ["ownerWallet"]),
+
   // ─── Companies ───
   companies: defineTable({
     name: v.string(),
