@@ -14,7 +14,6 @@ import {
   Card,
   CardAction,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -49,32 +48,24 @@ function OverviewContent() {
       value: onChainLoading ? "..." : formatUsdc(balanceUsdc),
       trend: balanceUsdc && balanceUsdc > 0 ? "Funded" : "Empty",
       direction: "up" as const,
-      summary: "On-chain payroll contract balance on Arc.",
-      note: company?.name ?? "Workspace",
     },
     {
       title: "Payroll due",
       value: formatCents(stats.payrollDueCents),
       trend: `${stats.payrollDueCount} due`,
       direction: "down" as const,
-      summary: "Draft and approved employee payments pending settlement.",
-      note: `${stats.activeEmployees} active employees`,
     },
     {
       title: "Pending receivables",
       value: formatCents(stats.receivablesCents),
       trend: `${stats.receivablesCount} pending`,
       direction: "up" as const,
-      summary: "Invoices and payments awaiting settlement from customers.",
-      note: "Includes sent and pending statuses",
     },
     {
       title: "Usage revenue today",
       value: formatCents(stats.usageRevenueTodayCents),
       trend: stats.usageRevenueTodayCents > 0 ? "Active" : "No activity",
       direction: "up" as const,
-      summary: "Customer payments settled today.",
-      note: "Real-time from Convex",
     },
   ];
 
@@ -98,12 +89,6 @@ function OverviewContent() {
                   </Badge>
                 </CardAction>
               </CardHeader>
-              <CardFooter className="flex-col items-start gap-1.5 text-sm">
-                <div className="line-clamp-2 flex gap-2 font-medium">
-                  {card.summary}
-                </div>
-                <div className="text-muted-foreground">{card.note}</div>
-              </CardFooter>
             </Card>
           );
         })}
