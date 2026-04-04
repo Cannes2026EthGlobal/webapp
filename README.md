@@ -95,3 +95,43 @@ A future extension of the platform is to let small businesses tokenize invoices 
 ## Current Repository Scope
 
 This repository is the early frontend foundation for Arc Counting. It is a Next.js application that will evolve into the operator workspace and payment product described above.
+
+## Convex + Reown Integration
+
+This branch adds:
+
+- a dedicated Convex cloud project for the app data layer
+- Reown Authentication SIWX on top of the existing WalletConnect/AppKit flow
+- a server-side token exchange that converts the verified Reown session into a Convex-compatible JWT
+- an authenticated Convex schema for operator and workspace records
+
+### Local Setup
+
+1. Set your Reown project ID in `.env.local`.
+2. Initialize or relink Convex to a cloud deployment:
+
+   ```bash
+   npx convex dev --configure new --dev-deployment cloud
+   ```
+
+3. Generate the JWT signing keys used for Convex custom auth:
+
+   ```bash
+   npm run convex:auth:keys
+   ```
+
+4. Start Convex and the app:
+
+   ```bash
+   npm run convex:dev
+   npm run dev
+   ```
+
+### How Auth Works
+
+1. Reown AppKit connects the wallet and completes SIWX authentication.
+2. Reown stores its auth token locally in the browser.
+3. The app posts that Reown token to `/api/auth/convex-token`.
+4. The server validates the session against Reown's `auth/v1/me` endpoint.
+5. The server mints a short-lived ES256 JWT for Convex.
+6. Convex accepts that JWT through `convex/auth.config.ts` and exposes the identity in queries and mutations.
