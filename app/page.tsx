@@ -466,7 +466,7 @@ export default function Page() {
 
       {/* ─── How It Works ─── */}
       <section id="how-it-works" className="mx-auto max-w-4xl px-6 pb-24">
-        <h2 className="mb-8 text-center text-2xl font-light tracking-tight">
+        <h2 className="mb-8 text-center text-3xl font-light tracking-tight md:text-4xl">
           How it works
         </h2>
         <div className="space-y-4">
@@ -485,11 +485,15 @@ export default function Page() {
               <div>
                 <p className="text-xs" style={{ color: "var(--tone-green)" }}>Step {i + 1}</p>
                 <h3 className="text-sm font-semibold">{step.title}</h3>
-                <div className="mt-2 flex flex-col gap-1.5">
+                <div className="mt-2 flex flex-wrap gap-1.5">
                   {step.lines.map((line) => (
-                    <p key={line} className="text-xs leading-normal" style={{ color: "var(--tone-muted)" }}>
-                      — {line}
-                    </p>
+                    <span
+                      key={line}
+                      className="inline-block rounded border px-2 py-1 text-xs"
+                      style={{ borderColor: "var(--tone-border)", color: "var(--tone-muted)" }}
+                    >
+                      {line}
+                    </span>
                   ))}
                 </div>
               </div>
