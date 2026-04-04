@@ -143,6 +143,30 @@ export default function Page() {
         </div>
       </section>
 
+      {/* ─── Stats strip ─── */}
+      <section className="mx-auto max-w-4xl px-6 pb-24">
+        <div
+          className="grid grid-cols-2 gap-px overflow-hidden rounded-lg border md:grid-cols-4"
+          style={{ borderColor: "var(--tone-border)", background: "var(--tone-border)" }}
+        >
+          {[
+            { value: "USDC", label: "Native settlement" },
+            { value: "30s", label: "CRE cron cycle" },
+            { value: "2%", label: "Default advance rate" },
+            { value: "3 chains", label: "Arc, Arbitrum, Base" },
+          ].map((s) => (
+            <div
+              key={s.label}
+              className="px-5 py-4 text-center"
+              style={{ background: "var(--tone-linen)" }}
+            >
+              <p className="text-xl font-semibold" style={{ color: "var(--tone-green)" }}>{s.value}</p>
+              <p className="mt-0.5 text-xs" style={{ color: "var(--tone-muted)" }}>{s.label}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
       {/* ─── Features ─── */}
       <section id="features" className="mx-auto max-w-5xl px-6 pb-24">
         <div className="grid gap-6 md:grid-cols-2">
@@ -191,6 +215,59 @@ export default function Page() {
               </ul>
             </div>
           ))}
+        </div>
+      </section>
+
+      {/* ─── Employee Portal Callout ─── */}
+      <section className="mx-auto max-w-4xl px-6 pb-24">
+        <div
+          className="rounded-lg border p-8 md:flex md:items-center md:gap-8"
+          style={{ borderColor: "var(--tone-border)", background: "var(--tone-linen)" }}
+        >
+          <div className="mb-4 md:mb-0 md:flex-1">
+            <p className="text-xs font-medium uppercase tracking-widest" style={{ color: "var(--tone-green)" }}>
+              Employee portal
+            </p>
+            <h3 className="mt-2 text-lg font-semibold">
+              Employees can request their salary in advance.
+            </h3>
+            <p className="mt-2 text-sm leading-relaxed" style={{ color: "var(--tone-muted)" }}>
+              Your team members connect their wallet and see their upcoming paycheck, eligible advance amount, and interest breakdown.
+              The employer sets the interest rate, max advance percentage, and can disable advances per employee or automatically when treasury runs low.
+            </p>
+          </div>
+          <div
+            className="rounded-lg border p-4 md:w-72"
+            style={{ borderColor: "var(--tone-border)", background: "var(--tone-paper)" }}
+          >
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span style={{ color: "var(--tone-muted)" }}>Next paycheck</span>
+                <span className="font-medium">$12,000</span>
+              </div>
+              <div className="flex justify-between">
+                <span style={{ color: "var(--tone-muted)" }}>Eligible advance</span>
+                <span className="font-medium">up to $9,600</span>
+              </div>
+              <div
+                className="rounded border p-2 text-xs"
+                style={{ borderColor: "var(--tone-border)" }}
+              >
+                <div className="flex justify-between">
+                  <span>Requested</span>
+                  <span>$5,000</span>
+                </div>
+                <div className="flex justify-between" style={{ color: "var(--tone-copper, var(--tone-muted))" }}>
+                  <span>Interest (2%)</span>
+                  <span>-$100</span>
+                </div>
+                <div className="flex justify-between border-t pt-1 mt-1 font-medium" style={{ borderColor: "var(--tone-border)" }}>
+                  <span>You receive</span>
+                  <span>$4,900</span>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -313,6 +390,42 @@ export default function Page() {
               </div>
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* ─── Under the hood ─── */}
+      <section className="mx-auto max-w-4xl px-6 pb-24">
+        <h2 className="mb-6 text-center text-2xl font-light tracking-tight">
+          Under the hood
+        </h2>
+        <div className="grid gap-4 md:grid-cols-3">
+          {[
+            {
+              name: "Arc (Circle)",
+              role: "Settlement rail",
+              detail: "USDC-native L1 blockchain. All payroll and customer payments settle here. The Payroll smart contract holds company funds and executes payments.",
+            },
+            {
+              name: "Chainlink CRE",
+              role: "Payment automation",
+              detail: "A cron-triggered workflow fetches due salary requests from our backend via Confidential HTTP, then executes on-chain payments through the KeystoneForwarder.",
+            },
+            {
+              name: "WalletConnect Pay",
+              role: "Customer checkout",
+              detail: "Customers pay through checkout links. We add per-invoice customization (amount, currency, metadata) on top of the standard WC Pay flow.",
+            },
+          ].map((tech) => (
+            <div
+              key={tech.name}
+              className="rounded-lg border p-5"
+              style={{ borderColor: "var(--tone-border)", background: "var(--tone-linen)" }}
+            >
+              <p className="text-sm font-semibold">{tech.name}</p>
+              <p className="text-xs font-medium" style={{ color: "var(--tone-green)" }}>{tech.role}</p>
+              <p className="mt-2 text-xs leading-relaxed" style={{ color: "var(--tone-muted)" }}>{tech.detail}</p>
+            </div>
+          ))}
         </div>
       </section>
 
