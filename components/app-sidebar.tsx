@@ -77,6 +77,11 @@ const navItems = [
     url: "/dashboard/products",
     icon: <HugeiconsIcon icon={Database01Icon} strokeWidth={2} />,
   },
+  {
+    title: "Integration",
+    url: "/dashboard/integration",
+    icon: <HugeiconsIcon icon={CommandIcon} strokeWidth={2} />,
+  },
 ];
 
 const secondaryItems = [
