@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useCompany } from "@/hooks/use-company";
-import { formatCents, formatDate } from "@/lib/format";
+import { formatCents, formatDate, formatDateShort } from "@/lib/format";
 import { toast } from "sonner";
 import type { Id } from "@/convex/_generated/dataModel";
 
@@ -28,6 +28,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -37,6 +47,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import {
   Table,
   TableBody,
@@ -71,15 +82,17 @@ function EmployeesContent({
   );
   const createEmployee = useMutation(api.employees.create);
   const removeEmployee = useMutation(api.employees.remove);
+  const updateEmployee = useMutation(api.employees.update);
   const createPayment = useMutation(api.employeePayments.create);
   const updatePaymentStatus = useMutation(api.employeePayments.updateStatus);
   const removePayment = useMutation(api.employeePayments.remove);
+
+  const [deleteTarget, setDeleteTarget] = useState<{ id: Id<"employees">; name: string } | null>(null);
 
   const [formData, setFormData] = useState({
     displayName: "",
     role: "",
     employmentType: "full-time" as const,
-    privacyLevel: "pseudonymous" as const,
     email: "",
   });
 
@@ -102,13 +115,13 @@ function EmployeesContent({
 
   const handleCreate = async () => {
     if (!companyId || !formData.displayName || !formData.role) return;
-    const newId = await createEmployee({
+    await createEmployee({
       companyId,
       displayName: formData.displayName,
       role: formData.role,
       employmentType: formData.employmentType,
       walletVerified: false,
-      privacyLevel: formData.privacyLevel,
+      privacyLevel: "pseudonymous",
       status: "onboarding",
       email: formData.email || undefined,
     });
@@ -117,10 +130,29 @@ function EmployeesContent({
       displayName: "",
       role: "",
       employmentType: "full-time",
-      privacyLevel: "pseudonymous",
       email: "",
     });
-    router.push(`/dashboard/employees/${newId}`);
+    toast.success("Employee added");
+  };
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    await removeEmployee({ id: deleteTarget.id });
+    toast.success(`${deleteTarget.name} removed`);
+    setDeleteTarget(null);
+  };
+
+  // Advance toggle uses the notes field: "[no-advance]" prefix means disabled
+  const isAdvanceEnabled = (notes?: string) => !notes?.startsWith("[no-advance]");
+  const toggleAdvance = async (id: Id<"employees">, currentNotes?: string) => {
+    if (isAdvanceEnabled(currentNotes)) {
+      await updateEmployee({ id, notes: `[no-advance]${currentNotes ?? ""}` });
+      toast.success("Advance requests disabled for this employee");
+    } else {
+      const cleaned = (currentNotes ?? "").replace("[no-advance]", "");
+      await updateEmployee({ id, notes: cleaned || undefined });
+      toast.success("Advance requests enabled for this employee");
+    }
   };
 
   const handleCreatePayment = async () => {
@@ -241,8 +273,9 @@ function EmployeesContent({
                     <TableHead>Name</TableHead>
                     <TableHead>Role</TableHead>
                     <TableHead>Type</TableHead>
-                    <TableHead>Total Comp</TableHead>
-                    <TableHead>Wallet</TableHead>
+                    <TableHead>Payout</TableHead>
+                    <TableHead>Next payment</TableHead>
+                    <TableHead>Advance</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead />
                   </TableRow>
@@ -263,26 +296,20 @@ function EmployeesContent({
                           {emp.employmentType}
                         </Badge>
                       </TableCell>
-                      <TableCell>
-                        <div className="tabular-nums font-medium">
-                          {formatCents(emp.totalCompensationCents)}
-                        </div>
-                        {emp.compensationLines.length > 0 && (
-                          <div className="mt-0.5 space-y-0.5">
-                            {emp.compensationLines.map((line, i) => (
-                              <div key={i} className="text-xs text-muted-foreground">
-                                {line.name}: {formatCents(line.amountCents)}/{line.frequency}
-                              </div>
-                            ))}
-                          </div>
-                        )}
+                      <TableCell className="tabular-nums">
+                        {formatCents(emp.payoutAmountCents)}/{emp.payoutFrequency}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {emp.nextPaymentDate
+                          ? formatDateShort(emp.nextPaymentDate)
+                          : "-"}
                       </TableCell>
                       <TableCell>
-                        <Badge
-                          variant={emp.walletVerified ? "default" : "secondary"}
-                        >
-                          {emp.walletVerified ? "Verified" : "Pending"}
-                        </Badge>
+                        <Switch
+                          checked={isAdvanceEnabled(emp.notes)}
+                          onCheckedChange={() => toggleAdvance(emp._id, emp.notes)}
+                          onClick={(e) => e.stopPropagation()}
+                        />
                       </TableCell>
                       <TableCell>
                         <StatusBadge status={emp.status} />
@@ -291,9 +318,10 @@ function EmployeesContent({
                         <Button
                           variant="ghost"
                           size="sm"
+                          className="text-destructive hover:text-destructive"
                           onClick={(e) => {
                             e.stopPropagation();
-                            void removeEmployee({ id: emp._id });
+                            setDeleteTarget({ id: emp._id, name: emp.displayName });
                           }}
                         >
                           Remove
@@ -538,6 +566,27 @@ function EmployeesContent({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* ─── Delete Confirmation ─── */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove employee</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to remove <strong>{deleteTarget?.name}</strong> from this workspace? This action cannot be undone. Any pending payments for this employee will need to be handled separately.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => void handleDelete()}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Remove
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
