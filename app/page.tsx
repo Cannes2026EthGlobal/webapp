@@ -153,7 +153,7 @@ export default function Page() {
             { value: "USDC", label: "Payroll & invoices in stablecoins" },
             { value: "80%", label: "Max advance on next paycheck" },
             { value: "Custom", label: "Per-invoice reception parameters" },
-            { value: "3 chains", label: "Arc, Arbitrum, Base" },
+            { value: "Any chain", label: "Supported by Circle CCTP" },
           ].map((s) => (
             <div
               key={s.label}
