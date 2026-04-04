@@ -1,8 +1,8 @@
 import { mutation, query } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
 import { v } from "convex/values";
-import { api } from "./_generated/api";
 import { creditBalance } from "./balances";
+import { findOrCreateCustomerByWallet } from "./customers";
 
 /** Generate a short referenceId that fits WC Pay's 35-char limit. */
 function shortRef(): string {
@@ -49,7 +49,7 @@ export const initiateCheckout = mutation({
     // Auto-register customer if wallet provided
     let customerId = undefined;
     if (args.buyerWallet) {
-      customerId = await ctx.runMutation(api.customers.findOrCreateByWallet, {
+      customerId = await findOrCreateCustomerByWallet(ctx, {
         companyId: link.companyId,
         walletAddress: args.buyerWallet,
       });
@@ -108,7 +108,7 @@ export const initiateUsagePayment = mutation({
 
     let customerId = undefined;
     if (args.buyerWallet) {
-      customerId = await ctx.runMutation(api.customers.findOrCreateByWallet, {
+      customerId = await findOrCreateCustomerByWallet(ctx, {
         companyId: args.companyId,
         walletAddress: args.buyerWallet,
       });
@@ -178,7 +178,7 @@ export const confirmPayment = mutation({
     // Auto-register customer with full details from the transaction
     let resolvedCustomerId = payment.customerId;
     if (args.buyerWallet) {
-      resolvedCustomerId = await ctx.runMutation(api.customers.findOrCreateByWallet, {
+      resolvedCustomerId = await findOrCreateCustomerByWallet(ctx, {
         companyId: payment.companyId,
         walletAddress: args.buyerWallet,
         fullName: args.buyerFullName,

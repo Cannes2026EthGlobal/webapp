@@ -1,4 +1,6 @@
 import { query, mutation } from "./_generated/server";
+import type { MutationCtx } from "./_generated/server";
+import type { Id } from "./_generated/dataModel";
 import { v } from "convex/values";
 
 const customerTypeValidator = v.union(
@@ -113,8 +115,62 @@ export const update = mutation({
 });
 
 /**
- * Find existing customer by wallet or auto-create a new "buyer" customer.
- * Used by checkout and SDK flows for CRM auto-registration.
+ * Shared helper: find or create a customer by wallet address.
+ * Can be called directly from any mutation handler without ctx.runMutation.
+ */
+export async function findOrCreateCustomerByWallet(
+  ctx: MutationCtx,
+  args: {
+    companyId: Id<"companies">;
+    walletAddress: string;
+    displayName?: string;
+    fullName?: string;
+    dateOfBirth?: string;
+    country?: string;
+    email?: string;
+  }
+): Promise<Id<"customers">> {
+  const existing = await ctx.db
+    .query("customers")
+    .withIndex("by_companyId_and_walletAddress", (q) =>
+      q.eq("companyId", args.companyId).eq("walletAddress", args.walletAddress)
+    )
+    .unique();
+
+  if (existing) {
+    const updates: Record<string, string> = {};
+    if (args.fullName && !existing.fullName) updates.fullName = args.fullName;
+    if (args.dateOfBirth && !existing.dateOfBirth) updates.dateOfBirth = args.dateOfBirth;
+    if (args.country && !existing.country) updates.country = args.country;
+    if (args.email && !existing.email) updates.email = args.email;
+    if (args.fullName && existing.displayName.includes("...")) {
+      updates.displayName = args.fullName;
+    }
+    if (Object.keys(updates).length > 0) {
+      await ctx.db.patch(existing._id, updates);
+    }
+    return existing._id;
+  }
+
+  const displayName = args.fullName ?? args.displayName ?? `${args.walletAddress.slice(0, 6)}...${args.walletAddress.slice(-4)}`;
+
+  return await ctx.db.insert("customers", {
+    companyId: args.companyId,
+    displayName,
+    customerType: "buyer",
+    pricingModel: "one-time",
+    billingState: "active",
+    walletAddress: args.walletAddress,
+    walletReady: true,
+    fullName: args.fullName,
+    dateOfBirth: args.dateOfBirth,
+    country: args.country,
+    email: args.email,
+  });
+}
+
+/**
+ * Public mutation wrapper for findOrCreateCustomerByWallet.
  */
 export const findOrCreateByWallet = mutation({
   args: {
@@ -127,44 +183,7 @@ export const findOrCreateByWallet = mutation({
     email: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const existing = await ctx.db
-      .query("customers")
-      .withIndex("by_companyId_and_walletAddress", (q) =>
-        q.eq("companyId", args.companyId).eq("walletAddress", args.walletAddress)
-      )
-      .unique();
-
-    if (existing) {
-      // Update with any new details from this transaction
-      const updates: Record<string, string> = {};
-      if (args.fullName && !existing.fullName) updates.fullName = args.fullName;
-      if (args.dateOfBirth && !existing.dateOfBirth) updates.dateOfBirth = args.dateOfBirth;
-      if (args.country && !existing.country) updates.country = args.country;
-      if (args.email && !existing.email) updates.email = args.email;
-      if (args.fullName && existing.displayName.includes("...")) {
-        updates.displayName = args.fullName;
-      }
-      if (Object.keys(updates).length > 0) {
-        await ctx.db.patch(existing._id, updates);
-      }
-      return existing._id;
-    }
-
-    const displayName = args.fullName ?? args.displayName ?? `${args.walletAddress.slice(0, 6)}...${args.walletAddress.slice(-4)}`;
-
-    return await ctx.db.insert("customers", {
-      companyId: args.companyId,
-      displayName,
-      customerType: "buyer",
-      pricingModel: "one-time",
-      billingState: "active",
-      walletAddress: args.walletAddress,
-      walletReady: true,
-      fullName: args.fullName,
-      dateOfBirth: args.dateOfBirth,
-      country: args.country,
-      email: args.email,
-    });
+    return await findOrCreateCustomerByWallet(ctx, args);
   },
 });
 
