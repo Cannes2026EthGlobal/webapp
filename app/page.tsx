@@ -450,19 +450,19 @@ export default function Page() {
           {howItWorks.map((step, i) => (
             <div
               key={step.title}
-              className="flex items-start gap-5 rounded-lg border p-6"
+              className="flex items-start gap-4 rounded-lg border p-5"
               style={{ borderColor: "var(--tone-border)", background: "var(--tone-linen)" }}
             >
               <div
-                className="flex size-10 shrink-0 items-center justify-center rounded-full border"
+                className="flex size-8 shrink-0 items-center justify-center rounded-full border"
                 style={{ borderColor: "var(--tone-border)", color: "var(--tone-green)" }}
               >
-                <step.icon className="size-5" />
+                <step.icon className="size-4" />
               </div>
               <div>
-                <p className="text-xs font-medium" style={{ color: "var(--tone-green)" }}>Step {i + 1}</p>
-                <h3 className="text-base font-semibold">{step.title}</h3>
-                <p className="mt-1 text-sm leading-relaxed" style={{ color: "var(--tone-muted)" }}>
+                <p className="text-xs" style={{ color: "var(--tone-green)" }}>Step {i + 1}</p>
+                <h3 className="text-sm font-semibold">{step.title}</h3>
+                <p className="mt-0.5 text-xs leading-relaxed" style={{ color: "var(--tone-muted)" }}>
                   {step.description}
                 </p>
               </div>
