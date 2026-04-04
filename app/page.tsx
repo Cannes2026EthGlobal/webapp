@@ -151,7 +151,7 @@ export default function Page() {
         >
           {[
             { value: "USDC", label: "Payroll & invoices in stablecoins" },
-            { value: "100%", label: "Salary advance against interest" },
+            { value: "Up to 100%", label: "Of your salary upfront\n(against interest)" },
             { value: "Custom", label: "Per-invoice reception parameters" },
             { value: "Any chain", label: "Supported by Circle CCTP" },
           ].map((s) => (
@@ -161,7 +161,7 @@ export default function Page() {
               style={{ background: "var(--tone-linen)" }}
             >
               <p className="text-xl font-semibold" style={{ color: "var(--tone-green)" }}>{s.value}</p>
-              <p className="mt-0.5 text-xs" style={{ color: "var(--tone-muted)" }}>{s.label}</p>
+              <p className="mt-0.5 whitespace-pre-line text-xs" style={{ color: "var(--tone-muted)" }}>{s.label}</p>
             </div>
           ))}
         </div>
