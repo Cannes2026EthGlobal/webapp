@@ -113,9 +113,9 @@ export default function Page() {
           </span>
         </div>
         <div className="hidden items-center gap-6 md:flex">
-          <a href="#features" className="text-sm transition-colors hover:opacity-70" style={{ color: "var(--tone-muted)" }}>Features</a>
-          <a href="#dashboard" className="text-sm transition-colors hover:opacity-70" style={{ color: "var(--tone-muted)" }}>Dashboard</a>
-          <a href="#how-it-works" className="text-sm transition-colors hover:opacity-70" style={{ color: "var(--tone-muted)" }}>How it works</a>
+          <a href="#features" className="text-base font-medium transition-colors hover:opacity-70" style={{ color: "var(--tone-muted)" }}>Features</a>
+          <a href="#dashboard" className="text-base font-medium transition-colors hover:opacity-70" style={{ color: "var(--tone-muted)" }}>Dashboard</a>
+          <a href="#how-it-works" className="text-base font-medium transition-colors hover:opacity-70" style={{ color: "var(--tone-muted)" }}>How it works</a>
           <LandingAuthButton />
         </div>
         <div className="md:hidden">
