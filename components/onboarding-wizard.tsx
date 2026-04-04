@@ -42,7 +42,7 @@ export function OnboardingWizard({
   });
   const saveState = useMutation(api.onboardingState.save);
   const removeState = useMutation(api.onboardingState.remove);
-  const createProfile = useMutation(api.businessProfiles.create);
+  const completeOnboarding = useMutation(api.onboarding.complete);
 
   // ─── Local state (hydrated from Convex) ───
   const [hydrated, setHydrated] = useState(false);
@@ -168,13 +168,14 @@ export function OnboardingWizard({
   const handleFinish = async () => {
     if (!deployedAddress) return;
     try {
-      await createProfile({
+      await completeOnboarding({
         userId: userId as import("../convex/_generated/dataModel").Id<"users">,
         businessName: formData.businessName,
         description: formData.description || undefined,
         industry: formData.industry || undefined,
         website: formData.website || undefined,
         payrollContractAddress: deployedAddress,
+        walletAddress,
       });
       await removeState({ userId: userId as import("../convex/_generated/dataModel").Id<"users"> });
       toast.success("Business profile created");

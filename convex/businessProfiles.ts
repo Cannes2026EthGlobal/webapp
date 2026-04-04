@@ -18,7 +18,7 @@ export const create = mutation({
     description: v.optional(v.string()),
     industry: v.optional(v.string()),
     website: v.optional(v.string()),
-    payrollContractAddress: v.string(),
+    payrollContractAddress: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const existing = await ctx.db

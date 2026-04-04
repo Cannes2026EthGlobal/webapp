@@ -21,6 +21,8 @@ import type * as customerPayments from "../customerPayments.js";
 import type * as customers from "../customers.js";
 import type * as employeePayments from "../employeePayments.js";
 import type * as employees from "../employees.js";
+import type * as migrations from "../migrations.js";
+import type * as onboarding from "../onboarding.js";
 import type * as onboardingState from "../onboardingState.js";
 import type * as overview from "../overview.js";
 import type * as payrollForecast from "../payrollForecast.js";
@@ -49,6 +51,8 @@ declare const fullApi: ApiFromModules<{
   customers: typeof customers;
   employeePayments: typeof employeePayments;
   employees: typeof employees;
+  migrations: typeof migrations;
+  onboarding: typeof onboarding;
   onboardingState: typeof onboardingState;
   overview: typeof overview;
   payrollForecast: typeof payrollForecast;

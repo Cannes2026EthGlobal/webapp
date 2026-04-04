@@ -27,7 +27,7 @@ export default defineSchema({
     description: v.optional(v.string()),
     industry: v.optional(v.string()),
     website: v.optional(v.string()),
-    payrollContractAddress: v.string(),
+    payrollContractAddress: v.optional(v.string()),
   }).index("by_userId", ["userId"]),
 
   // ─── Onboarding Wizard State (persisted across refreshes) ───
@@ -55,6 +55,7 @@ export default defineSchema({
     industry: v.optional(v.string()),
     website: v.optional(v.string()),
     logoUrl: v.optional(v.string()),
+    payrollContractAddress: v.optional(v.string()),
   })
     .index("by_ownerId", ["ownerId"])
     .index("by_slug", ["slug"]),

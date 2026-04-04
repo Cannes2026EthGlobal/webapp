@@ -50,6 +50,7 @@ export const create = mutation({
     industry: v.optional(v.string()),
     website: v.optional(v.string()),
     logoUrl: v.optional(v.string()),
+    payrollContractAddress: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const { userId, ...rest } = args;
@@ -82,6 +83,7 @@ export const update = mutation({
     industry: v.optional(v.string()),
     website: v.optional(v.string()),
     logoUrl: v.optional(v.string()),
+    payrollContractAddress: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const { id, ...fields } = args;

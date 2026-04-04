@@ -5,7 +5,7 @@ import { api } from "../convex/_generated/api";
 import { useCompany } from "./use-company";
 
 export function useBusinessProfile() {
-  const { userId, isConnected, walletAddress } = useCompany();
+  const { userId, isConnected, walletAddress, company } = useCompany();
 
   const profile = useQuery(
     api.businessProfiles.getByUserId,
@@ -18,7 +18,8 @@ export function useBusinessProfile() {
     isLoading: profile === undefined && isConnected,
     isConnected,
     walletAddress,
-    payrollContractAddress: profile?.payrollContractAddress as
+    // Sourced from the active company — correct for multi-workspace SaaS
+    payrollContractAddress: company?.payrollContractAddress as
       | `0x${string}`
       | undefined,
   };
