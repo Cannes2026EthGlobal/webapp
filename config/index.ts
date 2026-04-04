@@ -1,7 +1,6 @@
 import { cookieStorage, createStorage } from "@wagmi/core";
 import { WagmiAdapter } from "@reown/appkit-adapter-wagmi";
 import { defineChain } from "@reown/appkit/networks";
-import { arbitrumSepolia, baseSepolia } from "@reown/appkit/networks";
 
 const envProjectId = process.env.NEXT_PUBLIC_PROJECT_ID;
 
@@ -44,6 +43,38 @@ export const arcTestnet = defineChain({
   testnet: true,
   chainNamespace: "eip155",
   caipNetworkId: "eip155:5042002",
+});
+
+export const arbitrumSepolia = defineChain({
+  id: 421614,
+  name: "Arbitrum Sepolia",
+  network: "arbitrum-sepolia",
+  nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
+  rpcUrls: {
+    default: { http: ["https://sepolia-rollup.arbitrum.io/rpc"] },
+  },
+  blockExplorers: {
+    default: { name: "Arbiscan", url: "https://sepolia.arbiscan.io" },
+  },
+  testnet: true,
+  chainNamespace: "eip155",
+  caipNetworkId: "eip155:421614",
+});
+
+export const baseSepolia = defineChain({
+  id: 84532,
+  name: "Base Sepolia",
+  network: "base-sepolia",
+  nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
+  rpcUrls: {
+    default: { http: ["https://sepolia.base.org"] },
+  },
+  blockExplorers: {
+    default: { name: "BaseScan", url: "https://sepolia.basescan.org" },
+  },
+  testnet: true,
+  chainNamespace: "eip155",
+  caipNetworkId: "eip155:84532",
 });
 
 export const networks = [arcTestnet, arbitrumSepolia, baseSepolia] as const;
