@@ -145,7 +145,8 @@ export default defineSchema({
     notes: v.optional(v.string()),
   })
     .index("by_companyId", ["companyId"])
-    .index("by_companyId_and_billingState", ["companyId", "billingState"]),
+    .index("by_companyId_and_billingState", ["companyId", "billingState"])
+    .index("by_companyId_and_walletAddress", ["companyId", "walletAddress"]),
 
   // ─── Products ───
   products: defineTable({
@@ -210,6 +211,18 @@ export default defineSchema({
     .index("by_employeeId", ["employeeId"])
     .index("by_compensationLineId", ["compensationLineId"]),
 
+  // ─── Checkout Links (public purchase URLs for products) ───
+  checkoutLinks: defineTable({
+    companyId: v.id("companies"),
+    productId: v.id("products"),
+    slug: v.string(),
+    label: v.optional(v.string()),
+    isActive: v.boolean(),
+  })
+    .index("by_slug", ["slug"])
+    .index("by_productId", ["productId"])
+    .index("by_companyId", ["companyId"]),
+
   // ─── Customer Payments (inbound) ───
   customerPayments: defineTable({
     companyId: v.id("companies"),
@@ -236,11 +249,16 @@ export default defineSchema({
     paidAt: v.optional(v.number()),
     txHash: v.optional(v.string()),
     referenceId: v.optional(v.string()),
+    // WalletConnect Pay fields
+    wcPayPaymentId: v.optional(v.string()),
+    wcPayGatewayUrl: v.optional(v.string()),
+    quantity: v.optional(v.number()),
   })
     .index("by_companyId", ["companyId"])
     .index("by_companyId_and_status", ["companyId", "status"])
     .index("by_customerId", ["customerId"])
-    .index("by_productId", ["productId"]),
+    .index("by_productId", ["productId"])
+    .index("by_referenceId", ["referenceId"]),
 
   // ─── Treasury / Company Balances ───
   companyBalances: defineTable({

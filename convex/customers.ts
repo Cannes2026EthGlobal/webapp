@@ -97,6 +97,38 @@ export const update = mutation({
   },
 });
 
+/**
+ * Find existing customer by wallet or auto-create a new "buyer" customer.
+ * Used by checkout and SDK flows for CRM auto-registration.
+ */
+export const findOrCreateByWallet = mutation({
+  args: {
+    companyId: v.id("companies"),
+    walletAddress: v.string(),
+    displayName: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const existing = await ctx.db
+      .query("customers")
+      .withIndex("by_companyId_and_walletAddress", (q) =>
+        q.eq("companyId", args.companyId).eq("walletAddress", args.walletAddress)
+      )
+      .unique();
+
+    if (existing) return existing._id;
+
+    return await ctx.db.insert("customers", {
+      companyId: args.companyId,
+      displayName: args.displayName ?? `${args.walletAddress.slice(0, 6)}...${args.walletAddress.slice(-4)}`,
+      customerType: "buyer",
+      pricingModel: "one-time",
+      billingState: "active",
+      walletAddress: args.walletAddress,
+      walletReady: true,
+    });
+  },
+});
+
 export const remove = mutation({
   args: { id: v.id("customers") },
   handler: async (ctx, args) => {
