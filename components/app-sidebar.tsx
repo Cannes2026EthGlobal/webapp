@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/sidebar";
 import {
   Add01Icon,
+  AiChat02Icon,
   Analytics01Icon,
   ArrowDown01Icon,
   CommandIcon,
@@ -37,6 +38,7 @@ import {
   Menu01Icon,
   SearchIcon,
   Settings05Icon,
+  SparklesIcon,
   UserGroupIcon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
@@ -76,6 +78,17 @@ const navItems = [
     title: "Integration",
     url: "/dashboard/integration",
     icon: <HugeiconsIcon icon={CommandIcon} strokeWidth={2} />,
+  },
+  // ─── AI ───
+  {
+    title: "AI Insights",
+    url: "/dashboard/ai-insights",
+    icon: <HugeiconsIcon icon={SparklesIcon} strokeWidth={2} />,
+  },
+  {
+    title: "AI Chat",
+    url: "/dashboard/ai-chat",
+    icon: <HugeiconsIcon icon={AiChat02Icon} strokeWidth={2} />,
   },
 ];
 

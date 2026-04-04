@@ -10,8 +10,7 @@
 
 import type * as advanceRequests from "../advanceRequests.js";
 import type * as advanceSettings from "../advanceSettings.js";
-import type * as agentBilling from "../agentBilling.js";
-import type * as agentSettlement from "../agentSettlement.js";
+import type * as aiInsights from "../aiInsights.js";
 import type * as balances from "../balances.js";
 import type * as businessProfiles from "../businessProfiles.js";
 import type * as checkout from "../checkout.js";
@@ -20,6 +19,7 @@ import type * as cleanup from "../cleanup.js";
 import type * as companies from "../companies.js";
 import type * as compensationLines from "../compensationLines.js";
 import type * as compensationSplits from "../compensationSplits.js";
+import type * as cre from "../cre.js";
 import type * as crons from "../crons.js";
 import type * as customerPayments from "../customerPayments.js";
 import type * as customers from "../customers.js";
@@ -46,8 +46,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   advanceRequests: typeof advanceRequests;
   advanceSettings: typeof advanceSettings;
-  agentBilling: typeof agentBilling;
-  agentSettlement: typeof agentSettlement;
+  aiInsights: typeof aiInsights;
   balances: typeof balances;
   businessProfiles: typeof businessProfiles;
   checkout: typeof checkout;
@@ -56,6 +55,7 @@ declare const fullApi: ApiFromModules<{
   companies: typeof companies;
   compensationLines: typeof compensationLines;
   compensationSplits: typeof compensationSplits;
+  cre: typeof cre;
   crons: typeof crons;
   customerPayments: typeof customerPayments;
   customers: typeof customers;

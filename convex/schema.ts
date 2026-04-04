@@ -388,6 +388,60 @@ export default defineSchema({
     autoDisabled: v.boolean(), // set by cron when threshold breached
   }).index("by_companyId", ["companyId"]),
 
+  // ─── AI Chat Sessions (persisted chat history) ───
+  aiChatSessions: defineTable({
+    companyId: v.id("companies"),
+    title: v.string(),
+    messages: v.string(), // JSON-serialized UIMessage[]
+    lastMessageAt: v.number(),
+  })
+    .index("by_companyId", ["companyId"]),
+
+  // ─── AI Insight Requests (usage tracking for Claude AI analysis) ───
+  aiInsightRequests: defineTable({
+    companyId: v.id("companies"),
+    insightType: v.union(
+      v.literal("product_analysis"),
+      v.literal("customer_importance"),
+      v.literal("revenue_forecast"),
+      v.literal("churn_risk"),
+      v.literal("cashflow_optimization"),
+      v.literal("payroll_efficiency"),
+      v.literal("chat"),
+      v.literal("custom")
+    ),
+    prompt: v.string(),
+    response: v.string(),
+    inputTokens: v.number(),
+    outputTokens: v.number(),
+    costCents: v.number(),
+    model: v.string(),
+  })
+    .index("by_companyId", ["companyId"])
+    .index("by_companyId_and_insightType", ["companyId", "insightType"]),
+
+  // ─── AI Usage Bills (tracks billed AI usage per company) ───
+  aiUsageBills: defineTable({
+    companyId: v.id("companies"),
+    totalRequests: v.number(),
+    totalInputTokens: v.number(),
+    totalOutputTokens: v.number(),
+    totalCostCents: v.number(),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("billed"),
+      v.literal("paid")
+    ),
+    checkoutUrl: v.optional(v.string()),
+    wcPayPaymentId: v.optional(v.string()),
+    billedAt: v.optional(v.number()),
+    paidAt: v.optional(v.number()),
+    periodStart: v.number(),
+    periodEnd: v.number(),
+  })
+    .index("by_companyId", ["companyId"])
+    .index("by_companyId_and_status", ["companyId", "status"]),
+
   // ─── Credit Requests (employee → company) ───
   creditRequests: defineTable({
     companyId: v.id("companies"),
