@@ -7,10 +7,11 @@ import schema from "./schema";
 const modules = import.meta.glob("./**/*.ts");
 
 async function setupCompanyWithBalance(t: ReturnType<typeof convexTest>) {
+  const userId = await t.mutation(api.users.getOrCreateByWallet, { walletAddress: "0xtest" });
   const companyId = await t.mutation(api.companies.create, {
     name: "Test Corp",
     slug: "test-pay-" + Math.random().toString(36).slice(2),
-    ownerWallet: "0xtest",
+    userId,
   });
   // Seed treasury with funds
   await t.mutation(api.balances.credit, {
@@ -32,10 +33,11 @@ async function setupCompanyWithBalance(t: ReturnType<typeof convexTest>) {
 }
 
 async function setupCompanyWithCustomer(t: ReturnType<typeof convexTest>) {
+  const userId = await t.mutation(api.users.getOrCreateByWallet, { walletAddress: "0xtest" });
   const companyId = await t.mutation(api.companies.create, {
     name: "Test Corp",
     slug: "test-cpay-" + Math.random().toString(36).slice(2),
-    ownerWallet: "0xtest",
+    userId,
   });
   const customerId = await t.mutation(api.customers.create, {
     companyId,

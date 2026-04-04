@@ -22,8 +22,8 @@ export const upcoming = query({
         role: string;
         payoutAmountCents: number;
         frequency: string;
-        hasActiveAdvance: boolean;
-        advanceDeductionCents: number;
+        hasActiveCredit: boolean;
+        creditDeductionCents: number;
         netPayoutCents: number;
       }>;
     }> = [];
@@ -40,23 +40,41 @@ export const upcoming = query({
       const entries = [];
 
       for (const emp of employees) {
-        if (emp.compensationModel !== "salary" && emp.compensationModel !== "hourly") {
-          continue;
-        }
+        // Resolve compensation: prefer active compensationLines, fall back to flat payoutAmountCents
+        const activeLines = await ctx.db
+          .query("compensationLines")
+          .withIndex("by_employeeId_and_isActive", (q) =>
+            q.eq("employeeId", emp._id).eq("isActive", true)
+          )
+          .take(20);
+
+        const lineTotal = activeLines.reduce((sum, l) => sum + l.amountCents, 0);
+        const empPayoutCents = lineTotal > 0 ? lineTotal : (emp.payoutAmountCents ?? 0);
+
+        // Skip employees with no compensation configured at all
+        if (empPayoutCents === 0) continue;
+
+        // Only include salary-type employees (skip per-task / freelance-only)
+        const hasNoCompLines = activeLines.length === 0;
+        const isFlatNonSalary =
+          hasNoCompLines &&
+          emp.compensationModel != null &&
+          emp.compensationModel !== "salary" &&
+          emp.compensationModel !== "hourly";
+        if (isFlatNonSalary) continue;
 
         const advances = await ctx.db
-          .query("advanceRequests")
+          .query("creditRequests")
           .withIndex("by_employeeId_and_status", (q) =>
             q.eq("employeeId", emp._id).eq("status", "settled")
           )
           .take(1);
 
-        const hasActiveAdvance = advances.length > 0;
-        const advanceDeductionCents = hasActiveAdvance
+        const hasActiveCredit = advances.length > 0;
+        const creditDeductionCents = hasActiveCredit
           ? advances[0].requestedAmountCents
           : 0;
-        const empPayoutCents = emp.payoutAmountCents ?? 0;
-        const netPayoutCents = empPayoutCents - advanceDeductionCents;
+        const netPayoutCents = empPayoutCents - creditDeductionCents;
 
         totalSalaryCents += netPayoutCents;
 
@@ -66,8 +84,8 @@ export const upcoming = query({
           role: emp.role,
           payoutAmountCents: empPayoutCents,
           frequency: emp.payoutFrequency ?? "monthly",
-          hasActiveAdvance,
-          advanceDeductionCents,
+          hasActiveCredit,
+          creditDeductionCents,
           netPayoutCents,
         });
       }
@@ -88,14 +106,14 @@ export const advanceSummary = query({
   args: { companyId: v.id("companies") },
   handler: async (ctx, args) => {
     const pending = await ctx.db
-      .query("advanceRequests")
+      .query("creditRequests")
       .withIndex("by_companyId_and_status", (q) =>
         q.eq("companyId", args.companyId).eq("status", "pending")
       )
       .take(50);
 
     const settled = await ctx.db
-      .query("advanceRequests")
+      .query("creditRequests")
       .withIndex("by_companyId_and_status", (q) =>
         q.eq("companyId", args.companyId).eq("status", "settled")
       )
@@ -109,7 +127,7 @@ export const advanceSummary = query({
 
     let totalInterestEarnedCents = 0;
     const all = await ctx.db
-      .query("advanceRequests")
+      .query("creditRequests")
       .withIndex("by_companyId", (q) => q.eq("companyId", args.companyId))
       .take(200);
     for (const r of all) {

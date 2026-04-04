@@ -20,7 +20,7 @@ export const listByCompany = query({
   handler: async (ctx, args) => {
     if (args.status) {
       return await ctx.db
-        .query("advanceRequests")
+        .query("creditRequests")
         .withIndex("by_companyId_and_status", (q) =>
           q.eq("companyId", args.companyId).eq("status", args.status!)
         )
@@ -28,7 +28,7 @@ export const listByCompany = query({
         .take(100);
     }
     return await ctx.db
-      .query("advanceRequests")
+      .query("creditRequests")
       .withIndex("by_companyId", (q) => q.eq("companyId", args.companyId))
       .order("desc")
       .take(100);
@@ -39,7 +39,7 @@ export const listByEmployee = query({
   args: { employeeId: v.id("employees") },
   handler: async (ctx, args) => {
     return await ctx.db
-      .query("advanceRequests")
+      .query("creditRequests")
       .withIndex("by_employeeId", (q) => q.eq("employeeId", args.employeeId))
       .order("desc")
       .take(50);
@@ -50,7 +50,7 @@ export const getActiveForEmployee = query({
   args: { employeeId: v.id("employees") },
   handler: async (ctx, args) => {
     const requests = await ctx.db
-      .query("advanceRequests")
+      .query("creditRequests")
       .withIndex("by_employeeId", (q) => q.eq("employeeId", args.employeeId))
       .order("desc")
       .take(10);
@@ -76,53 +76,51 @@ export const request = mutation({
       throw new Error("Employee not found");
     }
     if (employee.status !== "active") {
-      throw new Error("Only active employees can request advances");
+      throw new Error("Only active employees can request credits");
     }
-    if (employee.notes?.startsWith("[no-advance]")) {
-      throw new Error("Advance requests are disabled for this employee");
+    if (employee.notes?.startsWith("[no-credit]")) {
+      throw new Error("Credit requests are disabled for this employee");
     }
 
     const settings = await ctx.db
-      .query("advanceSettings")
+      .query("creditSettings")
       .withIndex("by_companyId", (q) => q.eq("companyId", args.companyId))
       .unique();
 
     const enabled = settings?.enabled ?? true;
     const autoDisabled = settings?.autoDisabled ?? false;
     if (!enabled || autoDisabled) {
-      throw new Error("Advance requests are currently disabled for this company");
+      throw new Error("Credit requests are currently disabled for this company");
     }
 
     const interestRateBps = settings?.interestRateBps ?? 200;
-    const maxAdvancePercent = settings?.maxAdvancePercent ?? 80;
+    const maxCreditPercent = settings?.maxCreditPercent ?? 80;
 
     const existing = await ctx.db
-      .query("advanceRequests")
+      .query("creditRequests")
       .withIndex("by_employeeId_and_status", (q) =>
         q.eq("employeeId", args.employeeId).eq("status", "pending")
       )
       .take(1);
     if (existing.length > 0) {
-      throw new Error("You already have a pending advance request");
+      throw new Error("You already have a pending credit request");
     }
 
-    const settledAdvances = await ctx.db
-      .query("advanceRequests")
+    const settledCredits = await ctx.db
+      .query("creditRequests")
       .withIndex("by_employeeId_and_status", (q) =>
         q.eq("employeeId", args.employeeId).eq("status", "settled")
       )
       .take(1);
-    if (settledAdvances.length > 0) {
-      throw new Error("You have an outstanding advance that hasn't been deducted yet");
+    if (settledCredits.length > 0) {
+      throw new Error("You have an outstanding credit that hasn't been deducted yet");
     }
 
     const payoutCents = employee.payoutAmountCents ?? 0;
-    const maxAllowed = Math.floor(
-      (payoutCents * maxAdvancePercent) / 100
-    );
+    const maxAllowed = Math.floor((payoutCents * maxCreditPercent) / 100);
     if (args.requestedAmountCents > maxAllowed) {
       throw new Error(
-        `Maximum advance is ${maxAdvancePercent}% of your paycheck ($${(maxAllowed / 100).toFixed(2)})`
+        `Maximum credit is ${maxCreditPercent}% of your paycheck ($${(maxAllowed / 100).toFixed(2)})`
       );
     }
 
@@ -140,7 +138,7 @@ export const request = mutation({
       nextPaycheckDate = next.getTime();
     }
 
-    return await ctx.db.insert("advanceRequests", {
+    return await ctx.db.insert("creditRequests", {
       companyId: args.companyId,
       employeeId: args.employeeId,
       requestedAmountCents: args.requestedAmountCents,
@@ -156,7 +154,7 @@ export const request = mutation({
 });
 
 export const approve = mutation({
-  args: { id: v.id("advanceRequests") },
+  args: { id: v.id("creditRequests") },
   handler: async (ctx, args) => {
     const request = await ctx.db.get(args.id);
     if (!request) throw new Error("Request not found");
@@ -167,24 +165,24 @@ export const approve = mutation({
     const paymentId = await ctx.db.insert("employeePayments", {
       companyId: request.companyId,
       employeeId: request.employeeId,
-      type: "advance",
+      type: "credit",
       amountCents: request.netAmountCents,
       currency: request.currency,
       status: "approved",
-      description: `Salary advance (${request.interestAmountCents} interest deducted)`,
+      description: `Salary credit (${request.interestAmountCents} interest deducted)`,
       scheduledDate: Date.now(),
     });
 
     await ctx.db.patch(args.id, {
       status: "approved",
-      advancePaymentId: paymentId,
+      creditPaymentId: paymentId,
     });
   },
 });
 
 export const deny = mutation({
   args: {
-    id: v.id("advanceRequests"),
+    id: v.id("creditRequests"),
     denyReason: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
@@ -201,7 +199,7 @@ export const deny = mutation({
 });
 
 export const cancel = mutation({
-  args: { id: v.id("advanceRequests") },
+  args: { id: v.id("creditRequests") },
   handler: async (ctx, args) => {
     const request = await ctx.db.get(args.id);
     if (!request) throw new Error("Request not found");
@@ -213,7 +211,7 @@ export const cancel = mutation({
 });
 
 export const markSettled = mutation({
-  args: { id: v.id("advanceRequests") },
+  args: { id: v.id("creditRequests") },
   handler: async (ctx, args) => {
     const request = await ctx.db.get(args.id);
     if (!request) throw new Error("Request not found");
@@ -226,14 +224,14 @@ export const markSettled = mutation({
 
 export const markDeducted = mutation({
   args: {
-    id: v.id("advanceRequests"),
+    id: v.id("creditRequests"),
     deductedFromPaymentId: v.id("employeePayments"),
   },
   handler: async (ctx, args) => {
     const request = await ctx.db.get(args.id);
     if (!request) throw new Error("Request not found");
     if (request.status !== "settled") {
-      throw new Error("Can only deduct settled advances");
+      throw new Error("Can only deduct settled credits");
     }
     await ctx.db.patch(args.id, {
       status: "deducted",

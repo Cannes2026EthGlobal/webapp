@@ -1,15 +1,15 @@
 "use client";
 
 import { useQuery } from "convex/react";
-import { useAppKitAccount } from "@reown/appkit/react";
 import { api } from "../convex/_generated/api";
+import { useCompany } from "./use-company";
 
 export function useBusinessProfile() {
-  const { address, isConnected } = useAppKitAccount();
+  const { userId, isConnected, walletAddress } = useCompany();
 
   const profile = useQuery(
-    api.businessProfiles.getByWallet,
-    address ? { wallet: address } : "skip"
+    api.businessProfiles.getByUserId,
+    userId ? { userId } : "skip"
   );
 
   return {
@@ -17,7 +17,7 @@ export function useBusinessProfile() {
     hasProfile: !!profile,
     isLoading: profile === undefined && isConnected,
     isConnected,
-    walletAddress: address,
+    walletAddress,
     payrollContractAddress: profile?.payrollContractAddress as
       | `0x${string}`
       | undefined,

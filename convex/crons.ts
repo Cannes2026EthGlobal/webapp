@@ -12,11 +12,11 @@ export const listAllCompanies = internalQuery({
   },
 });
 
-export const getAdvanceSettingsInternal = internalQuery({
+export const getCreditSettingsInternal = internalQuery({
   args: { companyId: v.id("companies") },
   handler: async (ctx, args) => {
     return await ctx.db
-      .query("advanceSettings")
+      .query("creditSettings")
       .withIndex("by_companyId", (q) => q.eq("companyId", args.companyId))
       .unique();
   },
@@ -65,7 +65,7 @@ export const setAutoDisabledInternal = internalMutation({
   },
   handler: async (ctx, args) => {
     const existing = await ctx.db
-      .query("advanceSettings")
+      .query("creditSettings")
       .withIndex("by_companyId", (q) => q.eq("companyId", args.companyId))
       .unique();
     if (existing) {
@@ -76,14 +76,14 @@ export const setAutoDisabledInternal = internalMutation({
 
 // ─── Main cron action ───
 
-export const checkAdvanceThresholds = internalAction({
+export const checkCreditThresholds = internalAction({
   args: {},
   handler: async (ctx) => {
     const companies = await ctx.runQuery(internal.crons.listAllCompanies, {});
 
     for (const company of companies) {
       const settings = await ctx.runQuery(
-        internal.crons.getAdvanceSettingsInternal,
+        internal.crons.getCreditSettingsInternal,
         { companyId: company._id }
       );
       if (!settings) continue;
@@ -116,9 +116,9 @@ export const checkAdvanceThresholds = internalAction({
 const crons = cronJobs();
 
 crons.interval(
-  "check advance thresholds",
+  "check credit thresholds",
   { hours: 1 },
-  internal.crons.checkAdvanceThresholds,
+  internal.crons.checkCreditThresholds,
   {}
 );
 

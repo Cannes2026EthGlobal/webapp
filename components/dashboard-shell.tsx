@@ -2,6 +2,7 @@
 
 import type { CSSProperties } from "react";
 import { useBusinessProfile } from "@/hooks/use-business-profile";
+import { useCompany } from "@/hooks/use-company";
 import { OnboardingWizard } from "@/components/onboarding-wizard";
 import { AppSidebar } from "@/components/app-sidebar";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
@@ -10,6 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 export function DashboardShell({ children }: { children: React.ReactNode }) {
   const { hasProfile, isLoading, isConnected, walletAddress } =
     useBusinessProfile();
+  const { userId } = useCompany();
 
   if (isLoading) {
     return (
@@ -20,9 +22,10 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   }
 
   // No business profile — show wizard without sidebar
-  if (!hasProfile && isConnected && walletAddress) {
+  if (!hasProfile && isConnected && walletAddress && userId) {
     return (
       <OnboardingWizard
+        userId={userId}
         walletAddress={walletAddress}
         onComplete={() => {
           // Convex query re-fires reactively

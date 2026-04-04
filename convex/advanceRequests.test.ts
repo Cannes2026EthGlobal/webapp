@@ -7,10 +7,11 @@ import schema from "./schema";
 const modules = import.meta.glob("./**/*.ts");
 
 async function setupCompanyAndEmployee(t: ReturnType<typeof convexTest>) {
+  const userId = await t.mutation(api.users.getOrCreateByWallet, { walletAddress: "0xTEST" });
   const companyId = await t.mutation(api.companies.create, {
     name: "Test Co",
     slug: "test-co",
-    ownerWallet: "0xTEST",
+    userId,
   });
 
   const employeeId = await t.mutation(api.employees.create, {
@@ -37,12 +38,12 @@ async function setupCompanyAndEmployee(t: ReturnType<typeof convexTest>) {
   return { companyId, employeeId };
 }
 
-describe("advanceRequests", () => {
-  test("employee can request an advance", async () => {
+describe("creditRequests", () => {
+  test("employee can request a credit", async () => {
     const t = convexTest(schema, modules);
     const { companyId, employeeId } = await setupCompanyAndEmployee(t);
 
-    const requestId = await t.mutation(api.advanceRequests.request, {
+    await t.mutation(api.advanceRequests.request, {
       companyId,
       employeeId,
       requestedAmountCents: 500000,
@@ -70,7 +71,7 @@ describe("advanceRequests", () => {
         requestedAmountCents: 900000,
         currency: "USD",
       })
-    ).rejects.toThrow("Maximum advance");
+    ).rejects.toThrow("Maximum credit");
   });
 
   test("cannot have two pending requests", async () => {
@@ -111,15 +112,15 @@ describe("advanceRequests", () => {
       employeeId,
     });
     expect(requests[0].status).toBe("approved");
-    expect(requests[0].advancePaymentId).toBeTruthy();
+    expect(requests[0].creditPaymentId).toBeTruthy();
 
     const payments = await t.query(api.employeePayments.listByEmployee, {
       employeeId,
     });
-    const advancePayment = payments.find((p: { type: string }) => p.type === "advance");
-    expect(advancePayment).toBeTruthy();
-    expect(advancePayment!.amountCents).toBe(490000);
-    expect(advancePayment!.status).toBe("approved");
+    const creditPayment = payments.find((p: { type: string }) => p.type === "credit");
+    expect(creditPayment).toBeTruthy();
+    expect(creditPayment!.amountCents).toBe(490000);
+    expect(creditPayment!.status).toBe("approved");
   });
 
   test("deny sets status and reason", async () => {
@@ -146,13 +147,14 @@ describe("advanceRequests", () => {
   });
 });
 
-describe("advanceSettings", () => {
+describe("creditSettings", () => {
   test("returns defaults when no settings exist", async () => {
     const t = convexTest(schema, modules);
+    const userId = await t.mutation(api.users.getOrCreateByWallet, { walletAddress: "0xDEF" });
     const companyId = await t.mutation(api.companies.create, {
       name: "Default Co",
       slug: "default-co",
-      ownerWallet: "0xDEF",
+      userId,
     });
 
     const settings = await t.query(api.advanceSettings.getForCompany, {
@@ -160,15 +162,16 @@ describe("advanceSettings", () => {
     });
     expect(settings.enabled).toBe(true);
     expect(settings.interestRateBps).toBe(200);
-    expect(settings.maxAdvancePercent).toBe(80);
+    expect(settings.maxCreditPercent).toBe(80);
   });
 
   test("upsert creates and updates settings", async () => {
     const t = convexTest(schema, modules);
+    const userId2 = await t.mutation(api.users.getOrCreateByWallet, { walletAddress: "0xSET" });
     const companyId = await t.mutation(api.companies.create, {
       name: "Settings Co",
       slug: "settings-co",
-      ownerWallet: "0xSET",
+      userId: userId2,
     });
 
     await t.mutation(api.advanceSettings.upsert, {

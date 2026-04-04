@@ -64,13 +64,13 @@ function PayrollContent() {
 
   const handleToggle = async (enabled: boolean) => {
     await updateSettings({ companyId, enabled });
-    toast.success(enabled ? "Advances enabled" : "Advances disabled");
+    toast.success(enabled ? "Credits enabled" : "Credits disabled");
   };
 
   const handleApprove = async (id: string) => {
     try {
       await approveRequest({ id: id as any });
-      toast.success("Advance approved — payment created");
+      toast.success("Credit approved — payment created");
     } catch (e: any) {
       toast.error(e.message);
     }
@@ -78,7 +78,7 @@ function PayrollContent() {
 
   const handleDeny = async (id: string) => {
     await denyRequest({ id: id as any, denyReason: "Denied by operator" });
-    toast.success("Advance denied");
+    toast.success("Credit denied");
   };
 
   return (
@@ -98,7 +98,7 @@ function PayrollContent() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardDescription>Outstanding Advances</CardDescription>
+            <CardDescription>Outstanding Credits</CardDescription>
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-semibold">{advanceSummary?.outstandingCount ?? 0}</p>
@@ -115,12 +115,12 @@ function PayrollContent() {
             <p className="text-2xl font-semibold">
               {formatCents(advanceSummary?.totalInterestEarnedCents ?? 0)}
             </p>
-            <p className="text-xs text-muted-foreground">from advances</p>
+            <p className="text-xs text-muted-foreground">from credits</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardDescription>Advance Status</CardDescription>
+            <CardDescription>Credit Status</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
@@ -149,7 +149,7 @@ function PayrollContent() {
       {/* Settings */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-sm">Advance Settings</CardTitle>
+          <CardTitle className="text-sm">Credit Settings</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-3 gap-4">
@@ -168,16 +168,16 @@ function PayrollContent() {
               />
             </div>
             <div>
-              <Label className="text-xs">Max Advance (% of paycheck)</Label>
+              <Label className="text-xs">Max Credit (% of paycheck)</Label>
               <Input
                 type="number"
                 min="10"
                 max="100"
-                value={settings.maxAdvancePercent}
+                value={settings.maxCreditPercent}
                 onChange={(e) =>
                   updateSettings({
                     companyId,
-                    maxAdvancePercent: parseInt(e.target.value),
+                    maxCreditPercent: parseInt(e.target.value),
                   })
                 }
               />
@@ -201,11 +201,11 @@ function PayrollContent() {
         </CardContent>
       </Card>
 
-      {/* Pending advance requests */}
+      {/* Pending credit requests */}
       {pendingRequests && pendingRequests.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-sm">Pending Advance Requests</CardTitle>
+            <CardTitle className="text-sm">Pending Credit Requests</CardTitle>
           </CardHeader>
           <CardContent>
             <Table>
@@ -250,7 +250,7 @@ function PayrollContent() {
                   <TableHead>Employee</TableHead>
                   <TableHead>Role</TableHead>
                   <TableHead>Gross</TableHead>
-                  <TableHead>Advance Deduction</TableHead>
+                  <TableHead>Credit Deduction</TableHead>
                   <TableHead>Net Payout</TableHead>
                 </TableRow>
               </TableHeader>
@@ -261,9 +261,9 @@ function PayrollContent() {
                     <TableCell className="text-muted-foreground">{entry.role}</TableCell>
                     <TableCell>{formatCents(entry.payoutAmountCents)}</TableCell>
                     <TableCell>
-                      {entry.hasActiveAdvance ? (
+                      {entry.hasActiveCredit ? (
                         <span className="text-destructive">
-                          -{formatCents(entry.advanceDeductionCents)}
+                          -{formatCents(entry.creditDeductionCents)}
                         </span>
                       ) : (
                         <span className="text-muted-foreground">—</span>
@@ -327,7 +327,7 @@ function PendingRequestRow({
 export default function PayrollPage() {
   return (
     <CompanyGuard>
-      <PageHeader title="Payroll Forecast" description="Upcoming salaries, advance requests, and deduction schedule" />
+      <PageHeader title="Payroll & Credits" description="Upcoming salaries, credit requests, and deduction schedule" />
       <PayrollContent />
     </CompanyGuard>
   );

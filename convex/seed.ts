@@ -2,33 +2,62 @@ import { mutation } from "./_generated/server";
 import { v } from "convex/values";
 
 export const seedDemoData = mutation({
-  args: { ownerWallet: v.string() },
+  args: { walletAddress: v.string() },
   handler: async (ctx, args) => {
-    // Check if already seeded
-    const existing = await ctx.db
-      .query("companies")
-      .withIndex("by_slug", (q) => q.eq("slug", "arc-demo"))
+    // Get or create user record for this wallet
+    const existingUser = await ctx.db
+      .query("users")
+      .withIndex("by_walletAddress", (q) =>
+        q.eq("walletAddress", args.walletAddress)
+      )
       .unique();
-    if (existing) return { companyId: existing._id, alreadySeeded: true };
+
+    const userId =
+      existingUser?._id ??
+      (await ctx.db.insert("users", { walletAddress: args.walletAddress }));
+
+    // Check if already seeded (any company membership for this user)
+    const existingMembership = await ctx.db
+      .query("companyMembers")
+      .withIndex("by_userId", (q) => q.eq("userId", userId))
+      .first();
+
+    if (existingMembership) {
+      return { companyId: existingMembership.companyId, alreadySeeded: true };
+    }
+
+    // Generate a unique slug per wallet to avoid conflicts
+    const slugSuffix = args.walletAddress.slice(-6).toLowerCase();
+    const slug = `arc-demo-${slugSuffix}`;
 
     // Create company
     const companyId = await ctx.db.insert("companies", {
       name: "Arc Demo Co",
-      slug: "arc-demo",
-      ownerWallet: args.ownerWallet,
+      slug,
+      ownerId: userId,
       industry: "Technology",
       website: "https://arcdemo.co",
     });
 
+    // Create owner membership
+    await ctx.db.insert("companyMembers", {
+      userId,
+      companyId,
+      role: "owner",
+    });
+
     // Seed employees
+    const day = 86400000;
+    const now = Date.now();
+    // Salaries are tiny (0–1 USDC) so the demo contract doesn't need much funding
     const employeeData = [
-      { displayName: "Elena Vasquez", role: "Lead Engineer", employmentType: "full-time" as const, walletVerified: true, privacyLevel: "verified" as const, status: "active" as const, email: "elena@arcdemo.co", walletAddress: "0x1234...abcd" },
-      { displayName: "Marcus Chen", role: "Product Designer", employmentType: "full-time" as const, walletVerified: true, privacyLevel: "pseudonymous" as const, status: "active" as const },
-      { displayName: "Aria Nakamura", role: "Backend Developer", employmentType: "contractor" as const, walletVerified: true, privacyLevel: "shielded" as const, status: "active" as const, walletAddress: "0x5678...efgh" },
-      { displayName: "James Whitfield", role: "DevOps", employmentType: "full-time" as const, walletVerified: false, privacyLevel: "pseudonymous" as const, status: "active" as const },
-      { displayName: "Sofia Reyes", role: "Data Analyst", employmentType: "part-time" as const, walletVerified: true, privacyLevel: "verified" as const, status: "active" as const, email: "sofia@arcdemo.co" },
-      { displayName: "Kai Tanaka", role: "Smart Contract Auditor", employmentType: "freelance" as const, walletVerified: true, privacyLevel: "shielded" as const, status: "active" as const },
-      { displayName: "Luna Park", role: "Marketing Lead", employmentType: "full-time" as const, walletVerified: true, privacyLevel: "verified" as const, status: "onboarding" as const },
+      { displayName: "Elena Vasquez", role: "Lead Engineer", employmentType: "full-time" as const, walletVerified: true, privacyLevel: "verified" as const, status: "active" as const, email: "elena@arcdemo.co", walletAddress: "0x1234...abcd", startDate: now - 730 * day, payoutAmountCents: 95, payoutFrequency: "monthly" as const },
+      { displayName: "Marcus Chen", role: "Product Designer", employmentType: "full-time" as const, walletVerified: true, privacyLevel: "pseudonymous" as const, status: "active" as const, startDate: now - 548 * day, payoutAmountCents: 80, payoutFrequency: "monthly" as const },
+      { displayName: "Aria Nakamura", role: "Backend Developer", employmentType: "contractor" as const, walletVerified: true, privacyLevel: "shielded" as const, status: "active" as const, walletAddress: "0x5678...efgh", startDate: now - 365 * day, payoutAmountCents: 70, payoutFrequency: "biweekly" as const },
+      { displayName: "James Whitfield", role: "DevOps", employmentType: "full-time" as const, walletVerified: false, privacyLevel: "pseudonymous" as const, status: "active" as const, startDate: now - 912 * day, payoutAmountCents: 85, payoutFrequency: "monthly" as const },
+      { displayName: "Sofia Reyes", role: "Data Analyst", employmentType: "part-time" as const, walletVerified: true, privacyLevel: "verified" as const, status: "active" as const, email: "sofia@arcdemo.co", startDate: now - 180 * day, payoutAmountCents: 50, payoutFrequency: "biweekly" as const },
+      { displayName: "Kai Tanaka", role: "Smart Contract Auditor", employmentType: "freelance" as const, walletVerified: true, privacyLevel: "shielded" as const, status: "active" as const, startDate: now - 90 * day, payoutAmountCents: 40, payoutFrequency: "monthly" as const },
+      { displayName: "Luna Park", role: "Marketing Lead", employmentType: "full-time" as const, walletVerified: true, privacyLevel: "verified" as const, status: "onboarding" as const, startDate: now - 14 * day, payoutAmountCents: 75, payoutFrequency: "monthly" as const },
     ];
 
     const employeeIds = [];
@@ -46,14 +75,14 @@ export const seedDemoData = mutation({
       isActive: boolean;
       description?: string;
     }> = [
-      { employeeIndex: 0, name: "Base Salary", amountCents: 1200000, frequency: "monthly", isActive: true },
-      { employeeIndex: 0, name: "Housing Allowance", amountCents: 250000, frequency: "monthly", isActive: true, description: "Monthly housing stipend" },
-      { employeeIndex: 1, name: "Base Salary", amountCents: 950000, frequency: "monthly", isActive: true },
-      { employeeIndex: 2, name: "Contract Salary", amountCents: 850000, frequency: "biweekly", isActive: true },
-      { employeeIndex: 3, name: "Base Salary", amountCents: 1100000, frequency: "monthly", isActive: true },
-      { employeeIndex: 4, name: "Part-time Salary", amountCents: 650000, frequency: "biweekly", isActive: true },
-      { employeeIndex: 5, name: "Retainer", amountCents: 500000, frequency: "monthly", isActive: true },
-      { employeeIndex: 6, name: "Base Salary", amountCents: 900000, frequency: "monthly", isActive: true },
+      { employeeIndex: 0, name: "Base Salary", amountCents: 80, frequency: "monthly", isActive: true },
+      { employeeIndex: 0, name: "Housing Allowance", amountCents: 15, frequency: "monthly", isActive: true, description: "Monthly housing stipend" },
+      { employeeIndex: 1, name: "Base Salary", amountCents: 80, frequency: "monthly", isActive: true },
+      { employeeIndex: 2, name: "Contract Salary", amountCents: 70, frequency: "biweekly", isActive: true },
+      { employeeIndex: 3, name: "Base Salary", amountCents: 85, frequency: "monthly", isActive: true },
+      { employeeIndex: 4, name: "Part-time Salary", amountCents: 50, frequency: "biweekly", isActive: true },
+      { employeeIndex: 5, name: "Retainer", amountCents: 40, frequency: "monthly", isActive: true },
+      { employeeIndex: 6, name: "Base Salary", amountCents: 75, frequency: "monthly", isActive: true },
     ];
 
     for (const line of compLines) {
@@ -208,14 +237,11 @@ export const seedDemoData = mutation({
     }
 
     // Seed employee payments
-    const now = Date.now();
-    const day = 86400000;
-
     const empPayments = [
       {
         employeeId: employeeIds[0],
         type: "salary" as const,
-        amountCents: 1200000,
+        amountCents: 95,
         status: "settled" as const,
         description: "March 2026 salary",
         settledAt: now - 4 * day,
@@ -223,7 +249,7 @@ export const seedDemoData = mutation({
       {
         employeeId: employeeIds[0],
         type: "salary" as const,
-        amountCents: 1200000,
+        amountCents: 95,
         status: "approved" as const,
         description: "April 2026 salary",
         scheduledDate: now + 1 * day,
@@ -231,7 +257,7 @@ export const seedDemoData = mutation({
       {
         employeeId: employeeIds[1],
         type: "salary" as const,
-        amountCents: 950000,
+        amountCents: 80,
         status: "approved" as const,
         description: "April 2026 salary",
         scheduledDate: now + 1 * day,
@@ -239,14 +265,14 @@ export const seedDemoData = mutation({
       {
         employeeId: employeeIds[2],
         type: "freelance" as const,
-        amountCents: 340000,
+        amountCents: 28,
         status: "draft" as const,
         description: "Sprint 14 contract work (40h)",
       },
       {
         employeeId: employeeIds[3],
         type: "salary" as const,
-        amountCents: 1100000,
+        amountCents: 85,
         status: "queued" as const,
         description: "April 2026 salary",
         scheduledDate: now + 1 * day,
@@ -254,14 +280,14 @@ export const seedDemoData = mutation({
       {
         employeeId: employeeIds[4],
         type: "salary" as const,
-        amountCents: 520000,
+        amountCents: 42,
         status: "draft" as const,
         description: "April 2026 part-time salary",
       },
       {
         employeeId: employeeIds[5],
         type: "freelance" as const,
-        amountCents: 500000,
+        amountCents: 40,
         status: "settled" as const,
         description: "Smart contract audit - vault module",
         settledAt: now - 2 * day,
@@ -269,16 +295,16 @@ export const seedDemoData = mutation({
       {
         employeeId: employeeIds[0],
         type: "bonus" as const,
-        amountCents: 250000,
+        amountCents: 20,
         status: "draft" as const,
         description: "Q1 2026 performance bonus",
       },
       {
         employeeId: employeeIds[2],
-        type: "advance" as const,
-        amountCents: 150000,
+        type: "credit" as const,
+        amountCents: 12,
         status: "settled" as const,
-        description: "Paycheck advance against April invoice",
+        description: "Paycheck credit against April invoice",
         settledAt: now - 1 * day,
       },
     ];
@@ -297,7 +323,7 @@ export const seedDemoData = mutation({
         customerId: customerIds[0],
         productId: productIds[1],
         mode: "invoice" as const,
-        amountCents: 6000000,
+        amountCents: 50,
         status: "pending" as const,
         description: "Enterprise License Q2 2026",
         dueDate: now + 12 * day,
@@ -305,7 +331,7 @@ export const seedDemoData = mutation({
       {
         customerId: customerIds[1],
         mode: "usage" as const,
-        amountCents: 124800,
+        amountCents: 10,
         status: "paid" as const,
         description: "March API usage - 156K tokens",
         paidAt: now - 3 * day,
@@ -313,7 +339,7 @@ export const seedDemoData = mutation({
       {
         customerId: customerIds[2],
         mode: "usage" as const,
-        amountCents: 48200,
+        amountCents: 4,
         status: "paid" as const,
         description: "Agent inference credits",
         paidAt: now - 1 * day,
@@ -322,7 +348,7 @@ export const seedDemoData = mutation({
         customerId: customerIds[3],
         productId: productIds[2],
         mode: "one-time" as const,
-        amountCents: 35000,
+        amountCents: 3,
         status: "sent" as const,
         description: "DevCon 2026 ticket",
         dueDate: now + 7 * day,
@@ -331,7 +357,7 @@ export const seedDemoData = mutation({
         customerId: customerIds[4],
         productId: productIds[1],
         mode: "invoice" as const,
-        amountCents: 2400000,
+        amountCents: 20,
         status: "overdue" as const,
         description: "Enterprise License renewal",
         dueDate: now - 5 * day,
@@ -340,14 +366,14 @@ export const seedDemoData = mutation({
         customerId: customerIds[1],
         productId: productIds[0],
         mode: "usage" as const,
-        amountCents: 89600,
+        amountCents: 7,
         status: "pending" as const,
         description: "April API usage (running)",
       },
       {
         customerId: customerIds[0],
         mode: "checkout" as const,
-        amountCents: 34300,
+        amountCents: 3,
         status: "paid" as const,
         description: "Checkout link payment",
         paidAt: now - 6 * day,
@@ -362,10 +388,10 @@ export const seedDemoData = mutation({
       });
     }
 
-    // Seed treasury balance
+    // Seed treasury balance (~4 USDC credited, realistic for demo contract)
     await ctx.db.insert("companyBalances", {
       companyId,
-      totalCreditedCents: 48214000,
+      totalCreditedCents: 400,
       totalDebitedCents: 0,
       currency: "USD",
     });
@@ -374,21 +400,21 @@ export const seedDemoData = mutation({
     await ctx.db.insert("balanceEntries", {
       companyId,
       type: "credit",
-      amountCents: 6000000,
+      amountCents: 50,
       currency: "USD",
       reason: "Enterprise License payment - Northwind Labs",
     });
     await ctx.db.insert("balanceEntries", {
       companyId,
       type: "credit",
-      amountCents: 124800,
+      amountCents: 10,
       currency: "USD",
       reason: "Usage payment - Synthex AI",
     });
     await ctx.db.insert("balanceEntries", {
       companyId,
       type: "debit",
-      amountCents: 1200000,
+      amountCents: 95,
       currency: "USD",
       reason: "Payroll - Elena Vasquez March 2026",
     });

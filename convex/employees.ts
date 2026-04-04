@@ -76,12 +76,54 @@ export const getById = query({
   },
 });
 
+// Cross-tenant lookup for the employee self-service portal
+export const listByWalletAddress = query({
+  args: { walletAddress: v.string() },
+  handler: async (ctx, args) => {
+    const employees = await ctx.db
+      .query("employees")
+      .withIndex("by_walletAddress", (q) =>
+        q.eq("walletAddress", args.walletAddress)
+      )
+      .take(20);
+
+    // Attach company name to each result
+    return await Promise.all(
+      employees.map(async (emp) => {
+        const company = await ctx.db.get(emp.companyId);
+        return { ...emp, companyName: company?.name ?? "Unknown" };
+      })
+    );
+  },
+});
+
 export const create = mutation({
   args: {
     companyId: v.id("companies"),
     displayName: v.string(),
     role: v.string(),
     employmentType: employmentTypeValidator,
+    // Legacy flat comp fields
+    compensationModel: v.optional(
+      v.union(
+        v.literal("salary"),
+        v.literal("hourly"),
+        v.literal("per-task"),
+        v.literal("milestone")
+      )
+    ),
+    payoutAsset: v.optional(v.string()),
+    payoutAmountCents: v.optional(v.number()),
+    payoutFrequency: v.optional(
+      v.union(
+        v.literal("monthly"),
+        v.literal("biweekly"),
+        v.literal("weekly"),
+        v.literal("per-task")
+      )
+    ),
+    nextPaymentDate: v.optional(v.number()),
+    startDate: v.optional(v.number()),
     walletAddress: v.optional(v.string()),
     backupWalletAddress: v.optional(v.string()),
     walletVerified: v.boolean(),
@@ -120,7 +162,7 @@ export const update = mutation({
     const updates: Record<string, unknown> = {};
     for (const [key, value] of Object.entries(fields)) {
       if (value !== undefined) {
-        updates[key] = value;
+        updates[key] = value === "" ? undefined : value;
       }
     }
     await ctx.db.patch(id, updates);

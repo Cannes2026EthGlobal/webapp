@@ -2,19 +2,37 @@ import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
 export default defineSchema({
-  // ─── Business Profiles (1:1 per wallet, gates dashboard access) ───
+  // ─── Users (one per wallet identity) ───
+  users: defineTable({
+    walletAddress: v.string(),
+    displayName: v.optional(v.string()),
+    email: v.optional(v.string()),
+    avatarUrl: v.optional(v.string()),
+  }).index("by_walletAddress", ["walletAddress"]),
+
+  // ─── Company Members (many-to-many: users ↔ companies) ───
+  companyMembers: defineTable({
+    userId: v.id("users"),
+    companyId: v.id("companies"),
+    role: v.union(v.literal("owner"), v.literal("admin"), v.literal("member")),
+  })
+    .index("by_userId", ["userId"])
+    .index("by_companyId", ["companyId"])
+    .index("by_userId_and_companyId", ["userId", "companyId"]),
+
+  // ─── Business Profiles (1:1 per user, gates dashboard access) ───
   businessProfiles: defineTable({
-    ownerWallet: v.string(),
+    userId: v.id("users"),
     businessName: v.string(),
     description: v.optional(v.string()),
     industry: v.optional(v.string()),
     website: v.optional(v.string()),
     payrollContractAddress: v.string(),
-  }).index("by_ownerWallet", ["ownerWallet"]),
+  }).index("by_userId", ["userId"]),
 
   // ─── Onboarding Wizard State (persisted across refreshes) ───
   onboardingState: defineTable({
-    ownerWallet: v.string(),
+    userId: v.id("users"),
     step: v.union(
       v.literal("details"),
       v.literal("deploy"),
@@ -26,19 +44,19 @@ export default defineSchema({
     website: v.optional(v.string()),
     deployTxHash: v.optional(v.string()),
     deployedAddress: v.optional(v.string()),
-  }).index("by_ownerWallet", ["ownerWallet"]),
+  }).index("by_userId", ["userId"]),
 
   // ─── Companies ───
   companies: defineTable({
     name: v.string(),
     slug: v.string(),
-    ownerWallet: v.string(),
+    ownerId: v.id("users"),
     treasuryAddress: v.optional(v.string()),
     industry: v.optional(v.string()),
     website: v.optional(v.string()),
     logoUrl: v.optional(v.string()),
   })
-    .index("by_ownerWallet", ["ownerWallet"])
+    .index("by_ownerId", ["ownerId"])
     .index("by_slug", ["slug"]),
 
   // ─── Employees ───
@@ -91,9 +109,11 @@ export default defineSchema({
       v.literal("inactive"),
       v.literal("onboarding")
     ),
+    startDate: v.optional(v.number()),
   })
     .index("by_companyId", ["companyId"])
-    .index("by_companyId_and_status", ["companyId", "status"]),
+    .index("by_companyId_and_status", ["companyId", "status"])
+    .index("by_walletAddress", ["walletAddress"]),
 
   // ─── Compensation Lines (salaries, one-to-many per employee) ───
   compensationLines: defineTable({
@@ -188,7 +208,7 @@ export default defineSchema({
       v.literal("freelance"),
       v.literal("bonus"),
       v.literal("reimbursement"),
-      v.literal("advance")
+      v.literal("credit")
     ),
     amountCents: v.number(),
     currency: v.union(v.literal("USD"), v.literal("EUR")),
@@ -281,18 +301,18 @@ export default defineSchema({
     occurredAt: v.optional(v.number()),
   }).index("by_companyId", ["companyId"]),
 
-  // ─── Advance Settings (per company) ───
-  advanceSettings: defineTable({
+  // ─── Credit Settings (per company) ───
+  creditSettings: defineTable({
     companyId: v.id("companies"),
     enabled: v.boolean(),
     interestRateBps: v.number(), // basis points, e.g. 200 = 2%
-    maxAdvancePercent: v.number(), // 0-100, max % of next paycheck
-    autoDisableThresholdMonths: v.number(), // disable advances if treasury < N months of payroll
+    maxCreditPercent: v.number(), // 0-100, max % of next paycheck
+    autoDisableThresholdMonths: v.number(), // disable credits if treasury < N months of payroll
     autoDisabled: v.boolean(), // set by cron when threshold breached
   }).index("by_companyId", ["companyId"]),
 
-  // ─── Advance Requests (employee → company) ───
-  advanceRequests: defineTable({
+  // ─── Credit Requests (employee → company) ───
+  creditRequests: defineTable({
     companyId: v.id("companies"),
     employeeId: v.id("employees"),
     requestedAmountCents: v.number(),
@@ -303,13 +323,13 @@ export default defineSchema({
       v.literal("pending"),
       v.literal("approved"),
       v.literal("denied"),
-      v.literal("settled"), // advance paid out
+      v.literal("settled"), // credit paid out
       v.literal("deducted"), // deducted from next paycheck
       v.literal("cancelled")
     ),
     reason: v.optional(v.string()),
     denyReason: v.optional(v.string()),
-    advancePaymentId: v.optional(v.id("employeePayments")),
+    creditPaymentId: v.optional(v.id("employeePayments")),
     deductedFromPaymentId: v.optional(v.id("employeePayments")),
     nextPaycheckDate: v.number(),
     nextPaycheckAmountCents: v.number(),

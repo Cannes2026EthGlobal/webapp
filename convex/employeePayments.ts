@@ -7,7 +7,7 @@ const paymentTypeValidator = v.union(
   v.literal("freelance"),
   v.literal("bonus"),
   v.literal("reimbursement"),
-  v.literal("advance")
+  v.literal("credit")
 );
 
 const statusValidator = v.union(

@@ -28,15 +28,17 @@ import { Skeleton } from "@/components/ui/skeleton";
 type Step = "details" | "deploy" | "done";
 
 export function OnboardingWizard({
+  userId,
   walletAddress,
   onComplete,
 }: {
+  userId: string;
   walletAddress: string;
   onComplete: () => void;
 }) {
   // ─── Persisted state from Convex ───
   const savedState = useQuery(api.onboardingState.get, {
-    ownerWallet: walletAddress,
+    userId: userId as import("../convex/_generated/dataModel").Id<"users">,
   });
   const saveState = useMutation(api.onboardingState.save);
   const removeState = useMutation(api.onboardingState.remove);
@@ -87,7 +89,7 @@ export function OnboardingWizard({
       deployedAddress?: string;
     }) => {
       void saveState({
-        ownerWallet: walletAddress,
+        userId: userId as import("../convex/_generated/dataModel").Id<"users">,
         step: overrides.step ?? step,
         businessName: overrides.businessName ?? formData.businessName,
         description: (overrides.description ?? formData.description) || undefined,
@@ -98,7 +100,7 @@ export function OnboardingWizard({
       });
     },
     [
-      walletAddress,
+      userId,
       step,
       formData,
       savedTxHash,
@@ -167,14 +169,14 @@ export function OnboardingWizard({
     if (!deployedAddress) return;
     try {
       await createProfile({
-        ownerWallet: walletAddress,
+        userId: userId as import("../convex/_generated/dataModel").Id<"users">,
         businessName: formData.businessName,
         description: formData.description || undefined,
         industry: formData.industry || undefined,
         website: formData.website || undefined,
         payrollContractAddress: deployedAddress,
       });
-      await removeState({ ownerWallet: walletAddress });
+      await removeState({ userId: userId as import("../convex/_generated/dataModel").Id<"users"> });
       toast.success("Business profile created");
       onComplete();
     } catch (e) {

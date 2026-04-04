@@ -55,7 +55,7 @@ export default function EmployeePortalPage() {
           <CardHeader>
             <CardTitle>Employee Portal</CardTitle>
             <CardDescription>
-              Connect your wallet to view your salary information and request advances.
+              Connect your wallet to view your salary information and request credits.
             </CardDescription>
           </CardHeader>
         </Card>
@@ -67,9 +67,9 @@ export default function EmployeePortalPage() {
 }
 
 function EmployeePortalContent({ walletAddress }: { walletAddress: string }) {
-  const companies = useQuery(api.companies.list);
+  const employees = useQuery(api.employees.listByWalletAddress, { walletAddress });
 
-  if (!companies) {
+  if (!employees) {
     return (
       <div className="p-6 space-y-4">
         <Skeleton className="h-8 w-64" />
@@ -85,43 +85,18 @@ function EmployeePortalContent({ walletAddress }: { walletAddress: string }) {
         <p className="text-sm text-muted-foreground font-mono">{walletAddress}</p>
       </header>
       <div className="p-6 space-y-8">
-        {companies.map((company) => (
-          <EmployeeCompanySection
-            key={company._id}
-            companyId={company._id}
-            companyName={company.name}
-            walletAddress={walletAddress}
-          />
+        {employees.length === 0 && (
+          <p className="text-sm text-muted-foreground">
+            No employee records found for this wallet address.
+          </p>
+        )}
+        {employees.map((employee) => (
+          <div key={employee._id} className="space-y-4">
+            <h2 className="text-base font-semibold">{employee.companyName}</h2>
+            <EmployeeSalaryCard employee={employee} companyId={employee.companyId} />
+          </div>
         ))}
       </div>
-    </div>
-  );
-}
-
-function EmployeeCompanySection({
-  companyId,
-  companyName,
-  walletAddress,
-}: {
-  companyId: any;
-  companyName: string;
-  walletAddress: string;
-}) {
-  const employees = useQuery(api.employees.listByCompany, {
-    companyId,
-    status: "active" as const,
-  });
-
-  const employee = employees?.find(
-    (e) => e.walletAddress?.toLowerCase() === walletAddress.toLowerCase()
-  );
-
-  if (!employee) return null;
-
-  return (
-    <div className="space-y-4">
-      <h2 className="text-base font-semibold">{companyName}</h2>
-      <EmployeeSalaryCard employee={employee} companyId={companyId} />
     </div>
   );
 }
@@ -134,37 +109,37 @@ function EmployeeSalaryCard({
   companyId: any;
 }) {
   const settings = useQuery(api.advanceSettings.getForCompany, { companyId });
-  const activeAdvances = useQuery(api.advanceRequests.getActiveForEmployee, {
+  const activeCredits = useQuery(api.advanceRequests.getActiveForEmployee, {
     employeeId: employee._id,
   });
-  const advanceHistory = useQuery(api.advanceRequests.listByEmployee, {
+  const creditHistory = useQuery(api.advanceRequests.listByEmployee, {
     employeeId: employee._id,
   });
-  const requestAdvance = useMutation(api.advanceRequests.request);
-  const cancelAdvance = useMutation(api.advanceRequests.cancel);
+  const requestCredit = useMutation(api.advanceRequests.request);
+  const cancelCredit = useMutation(api.advanceRequests.cancel);
 
   const [amount, setAmount] = useState("");
 
-  const advancesEnabled = settings && settings.enabled && !settings.autoDisabled;
-  const maxPercent = settings?.maxAdvancePercent ?? 80;
+  const creditsEnabled = settings && settings.enabled && !settings.autoDisabled;
+  const maxPercent = settings?.maxCreditPercent ?? 80;
   const interestBps = settings?.interestRateBps ?? 200;
   const maxAmountCents = Math.floor(
     (employee.payoutAmountCents * maxPercent) / 100
   );
-  const hasActiveAdvance = (activeAdvances?.length ?? 0) > 0;
+  const hasActiveCredit = (activeCredits?.length ?? 0) > 0;
 
   const handleRequest = async () => {
     const cents = Math.round(parseFloat(amount) * 100);
     if (isNaN(cents) || cents <= 0) return;
 
     try {
-      await requestAdvance({
+      await requestCredit({
         companyId,
         employeeId: employee._id,
         requestedAmountCents: cents,
         currency: "USD",
       });
-      toast.success("Advance request submitted");
+      toast.success("Credit request submitted");
       setAmount("");
     } catch (e: any) {
       toast.error(e.message);
@@ -197,34 +172,34 @@ function EmployeeSalaryCard({
             </div>
           )}
           <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Advance eligible</span>
+            <span className="text-muted-foreground">Credit eligible</span>
             <span>
-              {advancesEnabled ? `Up to ${formatCents(maxAmountCents)}` : "Disabled"}
+              {creditsEnabled ? `Up to ${formatCents(maxAmountCents)}` : "Disabled"}
             </span>
           </div>
           {settings?.autoDisabled && (
             <p className="text-xs text-destructive">
-              Advances temporarily disabled — company treasury is low.
+              Credits temporarily disabled — company treasury is low.
             </p>
           )}
         </CardContent>
       </Card>
 
-      {/* Request advance */}
+      {/\* Request credit \*/}
       <Card>
         <CardHeader>
-          <CardTitle className="text-sm">Request Advance</CardTitle>
+          <CardTitle className="text-sm">Request Credit</CardTitle>
           <CardDescription>
             {interestBps / 100}% interest deducted upfront. Repaid from next paycheck.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
-          {hasActiveAdvance ? (
+          {hasActiveCredit ? (
             <div className="space-y-2">
               <p className="text-sm text-muted-foreground">
-                You have an active advance:
+                You have an active credit:
               </p>
-              {activeAdvances?.map((adv: any) => (
+              {activeCredits?.map((adv: any) => (
                 <div
                   key={adv._id}
                   className="flex items-center justify-between rounded border p-2 text-sm"
@@ -245,7 +220,7 @@ function EmployeeSalaryCard({
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => cancelAdvance({ id: adv._id })}
+                        onClick={() => cancelCredit({ id: adv._id })}
                       >
                         Cancel
                       </Button>
@@ -254,7 +229,7 @@ function EmployeeSalaryCard({
                 </div>
               ))}
             </div>
-          ) : advancesEnabled ? (
+          ) : creditsEnabled ? (
             <div className="space-y-2">
               <div>
                 <Label className="text-xs">Amount (USD)</Label>
@@ -287,22 +262,22 @@ function EmployeeSalaryCard({
                 </div>
               )}
               <Button onClick={handleRequest} className="w-full" disabled={!amount}>
-                Request Advance
+                Request Credit
               </Button>
             </div>
           ) : (
             <p className="text-sm text-muted-foreground">
-              Advance requests are currently disabled.
+              Credit requests are currently disabled.
             </p>
           )}
         </CardContent>
       </Card>
 
       {/* History */}
-      {advanceHistory && advanceHistory.length > 0 && (
+      {creditHistory && creditHistory.length > 0 && (
         <Card className="md:col-span-2">
           <CardHeader>
-            <CardTitle className="text-sm">Advance History</CardTitle>
+            <CardTitle className="text-sm">Credit History</CardTitle>
           </CardHeader>
           <CardContent>
             <Table>
@@ -316,7 +291,7 @@ function EmployeeSalaryCard({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {advanceHistory.map((adv: any) => (
+                {creditHistory.map((adv: any) => (
                   <TableRow key={adv._id}>
                     <TableCell>{formatCents(adv.requestedAmountCents)}</TableCell>
                     <TableCell className="text-destructive">

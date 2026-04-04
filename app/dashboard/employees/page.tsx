@@ -142,16 +142,16 @@ function EmployeesContent({
     setDeleteTarget(null);
   };
 
-  // Advance toggle uses the notes field: "[no-advance]" prefix means disabled
-  const isAdvanceEnabled = (notes?: string) => !notes?.startsWith("[no-advance]");
-  const toggleAdvance = async (id: Id<"employees">, currentNotes?: string) => {
-    if (isAdvanceEnabled(currentNotes)) {
-      await updateEmployee({ id, notes: `[no-advance]${currentNotes ?? ""}` });
-      toast.success("Advance requests disabled for this employee");
+  // Credit toggle uses the notes field: "[no-credit]" prefix means disabled
+  const isCreditEnabled = (notes?: string) => !notes?.startsWith("[no-credit]");
+  const toggleCredit = async (id: Id<"employees">, currentNotes?: string) => {
+    if (isCreditEnabled(currentNotes)) {
+      await updateEmployee({ id, notes: `[no-credit]${currentNotes ?? ""}` });
+      toast.success("Credit requests disabled for this employee");
     } else {
-      const cleaned = (currentNotes ?? "").replace("[no-advance]", "");
-      await updateEmployee({ id, notes: cleaned || undefined });
-      toast.success("Advance requests enabled for this employee");
+      const cleaned = (currentNotes ?? "").replace("[no-credit]", "");
+      await updateEmployee({ id, notes: cleaned || "" });
+      toast.success("Credit requests enabled for this employee");
     }
   };
 
@@ -275,7 +275,7 @@ function EmployeesContent({
                     <TableHead>Type</TableHead>
                     <TableHead>Payout</TableHead>
                     <TableHead>Next payment</TableHead>
-                    <TableHead>Advance</TableHead>
+                    <TableHead>Credit</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead />
                   </TableRow>
@@ -297,7 +297,7 @@ function EmployeesContent({
                         </Badge>
                       </TableCell>
                       <TableCell className="tabular-nums">
-                        {formatCents(emp.payoutAmountCents)}/{emp.payoutFrequency}
+                        {formatCents(emp.payoutAmountCents ?? 0)}/{emp.payoutFrequency}
                       </TableCell>
                       <TableCell className="text-muted-foreground">
                         {emp.nextPaymentDate
@@ -306,8 +306,8 @@ function EmployeesContent({
                       </TableCell>
                       <TableCell>
                         <Switch
-                          checked={isAdvanceEnabled(emp.notes)}
-                          onCheckedChange={() => toggleAdvance(emp._id, emp.notes)}
+                          checked={isCreditEnabled(emp.notes)}
+                          onCheckedChange={() => toggleCredit(emp._id, emp.notes)}
                           onClick={(e) => e.stopPropagation()}
                         />
                       </TableCell>
@@ -344,7 +344,7 @@ function EmployeesContent({
               <CardTitle>Payment runs</CardTitle>
               <CardDescription>
                 Outbound settlement desk for payroll, freelance, bonuses, and
-                advances
+                credits
               </CardDescription>
             </div>
             <Button size="sm" onClick={() => setShowCreatePayment(true)}>
@@ -526,7 +526,7 @@ function EmployeesContent({
                     <SelectItem value="freelance">Freelance</SelectItem>
                     <SelectItem value="bonus">Bonus</SelectItem>
                     <SelectItem value="reimbursement">Reimbursement</SelectItem>
-                    <SelectItem value="advance">Advance</SelectItem>
+                    <SelectItem value="credit">Credit</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
