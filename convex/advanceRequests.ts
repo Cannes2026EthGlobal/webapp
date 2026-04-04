@@ -78,6 +78,9 @@ export const request = mutation({
     if (employee.status !== "active") {
       throw new Error("Only active employees can request advances");
     }
+    if (employee.notes?.startsWith("[no-advance]")) {
+      throw new Error("Advance requests are disabled for this employee");
+    }
 
     const settings = await ctx.db
       .query("advanceSettings")
