@@ -72,24 +72,33 @@ function TreasuryContent() {
   const [depositAmount, setDepositAmount] = useState("");
 
   useEffect(() => {
-    if (depositReceipt && !isDepositWaiting && !depositRecorded && depositAmount) {
+    if (depositReceipt && !isDepositWaiting && !depositRecorded) {
       setDepositRecorded(true);
-      const cents = Math.round(parseFloat(depositAmount) * 100);
+      const amt = depositAmount || "0";
+      const cents = Math.round(parseFloat(amt) * 100);
+      console.log("[Deposit] Receipt confirmed. companyId:", companyId, "cents:", cents, "depositAmount:", depositAmount, "txHash:", depositTxHash);
       if (companyId && cents > 0) {
         creditBalance({
           companyId,
           amountCents: cents,
           currency: "USD" as const,
-          reason: `Payroll contract deposit — ${depositAmount} USDC`,
+          reason: `Payroll contract deposit — ${amt} USDC`,
           relatedPaymentId: depositTxHash,
         }).then(() => {
+          console.log("[Deposit] Ledger entry written successfully");
           toast.success("Deposit confirmed and recorded in ledger");
           void refetchOnChain();
-        }).catch(() => {
+          setShowDeposit(false);
+        }).catch((err) => {
+          console.error("[Deposit] Ledger write failed:", err);
           toast.error("On-chain deposit confirmed but ledger update failed");
+          setShowDeposit(false);
         });
+      } else {
+        console.warn("[Deposit] Skipped ledger write — companyId:", companyId, "cents:", cents);
+        toast.warning("Deposit confirmed but could not record in ledger (missing company or amount)");
+        setShowDeposit(false);
       }
-      setShowDeposit(false);
     }
   }, [depositReceipt, isDepositWaiting, depositRecorded, depositAmount, companyId, creditBalance, depositTxHash, refetchOnChain]);
 
