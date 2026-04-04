@@ -408,7 +408,7 @@ export default function Page() {
         <h2 className="mb-8 text-center text-3xl font-light tracking-tight md:text-4xl">
           Under the hood
         </h2>
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="space-y-4">
           {[
             {
               name: "Arc (Circle)",
@@ -428,12 +428,14 @@ export default function Page() {
           ].map((tech) => (
             <div
               key={tech.name}
-              className="rounded-lg border p-6"
+              className="flex items-start gap-6 rounded-lg border p-6"
               style={{ borderColor: "var(--tone-border)", background: "var(--tone-linen)" }}
             >
-              <p className="text-lg font-semibold">{tech.name}</p>
-              <p className="text-sm font-medium" style={{ color: "var(--tone-green)" }}>{tech.role}</p>
-              <p className="mt-3 text-sm leading-relaxed" style={{ color: "var(--tone-muted)" }}>{tech.detail}</p>
+              <div className="w-48 shrink-0">
+                <p className="text-base font-semibold">{tech.name}</p>
+                <p className="text-sm" style={{ color: "var(--tone-green)" }}>{tech.role}</p>
+              </div>
+              <p className="text-sm leading-relaxed" style={{ color: "var(--tone-muted)" }}>{tech.detail}</p>
             </div>
           ))}
         </div>
