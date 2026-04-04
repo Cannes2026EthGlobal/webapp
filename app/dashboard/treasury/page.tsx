@@ -1,13 +1,31 @@
 "use client";
 
+import { useState } from "react";
 import { useQuery } from "convex/react";
+import { useSendTransaction, useWaitForTransactionReceipt } from "wagmi";
+import { parseEther } from "viem";
 import { api } from "@/convex/_generated/api";
 import { useCompany } from "@/hooks/use-company";
+import { useBusinessProfile } from "@/hooks/use-business-profile";
+import { usePayrollBalance } from "@/hooks/use-payroll-contract";
 import { formatCents, formatDate } from "@/lib/format";
+import { PAYROLL_ABI } from "@/lib/payroll-contract";
+import { toast } from "sonner";
 
 import { PageHeader } from "@/components/page-header";
 import { CompanyGuard } from "@/components/company-guard";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   Card,
   CardContent,
@@ -28,11 +46,15 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 function TreasuryContent() {
   const { companyId } = useCompany();
+  const { payrollContractAddress } = useBusinessProfile();
+  const {
+    balanceUsdc: onChainBalance,
+    isLoading: onChainLoading,
+    refetch: refetchOnChain,
+  } = usePayrollBalance(payrollContractAddress);
 
-  const balance = useQuery(
-    api.balances.getForCompany,
-    companyId ? { companyId, currency: "USD" } : "skip"
-  );
+  const [showDeposit, setShowDeposit] = useState(false);
+
   const entries = useQuery(
     api.balances.getEntriesForCompany,
     companyId ? { companyId } : "skip"
@@ -42,7 +64,7 @@ function TreasuryContent() {
     companyId ? { companyId } : "skip"
   );
 
-  if (!balance || !entries || !stats) {
+  if (!entries || !stats) {
     return (
       <div className="p-4 lg:p-6">
         <Skeleton className="h-96" />
@@ -50,68 +72,53 @@ function TreasuryContent() {
     );
   }
 
-  const netPosition =
-    balance.availableCents - stats.payrollDueCents + stats.receivablesCents;
-
   return (
     <div className="flex flex-col gap-4 p-4 lg:p-6">
-      {/* ─── Balance Summary ─── */}
-      <div className="grid grid-cols-1 gap-4 @xl/main:grid-cols-2 @5xl/main:grid-cols-4">
+      {/* ─── On-Chain Contract ─── */}
+      {payrollContractAddress && (
         <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Available balance</CardDescription>
-            <CardTitle className="text-3xl tabular-nums">
-              {formatCents(balance.availableCents)}
-            </CardTitle>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardDescription>Payroll Contract</CardDescription>
+                <CardTitle className="text-3xl tabular-nums">
+                  {onChainLoading
+                    ? "..."
+                    : onChainBalance !== undefined
+                      ? `${onChainBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 })} USDC`
+                      : "N/A"}
+                </CardTitle>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => void refetchOnChain()}
+                >
+                  Refresh
+                </Button>
+                <Button size="sm" onClick={() => setShowDeposit(true)}>
+                  Deposit
+                </Button>
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
-            <p className="text-xs text-muted-foreground">
-              Net of all credits and debits in USDC
-            </p>
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <Badge variant="outline">Arc Testnet</Badge>
+              <a
+                href={`https://testnet.arcscan.app/address/${payrollContractAddress}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-mono hover:underline"
+              >
+                {payrollContractAddress.slice(0, 10)}...{payrollContractAddress.slice(-8)}
+              </a>
+            </div>
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Total credited</CardDescription>
-            <CardTitle className="text-2xl tabular-nums">
-              {formatCents(balance.totalCreditedCents)}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-xs text-muted-foreground">
-              All inbound collections
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Total debited</CardDescription>
-            <CardTitle className="text-2xl tabular-nums">
-              {formatCents(balance.totalDebitedCents)}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-xs text-muted-foreground">
-              All outbound settlements
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Net position</CardDescription>
-            <CardTitle
-              className={`text-2xl tabular-nums ${netPosition < 0 ? "text-destructive" : ""}`}
-            >
-              {formatCents(netPosition)}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-xs text-muted-foreground">
-              Balance − payroll due + receivables
-            </p>
-          </CardContent>
-        </Card>
-      </div>
+      )}
+
 
       {/* ─── Obligations & Receivables ─── */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
@@ -229,7 +236,7 @@ function TreasuryContent() {
                         {entry.reason}
                       </TableCell>
                       <TableCell className="text-muted-foreground">
-                        {formatDate(entry._creationTime)}
+                        {formatDate(entry.occurredAt ?? entry._creationTime)}
                       </TableCell>
                     </TableRow>
                   ))}
@@ -240,23 +247,95 @@ function TreasuryContent() {
         </CardContent>
       </Card>
 
-      {/* ─── Settlement Placeholder ─── */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Settlement & Payout</CardTitle>
-          <CardDescription>
-            On-chain settlement to your treasury wallet
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground">
-            On-chain payout settlement will be available once the Chainlink
-            integration is connected. Balance data shown here is maintained by
-            the Convex ledger.
-          </p>
-        </CardContent>
-      </Card>
+      <DepositDialog
+        open={showDeposit}
+        onOpenChange={setShowDeposit}
+        contractAddress={payrollContractAddress}
+        onSuccess={() => void refetchOnChain()}
+      />
     </div>
+  );
+}
+
+function DepositDialog({
+  open,
+  onOpenChange,
+  contractAddress,
+  onSuccess,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  contractAddress: `0x${string}` | undefined;
+  onSuccess: () => void;
+}) {
+  const [amount, setAmount] = useState("");
+  const { sendTransaction, data: txHash, isPending } = useSendTransaction();
+  const { data: receipt, isLoading: isWaiting } = useWaitForTransactionReceipt({
+    hash: txHash,
+  });
+
+  if (receipt && !isWaiting) {
+    toast.success("Deposit confirmed");
+    onSuccess();
+    onOpenChange(false);
+  }
+
+  const handleDeposit = () => {
+    if (!contractAddress || !amount) return;
+    sendTransaction(
+      {
+        to: contractAddress,
+        value: parseEther(amount),
+      },
+      {
+        onError: (err) => {
+          toast.error(err.message.slice(0, 100));
+        },
+      }
+    );
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Deposit USDC to payroll contract</DialogTitle>
+          <DialogDescription>
+            Send native USDC to fund your payroll contract on Arc testnet.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-4 py-4">
+          <div className="grid gap-2">
+            <Label>Amount (USDC)</Label>
+            <Input
+              type="number"
+              step="0.01"
+              min="0"
+              placeholder="5.00"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+            />
+          </div>
+          {txHash && (
+            <div className="flex items-center gap-2">
+              <div className="size-2 animate-pulse rounded-full bg-yellow-500" />
+              <span className="text-sm">Waiting for confirmation...</span>
+            </div>
+          )}
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
+          <Button
+            onClick={handleDeposit}
+            disabled={isPending || !amount || parseFloat(amount) <= 0}
+          >
+            {isPending ? "Confirm in wallet..." : "Deposit"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 

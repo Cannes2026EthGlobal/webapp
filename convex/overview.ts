@@ -10,11 +10,12 @@ export const settlementChart = query({
       .order("desc")
       .take(500);
 
-    // Group by date
+    // Group by date (use occurredAt if set, otherwise _creationTime)
     const byDate = new Map<string, { inbound: number; outbound: number }>();
 
     for (const entry of entries) {
-      const date = new Date(entry._creationTime).toISOString().slice(0, 10);
+      const ts = entry.occurredAt ?? entry._creationTime;
+      const date = new Date(ts).toISOString().slice(0, 10);
       const existing = byDate.get(date) ?? { inbound: 0, outbound: 0 };
       if (entry.type === "credit") {
         existing.inbound += entry.amountCents;

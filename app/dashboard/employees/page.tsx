@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useCompany } from "@/hooks/use-company";
-import { formatCents, formatDateShort } from "@/lib/format";
+import { formatCents } from "@/lib/format";
 
 import { PageHeader } from "@/components/page-header";
 import { CompanyGuard } from "@/components/company-guard";
@@ -58,13 +58,8 @@ function EmployeesContent({ showCreate, setShowCreate }: { showCreate: boolean; 
     displayName: "",
     role: "",
     employmentType: "full-time" as const,
-    compensationModel: "salary" as const,
-    payoutAsset: "USDC",
-    payoutAmountCents: 0,
-    payoutFrequency: "monthly" as const,
     privacyLevel: "pseudonymous" as const,
     email: "",
-    walletAddress: "",
   });
 
   if (!employees) {
@@ -77,34 +72,26 @@ function EmployeesContent({ showCreate, setShowCreate }: { showCreate: boolean; 
 
   const handleCreate = async () => {
     if (!companyId || !formData.displayName || !formData.role) return;
-    await createEmployee({
+    const newId = await createEmployee({
       companyId,
       displayName: formData.displayName,
       role: formData.role,
       employmentType: formData.employmentType,
-      compensationModel: formData.compensationModel,
-      payoutAsset: formData.payoutAsset,
-      payoutAmountCents: formData.payoutAmountCents,
-      payoutFrequency: formData.payoutFrequency,
       walletVerified: false,
       privacyLevel: formData.privacyLevel,
       status: "onboarding",
       email: formData.email || undefined,
-      walletAddress: formData.walletAddress || undefined,
     });
     setShowCreate(false);
     setFormData({
       displayName: "",
       role: "",
       employmentType: "full-time",
-      compensationModel: "salary",
-      payoutAsset: "USDC",
-      payoutAmountCents: 0,
-      payoutFrequency: "monthly",
       privacyLevel: "pseudonymous",
       email: "",
-      walletAddress: "",
     });
+    // Navigate to detail page to add compensation lines
+    router.push(`/dashboard/employees/${newId}`);
   };
 
   return (
@@ -130,11 +117,9 @@ function EmployeesContent({ showCreate, setShowCreate }: { showCreate: boolean; 
                     <TableHead>Name</TableHead>
                     <TableHead>Role</TableHead>
                     <TableHead>Type</TableHead>
-                    <TableHead>Compensation</TableHead>
-                    <TableHead>Payout</TableHead>
+                    <TableHead>Total Comp</TableHead>
                     <TableHead>Wallet</TableHead>
                     <TableHead>Privacy</TableHead>
-                    <TableHead>Next payment</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead />
                   </TableRow>
@@ -155,11 +140,19 @@ function EmployeesContent({ showCreate, setShowCreate }: { showCreate: boolean; 
                           {emp.employmentType}
                         </Badge>
                       </TableCell>
-                      <TableCell className="capitalize">
-                        {emp.compensationModel}
-                      </TableCell>
-                      <TableCell className="tabular-nums">
-                        {formatCents(emp.payoutAmountCents)}/{emp.payoutFrequency}
+                      <TableCell>
+                        <div className="tabular-nums font-medium">
+                          {formatCents(emp.totalCompensationCents)}
+                        </div>
+                        {emp.compensationLines.length > 0 && (
+                          <div className="mt-0.5 space-y-0.5">
+                            {emp.compensationLines.map((line, i) => (
+                              <div key={i} className="text-xs text-muted-foreground">
+                                {line.name}: {formatCents(line.amountCents)}/{line.frequency}
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </TableCell>
                       <TableCell>
                         <Badge
@@ -172,11 +165,6 @@ function EmployeesContent({ showCreate, setShowCreate }: { showCreate: boolean; 
                         <Badge variant="outline" className="capitalize">
                           {emp.privacyLevel}
                         </Badge>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {emp.nextPaymentDate
-                          ? formatDateShort(emp.nextPaymentDate)
-                          : "-"}
                       </TableCell>
                       <TableCell>
                         <StatusBadge status={emp.status} />
@@ -231,91 +219,27 @@ function EmployeesContent({ showCreate, setShowCreate }: { showCreate: boolean; 
                 }
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-2">
-                <Label>Employment type</Label>
-                <Select
-                  value={formData.employmentType}
-                  onValueChange={(v) =>
-                    setFormData({
-                      ...formData,
-                      employmentType: v as typeof formData.employmentType,
-                    })
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="full-time">Full-time</SelectItem>
-                    <SelectItem value="part-time">Part-time</SelectItem>
-                    <SelectItem value="contractor">Contractor</SelectItem>
-                    <SelectItem value="freelance">Freelance</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid gap-2">
-                <Label>Compensation model</Label>
-                <Select
-                  value={formData.compensationModel}
-                  onValueChange={(v) =>
-                    setFormData({
-                      ...formData,
-                      compensationModel: v as typeof formData.compensationModel,
-                    })
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="salary">Salary</SelectItem>
-                    <SelectItem value="hourly">Hourly</SelectItem>
-                    <SelectItem value="per-task">Per task</SelectItem>
-                    <SelectItem value="milestone">Milestone</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-2">
-                <Label htmlFor="amount">Payout amount (USD)</Label>
-                <Input
-                  id="amount"
-                  type="number"
-                  value={formData.payoutAmountCents / 100 || ""}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      payoutAmountCents: Math.round(
-                        parseFloat(e.target.value || "0") * 100
-                      ),
-                    })
-                  }
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label>Frequency</Label>
-                <Select
-                  value={formData.payoutFrequency}
-                  onValueChange={(v) =>
-                    setFormData({
-                      ...formData,
-                      payoutFrequency: v as typeof formData.payoutFrequency,
-                    })
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="monthly">Monthly</SelectItem>
-                    <SelectItem value="biweekly">Biweekly</SelectItem>
-                    <SelectItem value="weekly">Weekly</SelectItem>
-                    <SelectItem value="per-task">Per task</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+            <div className="grid gap-2">
+              <Label>Employment type</Label>
+              <Select
+                value={formData.employmentType}
+                onValueChange={(v) =>
+                  setFormData({
+                    ...formData,
+                    employmentType: v as typeof formData.employmentType,
+                  })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="full-time">Full-time</SelectItem>
+                  <SelectItem value="part-time">Part-time</SelectItem>
+                  <SelectItem value="contractor">Contractor</SelectItem>
+                  <SelectItem value="freelance">Freelance</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="grid gap-2">
               <Label htmlFor="email">Email (optional)</Label>
@@ -350,6 +274,10 @@ function EmployeesContent({ showCreate, setShowCreate }: { showCreate: boolean; 
               </Select>
             </div>
           </div>
+          <p className="text-xs text-muted-foreground rounded-md bg-muted px-3 py-2">
+            Salary and compensation details are configured on the employee
+            profile page. You will be redirected there after creating.
+          </p>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowCreate(false)}>
               Cancel

@@ -8,20 +8,6 @@ const employmentTypeValidator = v.union(
   v.literal("freelance")
 );
 
-const compensationModelValidator = v.union(
-  v.literal("salary"),
-  v.literal("hourly"),
-  v.literal("per-task"),
-  v.literal("milestone")
-);
-
-const payoutFrequencyValidator = v.union(
-  v.literal("monthly"),
-  v.literal("biweekly"),
-  v.literal("weekly"),
-  v.literal("per-task")
-);
-
 const privacyLevelValidator = v.union(
   v.literal("pseudonymous"),
   v.literal("verified"),
@@ -40,20 +26,46 @@ export const listByCompany = query({
     status: v.optional(statusValidator),
   },
   handler: async (ctx, args) => {
+    let employees;
     if (args.status) {
-      return await ctx.db
+      employees = await ctx.db
         .query("employees")
         .withIndex("by_companyId_and_status", (q) =>
           q.eq("companyId", args.companyId).eq("status", args.status!)
         )
         .order("desc")
         .take(100);
+    } else {
+      employees = await ctx.db
+        .query("employees")
+        .withIndex("by_companyId", (q) => q.eq("companyId", args.companyId))
+        .order("desc")
+        .take(100);
     }
-    return await ctx.db
-      .query("employees")
+
+    // Batch-fetch active compensation lines for all employees in this company
+    const allLines = await ctx.db
+      .query("compensationLines")
       .withIndex("by_companyId", (q) => q.eq("companyId", args.companyId))
-      .order("desc")
-      .take(100);
+      .take(500);
+
+    // Group active lines by employee
+    const totalByEmployee = new Map<string, number>();
+    const linesByEmployee = new Map<string, Array<{ name: string; amountCents: number; frequency: string }>>();
+    for (const line of allLines) {
+      if (!line.isActive) continue;
+      const total = totalByEmployee.get(line.employeeId) ?? 0;
+      totalByEmployee.set(line.employeeId, total + line.amountCents);
+      const lines = linesByEmployee.get(line.employeeId) ?? [];
+      lines.push({ name: line.name, amountCents: line.amountCents, frequency: line.frequency });
+      linesByEmployee.set(line.employeeId, lines);
+    }
+
+    return employees.map((emp) => ({
+      ...emp,
+      totalCompensationCents: totalByEmployee.get(emp._id) ?? emp.payoutAmountCents ?? 0,
+      compensationLines: linesByEmployee.get(emp._id) ?? [],
+    }));
   },
 });
 
@@ -70,11 +82,6 @@ export const create = mutation({
     displayName: v.string(),
     role: v.string(),
     employmentType: employmentTypeValidator,
-    compensationModel: compensationModelValidator,
-    payoutAsset: v.string(),
-    payoutAmountCents: v.number(),
-    payoutFrequency: payoutFrequencyValidator,
-    nextPaymentDate: v.optional(v.number()),
     walletAddress: v.optional(v.string()),
     backupWalletAddress: v.optional(v.string()),
     walletVerified: v.boolean(),
@@ -97,11 +104,6 @@ export const update = mutation({
     displayName: v.optional(v.string()),
     role: v.optional(v.string()),
     employmentType: v.optional(employmentTypeValidator),
-    compensationModel: v.optional(compensationModelValidator),
-    payoutAsset: v.optional(v.string()),
-    payoutAmountCents: v.optional(v.number()),
-    payoutFrequency: v.optional(payoutFrequencyValidator),
-    nextPaymentDate: v.optional(v.number()),
     walletAddress: v.optional(v.string()),
     backupWalletAddress: v.optional(v.string()),
     walletVerified: v.optional(v.boolean()),
@@ -128,6 +130,15 @@ export const update = mutation({
 export const remove = mutation({
   args: { id: v.id("employees") },
   handler: async (ctx, args) => {
+    // Cascade-delete compensation lines
+    const lines = await ctx.db
+      .query("compensationLines")
+      .withIndex("by_employeeId", (q) => q.eq("employeeId", args.id))
+      .take(100);
+    for (const line of lines) {
+      await ctx.db.delete(line._id);
+    }
+
     await ctx.db.delete(args.id);
   },
 });

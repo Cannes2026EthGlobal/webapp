@@ -78,6 +78,7 @@ export const create = mutation({
     description: v.optional(v.string()),
     scheduledDate: v.optional(v.number()),
     batchId: v.optional(v.string()),
+    compensationLineId: v.optional(v.id("compensationLines")),
   },
   handler: async (ctx, args) => {
     return await ctx.db.insert("employeePayments", {

@@ -2,6 +2,32 @@ import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
 export default defineSchema({
+  // ─── Business Profiles (1:1 per wallet, gates dashboard access) ───
+  businessProfiles: defineTable({
+    ownerWallet: v.string(),
+    businessName: v.string(),
+    description: v.optional(v.string()),
+    industry: v.optional(v.string()),
+    website: v.optional(v.string()),
+    payrollContractAddress: v.string(),
+  }).index("by_ownerWallet", ["ownerWallet"]),
+
+  // ─── Onboarding Wizard State (persisted across refreshes) ───
+  onboardingState: defineTable({
+    ownerWallet: v.string(),
+    step: v.union(
+      v.literal("details"),
+      v.literal("deploy"),
+      v.literal("done")
+    ),
+    businessName: v.string(),
+    description: v.optional(v.string()),
+    industry: v.optional(v.string()),
+    website: v.optional(v.string()),
+    deployTxHash: v.optional(v.string()),
+    deployedAddress: v.optional(v.string()),
+  }).index("by_ownerWallet", ["ownerWallet"]),
+
   // ─── Companies ───
   companies: defineTable({
     name: v.string(),
@@ -26,19 +52,24 @@ export default defineSchema({
       v.literal("contractor"),
       v.literal("freelance")
     ),
-    compensationModel: v.union(
-      v.literal("salary"),
-      v.literal("hourly"),
-      v.literal("per-task"),
-      v.literal("milestone")
+    // Legacy flat comp fields — optional for backward compat; new employees use compensationLines
+    compensationModel: v.optional(
+      v.union(
+        v.literal("salary"),
+        v.literal("hourly"),
+        v.literal("per-task"),
+        v.literal("milestone")
+      )
     ),
-    payoutAsset: v.string(),
-    payoutAmountCents: v.number(),
-    payoutFrequency: v.union(
-      v.literal("monthly"),
-      v.literal("biweekly"),
-      v.literal("weekly"),
-      v.literal("per-task")
+    payoutAsset: v.optional(v.string()),
+    payoutAmountCents: v.optional(v.number()),
+    payoutFrequency: v.optional(
+      v.union(
+        v.literal("monthly"),
+        v.literal("biweekly"),
+        v.literal("weekly"),
+        v.literal("per-task")
+      )
     ),
     nextPaymentDate: v.optional(v.number()),
     walletAddress: v.optional(v.string()),
@@ -63,6 +94,27 @@ export default defineSchema({
   })
     .index("by_companyId", ["companyId"])
     .index("by_companyId_and_status", ["companyId", "status"]),
+
+  // ─── Compensation Lines (salaries, one-to-many per employee) ───
+  compensationLines: defineTable({
+    employeeId: v.id("employees"),
+    companyId: v.id("companies"),
+    name: v.string(),
+    description: v.optional(v.string()),
+    amountCents: v.number(),
+    asset: v.string(),
+    frequency: v.union(
+      v.literal("monthly"),
+      v.literal("biweekly"),
+      v.literal("weekly")
+    ),
+    startDate: v.optional(v.number()),
+    endDate: v.optional(v.number()),
+    isActive: v.boolean(),
+  })
+    .index("by_employeeId", ["employeeId"])
+    .index("by_companyId", ["companyId"])
+    .index("by_employeeId_and_isActive", ["employeeId", "isActive"]),
 
   // ─── Customers ───
   customers: defineTable({
@@ -151,10 +203,12 @@ export default defineSchema({
     settledAt: v.optional(v.number()),
     txHash: v.optional(v.string()),
     batchId: v.optional(v.string()),
+    compensationLineId: v.optional(v.id("compensationLines")),
   })
     .index("by_companyId", ["companyId"])
     .index("by_companyId_and_status", ["companyId", "status"])
-    .index("by_employeeId", ["employeeId"]),
+    .index("by_employeeId", ["employeeId"])
+    .index("by_compensationLineId", ["compensationLineId"]),
 
   // ─── Customer Payments (inbound) ───
   customerPayments: defineTable({
@@ -206,5 +260,6 @@ export default defineSchema({
     currency: v.union(v.literal("USD"), v.literal("EUR")),
     reason: v.string(),
     relatedPaymentId: v.optional(v.string()),
+    occurredAt: v.optional(v.number()),
   }).index("by_companyId", ["companyId"]),
 });
