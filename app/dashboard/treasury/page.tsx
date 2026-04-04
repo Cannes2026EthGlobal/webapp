@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "convex/react";
 import { useSendTransaction, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
 import { parseEther } from "viem";
@@ -286,11 +286,13 @@ function DepositDialog({
     hash: txHash,
   });
 
-  if (receipt && !isWaiting) {
-    toast.success("Deposit confirmed");
-    onSuccess();
-    onOpenChange(false);
-  }
+  useEffect(() => {
+    if (receipt && !isWaiting) {
+      toast.success("Deposit confirmed");
+      onSuccess();
+      onOpenChange(false);
+    }
+  }, [receipt, isWaiting, onSuccess, onOpenChange]);
 
   const handleDeposit = () => {
     if (!contractAddress || !amount) return;
