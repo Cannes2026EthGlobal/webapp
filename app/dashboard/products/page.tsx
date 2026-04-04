@@ -62,20 +62,9 @@ function ProductsContent({
     api.checkoutLinks.listByCompany,
     companyId ? { companyId } : "skip"
   );
-  const createProduct = useMutation(api.products.create);
   const removeProduct = useMutation(api.products.remove);
   const createCheckoutLink = useMutation(api.checkoutLinks.create);
   const deactivateLink = useMutation(api.checkoutLinks.deactivate);
-
-  const [formData, setFormData] = useState({
-    name: "",
-    description: "",
-    billingUnit: "",
-    pricingModel: "per-unit" as const,
-    unitPriceCents: 0,
-    privacyMode: "standard" as const,
-    refundPolicy: "no-refund" as const,
-  });
 
   if (!products || !checkoutLinks) {
     return (
@@ -84,34 +73,6 @@ function ProductsContent({
       </div>
     );
   }
-
-  const handleCreate = async () => {
-    if (!companyId || !formData.name || !formData.billingUnit) return;
-    await createProduct({
-      companyId,
-      name: formData.name,
-      description: formData.description || undefined,
-      billingUnit: formData.billingUnit,
-      pricingModel: formData.pricingModel,
-      unitPriceCents: formData.unitPriceCents,
-      currency: "USD",
-      settlementAsset: "USDC",
-      privacyMode: formData.privacyMode,
-      refundPolicy: formData.refundPolicy,
-      isActive: true,
-    });
-    setShowCreate(false);
-    setFormData({
-      name: "",
-      description: "",
-      billingUnit: "",
-      pricingModel: "per-unit",
-      unitPriceCents: 0,
-      privacyMode: "standard",
-      refundPolicy: "no-refund",
-    });
-    toast.success("Product created");
-  };
 
   const handleCreateLink = async (productId: Id<"products">) => {
     if (!companyId) return;
@@ -311,143 +272,143 @@ function ProductsContent({
           )}
       </div>
 
-      {/* ─── Create Product Dialog ─── */}
-      <Dialog open={showCreate} onOpenChange={setShowCreate}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Create product</DialogTitle>
-            <DialogDescription>
-              Define a new billable product for this workspace.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
+      <CreateProductDialog
+        open={showCreate}
+        onOpenChange={setShowCreate}
+        companyId={companyId}
+      />
+    </div>
+  );
+}
+
+function CreateProductDialog({
+  open,
+  onOpenChange,
+  companyId,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  companyId: any;
+}) {
+  const createProduct = useMutation(api.products.create);
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [billingUnit, setBillingUnit] = useState("");
+  const [pricingModel, setPricingModel] = useState<"per-unit" | "tiered" | "flat" | "usage-commit">("per-unit");
+  const [priceInput, setPriceInput] = useState("");
+  const [privacyMode, setPrivacyMode] = useState<"standard" | "pseudonymous" | "shielded">("standard");
+  const [refundPolicy, setRefundPolicy] = useState<"no-refund" | "partial" | "full">("no-refund");
+
+  const handleCreate = async () => {
+    if (!companyId || !name || !billingUnit) return;
+    const val = parseFloat(priceInput || "0");
+    await createProduct({
+      companyId,
+      name,
+      description: description || undefined,
+      billingUnit,
+      pricingModel,
+      unitPriceCents: Math.floor(val * 100 * 1e10) / 1e10,
+      currency: "USD",
+      settlementAsset: "USDC",
+      privacyMode,
+      refundPolicy,
+      isActive: true,
+    });
+    onOpenChange(false);
+    setName("");
+    setDescription("");
+    setBillingUnit("");
+    setPricingModel("per-unit");
+    setPriceInput("");
+    setPrivacyMode("standard");
+    setRefundPolicy("no-refund");
+    toast.success("Product created");
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Create product</DialogTitle>
+          <DialogDescription>
+            Define a new billable product for this workspace.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-4 py-4">
+          <div className="grid gap-2">
+            <Label htmlFor="name">Product name</Label>
+            <Input id="name" value={name} onChange={(e) => setName(e.target.value)} />
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="description">Description (optional)</Label>
+            <Input id="description" value={description} onChange={(e) => setDescription(e.target.value)} />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
             <div className="grid gap-2">
-              <Label htmlFor="name">Product name</Label>
-              <Input
-                id="name"
-                value={formData.name}
-                onChange={(e) =>
-                  setFormData({ ...formData, name: e.target.value })
-                }
-              />
+              <Label htmlFor="billingUnit">Billing unit</Label>
+              <Input id="billingUnit" placeholder="e.g., request, token, hour" value={billingUnit} onChange={(e) => setBillingUnit(e.target.value)} />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="description">Description (optional)</Label>
-              <Input
-                id="description"
-                value={formData.description}
-                onChange={(e) =>
-                  setFormData({ ...formData, description: e.target.value })
-                }
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-2">
-                <Label htmlFor="billingUnit">Billing unit</Label>
-                <Input
-                  id="billingUnit"
-                  placeholder="e.g., request, token, hour"
-                  value={formData.billingUnit}
-                  onChange={(e) =>
-                    setFormData({ ...formData, billingUnit: e.target.value })
-                  }
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label>Pricing model</Label>
-                <Select
-                  value={formData.pricingModel}
-                  onValueChange={(v) =>
-                    setFormData({
-                      ...formData,
-                      pricingModel: v as typeof formData.pricingModel,
-                    })
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="per-unit">Per unit</SelectItem>
-                    <SelectItem value="tiered">Tiered</SelectItem>
-                    <SelectItem value="flat">Flat</SelectItem>
-                    <SelectItem value="usage-commit">Usage + commit</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="unitPrice">Unit price (USDC)</Label>
-              <Input
-                id="unitPrice"
-                type="number"
-                step="any"
-                min="0"
-                placeholder="0.0001"
-                value={formData.unitPriceCents > 0 ? formData.unitPriceCents / 100 : ""}
-                onChange={(e) => {
-                  const val = parseFloat(e.target.value || "0");
-                  setFormData({
-                    ...formData,
-                    unitPriceCents: Math.floor(val * 100 * 1e10) / 1e10,
-                  });
-                }}
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-2">
-                <Label>Privacy mode</Label>
-                <Select
-                  value={formData.privacyMode}
-                  onValueChange={(v) =>
-                    setFormData({
-                      ...formData,
-                      privacyMode: v as typeof formData.privacyMode,
-                    })
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="standard">Standard</SelectItem>
-                    <SelectItem value="pseudonymous">Pseudonymous</SelectItem>
-                    <SelectItem value="shielded">Shielded</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid gap-2">
-                <Label>Refund policy</Label>
-                <Select
-                  value={formData.refundPolicy}
-                  onValueChange={(v) =>
-                    setFormData({
-                      ...formData,
-                      refundPolicy: v as typeof formData.refundPolicy,
-                    })
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="no-refund">No refund</SelectItem>
-                    <SelectItem value="partial">Partial</SelectItem>
-                    <SelectItem value="full">Full</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+              <Label>Pricing model</Label>
+              <Select value={pricingModel} onValueChange={(v) => setPricingModel(v as typeof pricingModel)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="per-unit">Per unit</SelectItem>
+                  <SelectItem value="tiered">Tiered</SelectItem>
+                  <SelectItem value="flat">Flat</SelectItem>
+                  <SelectItem value="usage-commit">Usage + commit</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowCreate(false)}>
-              Cancel
-            </Button>
-            <Button onClick={() => void handleCreate()}>Create product</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </div>
+          <div className="grid gap-2">
+            <Label htmlFor="unitPrice">Unit price (USDC)</Label>
+            <Input
+              id="unitPrice"
+              type="text"
+              inputMode="decimal"
+              placeholder="0.0001"
+              value={priceInput}
+              onChange={(e) => {
+                const v = e.target.value;
+                if (v === "" || /^\d*\.?\d*$/.test(v)) {
+                  setPriceInput(v);
+                }
+              }}
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="grid gap-2">
+              <Label>Privacy mode</Label>
+              <Select value={privacyMode} onValueChange={(v) => setPrivacyMode(v as typeof privacyMode)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="standard">Standard</SelectItem>
+                  <SelectItem value="pseudonymous">Pseudonymous</SelectItem>
+                  <SelectItem value="shielded">Shielded</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label>Refund policy</Label>
+              <Select value={refundPolicy} onValueChange={(v) => setRefundPolicy(v as typeof refundPolicy)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="no-refund">No refund</SelectItem>
+                  <SelectItem value="partial">Partial</SelectItem>
+                  <SelectItem value="full">Full</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button onClick={() => void handleCreate()}>Create product</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
