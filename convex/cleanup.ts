@@ -2,10 +2,12 @@ import { mutation } from "./_generated/server";
 import { v } from "convex/values";
 
 /**
- * Clears seeded balance entries and resets the balance for a company
- * owned by the given wallet. One-time cleanup utility.
+ * Clears ALL seeded data for companies owned by the given wallet.
+ * Deletes: balance entries, balances, employee payments, customer payments,
+ * compensation lines, employees, customers, products, checkout links,
+ * advance requests, advance settings.
  */
-export const clearBalanceData = mutation({
+export const clearAllData = mutation({
   args: { wallet: v.string() },
   handler: async (ctx, args) => {
     const companies = await ctx.db
@@ -13,34 +15,60 @@ export const clearBalanceData = mutation({
       .withIndex("by_ownerWallet", (q) => q.eq("ownerWallet", args.wallet))
       .take(10);
 
-    let entriesDeleted = 0;
-    let balancesReset = 0;
+    let deleted = 0;
 
     for (const company of companies) {
-      // Delete all balance entries
-      const entries = await ctx.db
-        .query("balanceEntries")
-        .withIndex("by_companyId", (q) => q.eq("companyId", company._id))
-        .take(500);
-      for (const entry of entries) {
-        await ctx.db.delete(entry._id);
-        entriesDeleted++;
+      const tables = [
+        "balanceEntries",
+        "companyBalances",
+        "employeePayments",
+        "customerPayments",
+        "compensationLines",
+        "advanceRequests",
+        "advanceSettings",
+        "checkoutLinks",
+      ] as const;
+
+      for (const table of tables) {
+        const docs = await ctx.db
+          .query(table)
+          .withIndex("by_companyId", (q) => q.eq("companyId", company._id))
+          .take(500);
+        for (const doc of docs) {
+          await ctx.db.delete(doc._id);
+          deleted++;
+        }
       }
 
-      // Reset balance totals to zero
-      const balances = await ctx.db
-        .query("companyBalances")
+      // Employees and customers
+      const employees = await ctx.db
+        .query("employees")
         .withIndex("by_companyId", (q) => q.eq("companyId", company._id))
-        .take(10);
-      for (const bal of balances) {
-        await ctx.db.patch(bal._id, {
-          totalCreditedCents: 0,
-          totalDebitedCents: 0,
-        });
-        balancesReset++;
+        .take(200);
+      for (const e of employees) {
+        await ctx.db.delete(e._id);
+        deleted++;
+      }
+
+      const customers = await ctx.db
+        .query("customers")
+        .withIndex("by_companyId", (q) => q.eq("companyId", company._id))
+        .take(200);
+      for (const c of customers) {
+        await ctx.db.delete(c._id);
+        deleted++;
+      }
+
+      const products = await ctx.db
+        .query("products")
+        .withIndex("by_companyId", (q) => q.eq("companyId", company._id))
+        .take(200);
+      for (const p of products) {
+        await ctx.db.delete(p._id);
+        deleted++;
       }
     }
 
-    return { companiesFound: companies.length, entriesDeleted, balancesReset };
+    return { companiesFound: companies.length, deleted };
   },
 });
