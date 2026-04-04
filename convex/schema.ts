@@ -397,4 +397,67 @@ export default defineSchema({
     .index("by_companyId_and_status", ["companyId", "status"])
     .index("by_employeeId", ["employeeId"])
     .index("by_employeeId_and_status", ["employeeId", "status"]),
+
+  // ─── Agent API Keys (per-customer agent authentication) ───
+  agentApiKeys: defineTable({
+    companyId: v.id("companies"),
+    customerId: v.id("customers"),
+    apiKey: v.string(),
+    label: v.string(),
+    rateLimit: v.optional(v.number()), // requests per minute
+    isActive: v.boolean(),
+    lastUsedAt: v.optional(v.number()),
+  })
+    .index("by_companyId", ["companyId"])
+    .index("by_apiKey", ["apiKey"])
+    .index("by_customerId", ["customerId"]),
+
+  // ─── Agent Sessions (metered billing sessions for autonomous agents) ───
+  agentSessions: defineTable({
+    companyId: v.id("companies"),
+    customerId: v.id("customers"),
+    apiKeyId: v.id("agentApiKeys"),
+    productId: v.id("products"),
+    tabId: v.optional(v.id("usageTabs")),
+    sessionId: v.string(), // external session identifier
+    status: v.union(
+      v.literal("active"),
+      v.literal("completed"),
+      v.literal("billed"),
+      v.literal("settled")
+    ),
+    totalUnits: v.number(),
+    totalMicroCents: v.number(), // sub-cent precision for nanopayments
+    startedAt: v.number(),
+    endedAt: v.optional(v.number()),
+    settledAt: v.optional(v.number()),
+    settlementTxHash: v.optional(v.string()),
+  })
+    .index("by_companyId", ["companyId"])
+    .index("by_sessionId", ["sessionId"])
+    .index("by_customerId", ["customerId"])
+    .index("by_companyId_and_status", ["companyId", "status"])
+    .index("by_apiKeyId", ["apiKeyId"]),
+
+  // ─── Agent Settlements (agent-to-agent clearing) ───
+  agentSettlements: defineTable({
+    companyId: v.id("companies"),
+    fromCustomerId: v.id("customers"),
+    toCustomerId: v.id("customers"),
+    amountMicroCents: v.number(),
+    currency: v.union(v.literal("USD"), v.literal("EUR")),
+    status: v.union(
+      v.literal("initiated"),
+      v.literal("confirmed"),
+      v.literal("disputed"),
+      v.literal("resolved")
+    ),
+    reason: v.optional(v.string()),
+    initiatedAt: v.number(),
+    confirmedAt: v.optional(v.number()),
+    txHash: v.optional(v.string()),
+  })
+    .index("by_companyId", ["companyId"])
+    .index("by_fromCustomerId", ["fromCustomerId"])
+    .index("by_toCustomerId", ["toCustomerId"]),
 });

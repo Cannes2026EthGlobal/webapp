@@ -30,11 +30,9 @@ import {
   Add01Icon,
   Analytics01Icon,
   ArrowDown01Icon,
-  ChartHistogramIcon,
   CommandIcon,
   DashboardSquare01Icon,
   Database01Icon,
-  Folder01Icon,
   HelpCircleIcon,
   Menu01Icon,
   SearchIcon,
@@ -44,7 +42,6 @@ import {
 import { HugeiconsIcon } from "@hugeicons/react";
 
 const navItems = [
-  // ─── Operations ───
   {
     title: "Overview",
     url: "/dashboard",
@@ -56,26 +53,39 @@ const navItems = [
     icon: <HugeiconsIcon icon={UserGroupIcon} strokeWidth={2} />,
   },
   {
+    title: "Employee Payments",
+    url: "/dashboard/employee-payments",
+    icon: <HugeiconsIcon icon={Analytics01Icon} strokeWidth={2} />,
+  },
+  {
     title: "Customers",
     url: "/dashboard/customers",
     icon: <HugeiconsIcon icon={Menu01Icon} strokeWidth={2} />,
   },
-  // ─── Money ───
   {
-    title: "Treasury",
-    url: "/dashboard/treasury",
+    title: "Customer Payments",
+    url: "/dashboard/customer-payments",
     icon: <HugeiconsIcon icon={Analytics01Icon} strokeWidth={2} />,
   },
-  // ─── Platform ───
   {
-    title: "My Products",
+    title: "Agents",
+    url: "/dashboard/agents",
+    icon: <HugeiconsIcon icon={CommandIcon} strokeWidth={2} />,
+  },
+  {
+    title: "Payroll",
+    url: "/dashboard/payroll",
+    icon: <HugeiconsIcon icon={Analytics01Icon} strokeWidth={2} />,
+  },
+  {
+    title: "Products & SDK",
     url: "/dashboard/products",
     icon: <HugeiconsIcon icon={Database01Icon} strokeWidth={2} />,
   },
   {
-    title: "Integration",
-    url: "/dashboard/integration",
-    icon: <HugeiconsIcon icon={CommandIcon} strokeWidth={2} />,
+    title: "Treasury",
+    url: "/dashboard/treasury",
+    icon: <HugeiconsIcon icon={Analytics01Icon} strokeWidth={2} />,
   },
 ];
 
@@ -84,6 +94,16 @@ const secondaryItems = [
     title: "Settings",
     url: "/dashboard/settings",
     icon: <HugeiconsIcon icon={Settings05Icon} strokeWidth={2} />,
+  },
+  {
+    title: "Search",
+    url: "#",
+    icon: <HugeiconsIcon icon={SearchIcon} strokeWidth={2} />,
+  },
+  {
+    title: "Support",
+    url: "#",
+    icon: <HugeiconsIcon icon={HelpCircleIcon} strokeWidth={2} />,
   },
 ];
 
