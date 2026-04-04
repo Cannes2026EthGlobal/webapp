@@ -6,7 +6,7 @@ import { useAppKitAccount } from "@reown/appkit/react";
 const AUTH_COOKIE = "arc-counting-auth";
 
 export function AuthCookieSync() {
-  const { isConnected } = useAppKitAccount();
+  const { isConnected, status } = useAppKitAccount();
 
   useEffect(() => {
     if (isConnected) {
@@ -14,8 +14,10 @@ export function AuthCookieSync() {
       return;
     }
 
-    document.cookie = `${AUTH_COOKIE}=; Max-Age=0; path=/; SameSite=Lax`;
-  }, [isConnected]);
+    if (status === "disconnected") {
+      document.cookie = `${AUTH_COOKIE}=; Max-Age=0; path=/; SameSite=Lax`;
+    }
+  }, [isConnected, status]);
 
   return null;
 }

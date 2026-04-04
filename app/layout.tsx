@@ -3,6 +3,7 @@ import { headers } from "next/headers";
 import { Geist } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import ContextProvider from "@/context";
 
 const fontSans = Geist({ subsets: ["latin"], variable: "--font-sans" });
@@ -24,7 +25,9 @@ export default async function RootLayout({
     <html lang="en" suppressHydrationWarning className={fontSans.variable}>
       <body className="antialiased">
         <ContextProvider cookies={cookies}>
-          <ThemeProvider>{children}</ThemeProvider>
+          <ThemeProvider>
+            <TooltipProvider>{children}</TooltipProvider>
+          </ThemeProvider>
         </ContextProvider>
       </body>
     </html>

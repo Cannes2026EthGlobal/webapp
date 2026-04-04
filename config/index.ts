@@ -45,7 +45,7 @@ export const arcTestnet = defineChain({
   caipNetworkId: "eip155:5042002",
 });
 
-export const networks = [arcTestnet] as const;
+export const networks: [typeof arcTestnet] = [arcTestnet];
 
 export const wagmiAdapter = new WagmiAdapter({
   storage: createStorage({

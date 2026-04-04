@@ -1,7 +1,7 @@
 import * as React from "react"
 import { Slot } from "radix-ui"
 
-import { cn } from '@/lib/utils'
+import { cn } from "@/lib/utils"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { ArrowRight01Icon, MoreHorizontalCircle01Icon } from "@hugeicons/core-free-icons"
 
@@ -84,7 +84,7 @@ function BreadcrumbSeparator({
       {...props}
     >
       {children ?? (
-        <HugeiconsIcon icon={ArrowRight01Icon} strokeWidth={2} className="cn-rtl-flip" />
+        <HugeiconsIcon icon={ArrowRight01Icon} strokeWidth={2} />
       )}
     </li>
   )

@@ -1,0 +1,110 @@
+[
+  {
+    "id": 1,
+    "header": "Northwind Labs payroll batch",
+    "type": "Employee Payments",
+    "status": "Queued",
+    "target": "$48,200",
+    "limit": "Apr 05",
+    "reviewer": "Ops Desk"
+  },
+  {
+    "id": 2,
+    "header": "Studio Holocene invoice #204",
+    "type": "Receivables",
+    "status": "Approved",
+    "target": "$17,900",
+    "limit": "Apr 06",
+    "reviewer": "Revenue"
+  },
+  {
+    "id": 3,
+    "header": "Prompt streaming usage settlement",
+    "type": "Usage",
+    "status": "Settled",
+    "target": "$6,480",
+    "limit": "Today",
+    "reviewer": "Treasury"
+  },
+  {
+    "id": 4,
+    "header": "Event checkout link payout",
+    "type": "Checkout",
+    "status": "Draft",
+    "target": "$3,260",
+    "limit": "Apr 07",
+    "reviewer": "Assign owner"
+  },
+  {
+    "id": 5,
+    "header": "Freelancer design payout",
+    "type": "Employee Payments",
+    "status": "Approved",
+    "target": "$4,850",
+    "limit": "Apr 05",
+    "reviewer": "Ops Desk"
+  },
+  {
+    "id": 6,
+    "header": "Inference API overage bill",
+    "type": "Usage",
+    "status": "Queued",
+    "target": "$12,180",
+    "limit": "Today",
+    "reviewer": "Revenue"
+  },
+  {
+    "id": 7,
+    "header": "Treasury rebalance to payroll vault",
+    "type": "Treasury",
+    "status": "Settled",
+    "target": "$60,000",
+    "limit": "Completed",
+    "reviewer": "Treasury"
+  },
+  {
+    "id": 8,
+    "header": "Vertex AI agent checkout",
+    "type": "Checkout",
+    "status": "Failed",
+    "target": "$1,240",
+    "limit": "Apr 04",
+    "reviewer": "Revenue"
+  },
+  {
+    "id": 9,
+    "header": "Payroll advance obligation sync",
+    "type": "Employee Payments",
+    "status": "Queued",
+    "target": "$9,140",
+    "limit": "Apr 08",
+    "reviewer": "Ops Desk"
+  },
+  {
+    "id": 10,
+    "header": "B2B annual platform invoice",
+    "type": "Receivables",
+    "status": "Draft",
+    "target": "$28,400",
+    "limit": "Apr 12",
+    "reviewer": "Assign owner"
+  },
+  {
+    "id": 11,
+    "header": "Tokenized invoice liquidity draw",
+    "type": "Treasury",
+    "status": "Approved",
+    "target": "$22,000",
+    "limit": "Apr 09",
+    "reviewer": "Treasury"
+  },
+  {
+    "id": 12,
+    "header": "Autonomous agent metering settlement",
+    "type": "Usage",
+    "status": "Settled",
+    "target": "$8,920",
+    "limit": "Today",
+    "reviewer": "Revenue"
+  }
+]
