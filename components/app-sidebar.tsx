@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/sidebar";
 import {
   Add01Icon,
+  AiChat02Icon,
   Analytics01Icon,
   ArrowDown01Icon,
   CommandIcon,
@@ -77,6 +78,11 @@ const navItems = [
     title: "AI Insights",
     url: "/dashboard/ai-insights",
     icon: <HugeiconsIcon icon={SparklesIcon} strokeWidth={2} />,
+  },
+  {
+    title: "AI Chat",
+    url: "/dashboard/ai-chat",
+    icon: <HugeiconsIcon icon={AiChat02Icon} strokeWidth={2} />,
   },
 ];
 
