@@ -1,7 +1,10 @@
 import "dotenv/config";
 import express from "express";
 import OpenAI from "openai";
-import { readFileSync, writeFileSync, existsSync } from "fs";
+import { readFileSync, writeFileSync, existsSync, mkdirSync, createWriteStream } from "fs";
+import { pipeline } from "stream/promises";
+import { Readable } from "stream";
+import { randomBytes } from "crypto";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 
@@ -13,6 +16,9 @@ app.use(express.json());
 app.use(express.static(join(__dirname, "public")));
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+const IMAGES_DIR = join(__dirname, "public", "images");
+if (!existsSync(IMAGES_DIR)) mkdirSync(IMAGES_DIR, { recursive: true });
 
 const ARC_API = process.env.ARC_API_BASE || "http://localhost:3000";
 const COMPANY_ID = process.env.ARC_COMPANY_ID;
@@ -125,10 +131,17 @@ app.post("/api/generate", async (req, res) => {
       quality: "standard",
     });
 
-    const imageUrl = image.data[0].url;
+    const openaiUrl = image.data[0].url;
     const revisedPrompt = image.data[0].revised_prompt;
 
-    // 2. Record usage on Arc Counting (1 image generation = 1 unit)
+    // 2. Download and save image locally (OpenAI URLs expire after ~1h)
+    const filename = `${randomBytes(8).toString("hex")}.png`;
+    const filepath = join(IMAGES_DIR, filename);
+    const imgRes = await fetch(openaiUrl);
+    await pipeline(Readable.fromWeb(imgRes.body), createWriteStream(filepath));
+    const imageUrl = `/images/${filename}`;
+
+    // 3. Record usage on Arc Counting
     const usage = await recordUsage(
       customerIdentifier,
       1,
@@ -139,7 +152,7 @@ app.post("/api/generate", async (req, res) => {
       `[usage] tab=${usage.tabId} total=${usage.totalUnits} units ($${(usage.totalCents / 100).toFixed(2)})`
     );
 
-    // 3. Persist to session
+    // 4. Persist to session
     const session = getSession(customerIdentifier);
     session.tabId = usage.tabId;
     session.totalUnits = usage.totalUnits;
