@@ -68,7 +68,7 @@ const navItems = [
   },
   // ─── Platform ───
   {
-    title: "Products",
+    title: "My Products",
     url: "/dashboard/products",
     icon: <HugeiconsIcon icon={Database01Icon} strokeWidth={2} />,
   },
