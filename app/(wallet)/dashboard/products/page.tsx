@@ -547,9 +547,7 @@ POST ${typeof window !== "undefined" ? window.location.origin : ""}/api/pay/webh
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="per-unit">Per unit</SelectItem>
-                    <SelectItem value="tiered">Tiered</SelectItem>
-                    <SelectItem value="flat">Flat</SelectItem>
-                    <SelectItem value="usage-commit">Usage + commit</SelectItem>
+                    <SelectItem value="pay-as-you-go">Pay as you go</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

@@ -3,9 +3,7 @@ import { v } from "convex/values";
 
 const pricingModelValidator = v.union(
   v.literal("per-unit"),
-  v.literal("tiered"),
-  v.literal("flat"),
-  v.literal("usage-commit")
+  v.literal("pay-as-you-go")
 );
 
 const privacyModeValidator = v.union(

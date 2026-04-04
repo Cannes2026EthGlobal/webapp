@@ -201,7 +201,7 @@ export const seedDemoData = mutation({
         name: "Enterprise License",
         description: "Annual enterprise access license",
         billingUnit: "license",
-        pricingModel: "flat" as const,
+        pricingModel: "per-unit" as const,
         unitPriceCents: 2400000,
         currency: "USD" as const,
         settlementAsset: "USDC",
@@ -213,7 +213,7 @@ export const seedDemoData = mutation({
         name: "Event Ticket - DevCon",
         description: "Single-use DevCon 2026 admission",
         billingUnit: "ticket",
-        pricingModel: "flat" as const,
+        pricingModel: "per-unit" as const,
         unitPriceCents: 35000,
         currency: "USD" as const,
         settlementAsset: "USDC",
@@ -225,7 +225,7 @@ export const seedDemoData = mutation({
         name: "Compute Credits",
         description: "GPU compute time billing",
         billingUnit: "GPU-hour",
-        pricingModel: "tiered" as const,
+        pricingModel: "pay-as-you-go" as const,
         unitPriceCents: 250,
         currency: "USD" as const,
         settlementAsset: "USDC",
@@ -519,9 +519,9 @@ export const seedCompanyData = mutation({
 
     const productData = [
       { name: "Prompt Streaming API", description: "Pay-per-token streaming inference", billingUnit: "1K tokens", pricingModel: "per-unit" as const, unitPriceCents: 8, currency: "USD" as const, settlementAsset: "USDC", privacyMode: "standard" as const, refundPolicy: "no-refund" as const, isActive: true },
-      { name: "Enterprise License", description: "Annual enterprise access license", billingUnit: "license", pricingModel: "flat" as const, unitPriceCents: 2400000, currency: "USD" as const, settlementAsset: "USDC", privacyMode: "standard" as const, refundPolicy: "partial" as const, isActive: true },
-      { name: "Event Ticket - DevCon", description: "Single-use DevCon 2026 admission", billingUnit: "ticket", pricingModel: "flat" as const, unitPriceCents: 35000, currency: "USD" as const, settlementAsset: "USDC", privacyMode: "pseudonymous" as const, refundPolicy: "full" as const, isActive: true },
-      { name: "Compute Credits", description: "GPU compute time billing", billingUnit: "GPU-hour", pricingModel: "tiered" as const, unitPriceCents: 250, currency: "USD" as const, settlementAsset: "USDC", privacyMode: "shielded" as const, refundPolicy: "no-refund" as const, isActive: true },
+      { name: "Enterprise License", description: "Annual enterprise access license", billingUnit: "license", pricingModel: "per-unit" as const, unitPriceCents: 2400000, currency: "USD" as const, settlementAsset: "USDC", privacyMode: "standard" as const, refundPolicy: "partial" as const, isActive: true },
+      { name: "Event Ticket - DevCon", description: "Single-use DevCon 2026 admission", billingUnit: "ticket", pricingModel: "per-unit" as const, unitPriceCents: 35000, currency: "USD" as const, settlementAsset: "USDC", privacyMode: "pseudonymous" as const, refundPolicy: "full" as const, isActive: true },
+      { name: "Compute Credits", description: "GPU compute time billing", billingUnit: "GPU-hour", pricingModel: "pay-as-you-go" as const, unitPriceCents: 250, currency: "USD" as const, settlementAsset: "USDC", privacyMode: "shielded" as const, refundPolicy: "no-refund" as const, isActive: true },
       { name: "Data Pipeline (Deprecated)", description: "Legacy data pipeline access", billingUnit: "GB processed", pricingModel: "per-unit" as const, unitPriceCents: 15, currency: "USD" as const, settlementAsset: "USDC", privacyMode: "standard" as const, refundPolicy: "no-refund" as const, isActive: false },
     ];
 

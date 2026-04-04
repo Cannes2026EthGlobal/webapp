@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Arc Counting — Billing Demo</title>
+  <script src="demo-config.js"></script>
+  <style>
+    :root {
+      --bg: #0a0a0a;
+      --surface: #141414;
+      --border: #262626;
+      --text: #fafafa;
+      --muted: #737373;
+      --accent: #3b82f6;
+      --accent-hover: #2563eb;
+      --success: #22c55e;
+      --warn: #eab308;
+      --danger: #ef4444;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 2rem;
+    }
+    h1 { font-size: 1.5rem; font-weight: 600; margin-bottom: 0.25rem; }
+    h2 { font-size: 1.125rem; font-weight: 600; margin-bottom: 0.5rem; }
+    .subtitle { color: var(--muted); font-size: 0.875rem; margin-bottom: 2rem; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; max-width: 900px; margin: 0 auto; }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.5rem;
+    }
+    .card-header { margin-bottom: 1rem; }
+    .card-header p { color: var(--muted); font-size: 0.8125rem; margin-top: 0.25rem; }
+    .badge {
+      display: inline-block;
+      padding: 0.125rem 0.5rem;
+      border-radius: 9999px;
+      font-size: 0.6875rem;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .badge-blue { background: #1e3a5f; color: #93c5fd; }
+    .badge-green { background: #14532d; color: #86efac; }
+    .badge-yellow { background: #422006; color: #fde047; }
+    .stat-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.75rem;
+      background: var(--bg);
+      border-radius: 8px;
+      margin-bottom: 0.5rem;
+    }
+    .stat-label { font-size: 0.8125rem; color: var(--muted); }
+    .stat-value { font-size: 1.25rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+    button {
+      padding: 0.625rem 1.25rem;
+      border-radius: 8px;
+      border: none;
+      font-size: 0.875rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.15s;
+      width: 100%;
+    }
+    .btn-primary { background: var(--accent); color: white; }
+    .btn-primary:hover { background: var(--accent-hover); }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-outline { background: transparent; color: var(--text); border: 1px solid var(--border); }
+    .btn-outline:hover { background: var(--surface); }
+    .btn-success { background: var(--success); color: #052e16; }
+    .btn-success:hover { background: #16a34a; }
+    .actions { display: flex; gap: 0.5rem; margin-top: 1rem; }
+    .actions button { flex: 1; }
+    .log {
+      margin-top: 0.75rem;
+      max-height: 200px;
+      overflow-y: auto;
+      font-family: "SF Mono", "Fira Code", monospace;
+      font-size: 0.75rem;
+      background: var(--bg);
+      border-radius: 8px;
+      padding: 0.75rem;
+      line-height: 1.6;
+    }
+    .log-entry { color: var(--muted); }
+    .log-entry.success { color: var(--success); }
+    .log-entry.warn { color: var(--warn); }
+    .log-entry.error { color: var(--danger); }
+    .link-box {
+      display: block;
+      margin-top: 0.75rem;
+      padding: 0.75rem;
+      background: #0c1929;
+      border: 1px solid #1e3a5f;
+      border-radius: 8px;
+      color: #93c5fd;
+      font-size: 0.8125rem;
+      word-break: break-all;
+      text-decoration: none;
+    }
+    .link-box:hover { background: #122640; }
+    .pulse { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; animation: pulse 1.5s infinite; }
+    .pulse-green { background: var(--success); }
+    .pulse-yellow { background: var(--warn); }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+    .header { text-align: center; margin-bottom: 2rem; }
+    @media (max-width: 640px) { .grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>Arc Counting — Billing Demo</h1>
+    <p class="subtitle">Two billing models: Per Unit checkout &amp; Pay-as-you-go usage tabs</p>
+  </div>
+
+  <div class="grid">
+    <!-- Per Unit Card -->
+    <div class="card">
+      <div class="card-header">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <h2>Per Unit</h2>
+          <span class="badge badge-blue">checkout link</span>
+        </div>
+        <p>Fixed-price purchase via WalletConnect Pay checkout link</p>
+      </div>
+
+      <div class="stat-row">
+        <span class="stat-label">Product</span>
+        <span id="pu-product">—</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">Unit price</span>
+        <span class="stat-value" id="pu-price">—</span>
+      </div>
+
+      <div style="margin-top:0.75rem;">
+        <label style="font-size:0.8125rem;color:var(--muted);display:block;margin-bottom:0.25rem;">Quantity</label>
+        <input type="number" id="pu-qty" value="1" min="1" style="width:100%;padding:0.5rem;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:0.875rem;">
+      </div>
+
+      <div class="stat-row" style="margin-top:0.75rem;">
+        <span class="stat-label">Total</span>
+        <span class="stat-value" id="pu-total">—</span>
+      </div>
+
+      <div class="actions">
+        <button class="btn-primary" id="pu-buy" onclick="buyPerUnit()">Buy Now</button>
+      </div>
+
+      <div id="pu-link"></div>
+      <div class="log" id="pu-log"></div>
+    </div>
+
+    <!-- Pay As You Go Card -->
+    <div class="card">
+      <div class="card-header">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <h2>Pay As You Go</h2>
+          <span class="badge badge-green">usage tab</span>
+        </div>
+        <p>Accumulate usage, then generate an invoice link to settle</p>
+      </div>
+
+      <div class="stat-row">
+        <span class="stat-label">Product</span>
+        <span id="payg-product">—</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">Price per unit</span>
+        <span id="payg-unit-price">—</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">Tab status</span>
+        <span id="payg-status"><span class="pulse pulse-green"></span>Open</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">Units used</span>
+        <span class="stat-value" id="payg-units">0</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">Running total</span>
+        <span class="stat-value" id="payg-total">$0.00</span>
+      </div>
+
+      <div class="actions">
+        <button class="btn-outline" id="payg-use" onclick="recordUsage()">Use API (+1)</button>
+        <button class="btn-outline" id="payg-use5" onclick="recordUsageBatch(5)">+5 calls</button>
+        <button class="btn-success" id="payg-bill" onclick="billTab()" disabled>Generate Invoice</button>
+      </div>
+
+      <div id="payg-link"></div>
+      <div class="log" id="payg-log"></div>
+    </div>
+  </div>
+
+  <script>
+    const api = CONFIG.API_BASE;
+    let paygTabId = null;
+    let paygUnits = 0;
+    let paygCents = 0;
+    let puPriceCents = 0;
+
+    function fmt(cents) {
+      return "$" + (cents / 100).toFixed(cents % 100 === 0 && cents >= 100 ? 0 : 2);
+    }
+
+    function log(id, msg, type = "") {
+      const el = document.getElementById(id);
+      const time = new Date().toLocaleTimeString();
+      el.innerHTML = `<div class="log-entry ${type}">[${time}] ${msg}</div>` + el.innerHTML;
+    }
+
+    // ─── Per Unit ───
+
+    async function initPerUnit() {
+      if (CONFIG.PER_UNIT_PRODUCT_ID === "REPLACE_WITH_PER_UNIT_PRODUCT_ID") {
+        document.getElementById("pu-product").textContent = "Not configured";
+        return;
+      }
+      // Fetch product info by creating a temporary checkout link
+      log("pu-log", "Ready — enter quantity and click Buy Now");
+      document.getElementById("pu-product").textContent = "Per-unit product";
+      document.getElementById("pu-price").textContent = "Set in dashboard";
+
+      document.getElementById("pu-qty").addEventListener("input", () => {
+        const qty = parseInt(document.getElementById("pu-qty").value) || 1;
+        if (puPriceCents > 0) {
+          document.getElementById("pu-total").textContent = fmt(puPriceCents * qty);
+        }
+      });
+    }
+
+    async function buyPerUnit() {
+      const qty = parseInt(document.getElementById("pu-qty").value) || 1;
+      const btn = document.getElementById("pu-buy");
+      btn.disabled = true;
+      btn.textContent = "Creating...";
+      log("pu-log", `Creating checkout for ${qty} unit(s)...`);
+
+      try {
+        // First ensure there's a checkout link
+        const createLinkRes = await fetch(`${api}/api/pay/create`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            referenceId: "demo-" + Math.random().toString(36).slice(2, 10),
+            amountCents: qty * 100, // fallback, actual price from product
+            currency: "USD",
+          }),
+        });
+
+        if (!createLinkRes.ok) {
+          const err = await createLinkRes.json();
+          throw new Error(err.error || "Failed");
+        }
+
+        const wc = await createLinkRes.json();
+        log("pu-log", `WC Pay session created: ${wc.paymentId}`, "success");
+
+        document.getElementById("pu-link").innerHTML =
+          `<a class="link-box" href="${wc.gatewayUrl}" target="_blank">` +
+          `Pay ${fmt(qty * 100)} via WalletConnect Pay &rarr;</a>`;
+
+        btn.textContent = "Link generated";
+      } catch (e) {
+        log("pu-log", `Error: ${e.message}`, "error");
+        btn.disabled = false;
+        btn.textContent = "Buy Now";
+      }
+    }
+
+    // ─── Pay As You Go ───
+
+    async function initPayg() {
+      if (CONFIG.PAYG_PRODUCT_ID === "REPLACE_WITH_PAYG_PRODUCT_ID") {
+        document.getElementById("payg-product").textContent = "Not configured";
+        return;
+      }
+      document.getElementById("payg-product").textContent = "Pay-as-you-go product";
+      log("payg-log", "Ready — click 'Use API' to simulate usage");
+    }
+
+    async function recordUsage() {
+      await recordUsageBatch(1);
+    }
+
+    async function recordUsageBatch(n) {
+      const btn = document.getElementById("payg-use");
+      btn.disabled = true;
+      log("payg-log", `Recording ${n} unit(s)...`);
+
+      try {
+        const res = await fetch(`${api}/api/usage/record`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            companyId: CONFIG.COMPANY_ID,
+            productId: CONFIG.PAYG_PRODUCT_ID,
+            customerIdentifier: "demo-user@example.com",
+            units: n,
+            description: `Demo: ${n} API call(s)`,
+          }),
+        });
+
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.error || "Failed");
+        }
+
+        const data = await res.json();
+        paygTabId = data.tabId;
+        paygUnits = data.totalUnits;
+        paygCents = data.totalCents;
+
+        document.getElementById("payg-units").textContent = paygUnits;
+        document.getElementById("payg-total").textContent = fmt(paygCents);
+        document.getElementById("payg-bill").disabled = false;
+        document.getElementById("payg-status").innerHTML =
+          '<span class="pulse pulse-green"></span>Open';
+
+        log("payg-log", `+${n} unit(s) → total: ${paygUnits} units (${fmt(paygCents)})`, "success");
+      } catch (e) {
+        log("payg-log", `Error: ${e.message}`, "error");
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    async function billTab() {
+      if (!paygTabId) return;
+
+      const btn = document.getElementById("payg-bill");
+      btn.disabled = true;
+      btn.textContent = "Billing...";
+      log("payg-log", `Closing tab and generating invoice...`);
+
+      try {
+        const res = await fetch(`${api}/api/usage/bill`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ tabId: paygTabId }),
+        });
+
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.error || "Failed");
+        }
+
+        const data = await res.json();
+        log("payg-log", `Invoice generated: ${fmt(data.amountCents)} for ${data.productName}`, "success");
+        log("payg-log", `WC Pay ID: ${data.wcPayPaymentId}`, "success");
+
+        document.getElementById("payg-link").innerHTML =
+          `<a class="link-box" href="${data.checkoutUrl}" target="_blank">` +
+          `Pay ${fmt(data.amountCents)} via WalletConnect Pay &rarr;</a>`;
+
+        document.getElementById("payg-status").innerHTML =
+          '<span class="pulse pulse-yellow"></span>Billed — awaiting payment';
+
+        // Reset for next tab
+        btn.textContent = "Generate Invoice";
+        btn.disabled = true;
+        paygTabId = null;
+        paygUnits = 0;
+        paygCents = 0;
+
+        // UI will reset on next usage recording
+        log("payg-log", "Tab closed. New usage will start a fresh tab.", "warn");
+      } catch (e) {
+        log("payg-log", `Error: ${e.message}`, "error");
+        btn.disabled = false;
+        btn.textContent = "Generate Invoice";
+      }
+    }
+
+    // ─── Init ───
+    initPerUnit();
+    initPayg();
+  </script>
+</body>
+</html>
