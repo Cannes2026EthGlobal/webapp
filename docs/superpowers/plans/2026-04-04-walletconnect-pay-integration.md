@@ -4,7 +4,7 @@
 
 **Goal:** Integrate WalletConnect Pay as the payment rail for Arc Counting — a single WC Pay merchant account handles all payments, while Convex segregates data per company, and a settlement layer redistributes funds.
 
-**Architecture:** Arc Counting registers as a single WC Pay merchant. All payment requests across all companies go through this one merchant account. The `referenceId` on each payment (`arc_{companyId}_{invoiceId}`) is the routing key. A Convex cron syncs payments from WC Pay, parses the `referenceId` to fan out to the correct company, and marks invoices paid. A `companyBalances` ledger tracks what Arc Counting owes each company. Companies access their data via a public API authenticated with per-company API keys, or through the operator dashboard.
+**Architecture:** Arc Counting registers as a single WC Pay merchant. All payment requests across all companies go through this one merchant account. The `referenceId` on each payment (`arc::{companyId}::{invoiceId}`) is the routing key. A Convex cron syncs payments from WC Pay, parses the `referenceId` to fan out to the correct company, and marks invoices paid. A `companyBalances` ledger tracks what Arc Counting owes each company. Companies access their data via a public API authenticated with per-company API keys, or through the operator dashboard.
 
 **Tech Stack:** Convex (DB + crons + actions), Next.js 16 App Router, WalletConnect Pay Merchant REST API (single merchant), `qrcode` npm package, Wagmi/Viem (on-chain settlement on Arc)
 
@@ -28,9 +28,17 @@ Arc Counting (Convex)
         └── Their own balance (credited on payment, debited on payout)
 
 Segregation method:
-  └── referenceId = "arc_{companyId}_{invoiceId}"
+  └── referenceId = "arc::{companyId}::{invoiceId}"
   └── Convex parses this to route payments to the correct company
 ```
+
+### Network Support & Mock Mode
+
+WalletConnect Pay does **not** support Arc Testnet. For the hackathon:
+- **Arc Testnet**: WC Pay calls are mocked (`WC_PAY_MOCK=true`). The flow works end-to-end but payments are simulated.
+- **Arbitrum or Base**: WC Pay calls are real (`WC_PAY_MOCK=false`). Required for WalletConnect Pay prize eligibility.
+
+The app supports both networks via Reown AppKit. The mock mode is controlled by env var, not by which chain the user is connected to.
 
 ---
 
@@ -84,6 +92,9 @@ Append to the existing `.env`:
 WC_PAY_API_URL=https://api.pay.walletconnect.com
 WC_PAY_API_KEY=your-api-key-here
 WC_PAY_MERCHANT_ID=your-merchant-id-here
+WC_PAY_MOCK=true
+# Set WC_PAY_MOCK=true for Arc Testnet (WC Pay doesn't support Arc).
+# Set to false when using Arbitrum or Base for real WC Pay eligibility.
 ```
 
 - [ ] **Step 2: Create the WC Pay client**
@@ -169,7 +180,7 @@ export async function createPayment(
   amountCents: number,
   currency: "USD" | "EUR" = "USD"
 ): Promise<CreatePaymentResponse> {
-  const res = await fetch(`${API_URL}/merchant/payment`, {
+  const res = await fetch(`${API_URL}/v1/merchants/payment`, {
     method: "POST",
     headers: headers(),
     body: JSON.stringify({
@@ -193,7 +204,7 @@ export async function getPaymentStatus(
   paymentId: string
 ): Promise<PaymentStatus> {
   const res = await fetch(
-    `${API_URL}/merchant/payment/${paymentId}/status`,
+    `${API_URL}/v1/merchants/payment/${paymentId}/status`,
     { method: "GET", headers: headers() }
   );
   if (!res.ok) {
@@ -223,7 +234,7 @@ export async function listAllPayments(
   if (params?.sortDir) qs.set("sortDir", params.sortDir);
 
   const res = await fetch(
-    `${API_URL}/merchants/payments?${qs.toString()}`,
+    `${API_URL}/v1/merchants/payments?${qs.toString()}`,
     { method: "GET", headers: headers() }
   );
   if (!res.ok) {
@@ -233,7 +244,7 @@ export async function listAllPayments(
 }
 
 export async function cancelPayment(paymentId: string): Promise<void> {
-  const res = await fetch(`${API_URL}/payments/${paymentId}/cancel`, {
+  const res = await fetch(`${API_URL}/v1/payments/${paymentId}/cancel`, {
     method: "POST",
     headers: headers(),
     body: "{}",
@@ -245,15 +256,61 @@ export async function cancelPayment(paymentId: string): Promise<void> {
 
 /**
  * Parse a referenceId to extract companyId and invoiceId.
- * Format: "arc_{companyId}_{invoiceId}"
+ * Format: "arc::{companyId}::{invoiceId}"
  */
 export function parseReferenceId(
   referenceId: string
 ): { companyId: string; invoiceId: string } | null {
-  const match = referenceId.match(/^arc_([^_]+)_(.+)$/);
+  const match = referenceId.match(/^arc::(.+?)::(.+)$/);
   if (!match) return null;
   return { companyId: match[1], invoiceId: match[2] };
 }
+
+// ─── Mock mode for Arc Testnet (WC Pay doesn't support Arc) ───
+
+const IS_MOCK = process.env.WC_PAY_MOCK === "true";
+
+let mockPaymentCounter = 0;
+
+function mockCreatePayment(
+  referenceId: string,
+  amountCents: number,
+  currency: "USD" | "EUR"
+): CreatePaymentResponse {
+  mockPaymentCounter++;
+  const id = `pay_mock_${Date.now()}_${mockPaymentCounter}`;
+  return {
+    paymentId: id,
+    gatewayUrl: `https://pay.walletconnect.com/?pid=${id}&mock=true`,
+    expiresAt: Math.floor(Date.now() / 1000) + 3600,
+  };
+}
+
+function mockGetPaymentStatus(): PaymentStatus {
+  return {
+    status: "succeeded",
+    isFinal: true,
+    pollInMs: 0,
+  };
+}
+
+// Wrap exports to support mock mode
+export const pay = {
+  createPayment: IS_MOCK
+    ? (ref: string, cents: number, cur: "USD" | "EUR" = "USD") =>
+        Promise.resolve(mockCreatePayment(ref, cents, cur))
+    : createPayment,
+  getPaymentStatus: IS_MOCK
+    ? (_id: string) => Promise.resolve(mockGetPaymentStatus())
+    : getPaymentStatus,
+  listAllPayments: IS_MOCK
+    ? (_p?: Parameters<typeof listAllPayments>[0]) =>
+        Promise.resolve({ data: [], nextCursor: null } as ListPaymentsResponse)
+    : listAllPayments,
+  cancelPayment: IS_MOCK
+    ? (_id: string) => Promise.resolve()
+    : cancelPayment,
+};
 ```
 
 - [ ] **Step 3: Commit**
@@ -467,6 +524,12 @@ export default defineSchema({
     wcPaymentId: v.optional(v.string()),
     payoutTxHash: v.optional(v.string()),
   }).index("by_companyId", ["companyId"]),
+
+  // ─── Sync State (tracks last WC Pay sync timestamp) ───
+  syncState: defineTable({
+    key: v.string(),
+    value: v.string(),
+  }).index("by_key", ["key"]),
 });
 ```
 
@@ -759,6 +822,8 @@ git commit -m "feat: add invoice Convex functions with WC Pay linking"
 
 This tracks what Arc Counting owes each company. When a WC Pay payment succeeds, the company gets credited. When Arc Counting pays out to the company's treasury wallet, the company gets debited.
 
+**Note:** The `debit` function exists for completeness but actual fund disbursement (on-chain transfer from Arc Counting's wallet to company treasury wallets) is future scope — likely a cron job + CCTP bridge. For the hackathon, the balance ledger is read-only (credits accumulate, no payouts).
+
 - [ ] **Step 1: Create balance functions**
 
 Create `convex/balances.ts`:
@@ -923,7 +988,7 @@ function wcHeaders(): HeadersInit {
 // ─── Parse referenceId → companyId + invoiceId ───
 
 function parseRef(referenceId: string): { companyId: string; invoiceId: string } | null {
-  const match = referenceId.match(/^arc_([^_]+)_(.+)$/);
+  const match = referenceId.match(/^arc::(.+?)::(.+)$/);
   if (!match) return null;
   return { companyId: match[1], invoiceId: match[2] };
 }
@@ -1043,16 +1108,22 @@ export const resolveCompany = internalQuery({
 export const syncAllPayments = action({
   args: {},
   handler: async (ctx) => {
+    // Read last sync timestamp for incremental sync
+    const syncStateDoc = await ctx.runQuery(internal.wcpay.getSyncState, { key: "lastPaymentSync" });
+    const lastSyncTs = syncStateDoc?.value ?? null;
+    const syncStartedAt = new Date().toISOString();
+
     let cursor: string | null = null;
     let totalSynced = 0;
     let unroutable = 0;
 
     do {
-      const qs = new URLSearchParams({ limit: "200" });
+      const qs = new URLSearchParams({ limit: "200", sortBy: "date", sortDir: "desc" });
       if (cursor) qs.set("cursor", cursor);
+      if (lastSyncTs) qs.set("startTs", lastSyncTs);
 
       const res = await fetch(
-        `${WC_PAY_API_URL}/merchants/payments?${qs.toString()}`,
+        `${WC_PAY_API_URL}/v1/merchants/payments?${qs.toString()}`,
         { method: "GET", headers: wcHeaders() }
       );
 
@@ -1122,7 +1193,38 @@ export const syncAllPayments = action({
       cursor = body.nextCursor;
     } while (cursor);
 
+    // Update last sync timestamp
+    await ctx.runMutation(internal.wcpay.setSyncState, {
+      key: "lastPaymentSync",
+      value: syncStartedAt,
+    });
+
     return { synced: totalSynced, unroutable };
+  },
+});
+
+export const getSyncState = internalQuery({
+  args: { key: v.string() },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("syncState")
+      .withIndex("by_key", (q) => q.eq("key", args.key))
+      .unique();
+  },
+});
+
+export const setSyncState = internalMutation({
+  args: { key: v.string(), value: v.string() },
+  handler: async (ctx, args) => {
+    const existing = await ctx.db
+      .query("syncState")
+      .withIndex("by_key", (q) => q.eq("key", args.key))
+      .unique();
+    if (existing) {
+      await ctx.db.patch(existing._id, { value: args.value });
+    } else {
+      await ctx.db.insert("syncState", { key: args.key, value: args.value });
+    }
   },
 });
 ```
@@ -1606,14 +1708,14 @@ http.route({
       description: description ?? "Payment request",
     });
 
-    const referenceId = `arc_${auth.companyId}_${invoiceId}`;
+    const referenceId = `arc::${auth.companyId}::${invoiceId}`;
 
     // Call WC Pay (single merchant)
     const WC_PAY_API_URL = process.env.WC_PAY_API_URL!;
     const WC_PAY_API_KEY = process.env.WC_PAY_API_KEY!;
     const WC_PAY_MERCHANT_ID = process.env.WC_PAY_MERCHANT_ID!;
 
-    const wcRes = await fetch(`${WC_PAY_API_URL}/merchant/payment`, {
+    const wcRes = await fetch(`${WC_PAY_API_URL}/v1/merchants/payment`, {
       method: "POST",
       headers: {
         "Api-Key": WC_PAY_API_KEY,
@@ -1705,7 +1807,7 @@ http.route({
       const WC_PAY_MERCHANT_ID = process.env.WC_PAY_MERCHANT_ID!;
 
       const wcRes = await fetch(
-        `${WC_PAY_API_URL}/merchant/payment/${paymentId}/status`,
+        `${WC_PAY_API_URL}/v1/merchants/payment/${paymentId}/status`,
         { headers: { "Api-Key": WC_PAY_API_KEY, "Merchant-Id": WC_PAY_MERCHANT_ID, "Content-Type": "application/json" } }
       );
       if (!wcRes.ok) return err(`Status check failed: ${wcRes.status}`, 502);
@@ -1741,7 +1843,7 @@ http.route({
     const WC_PAY_API_KEY = process.env.WC_PAY_API_KEY!;
     const WC_PAY_MERCHANT_ID = process.env.WC_PAY_MERCHANT_ID!;
 
-    const wcRes = await fetch(`${WC_PAY_API_URL}/payments/${paymentId}/cancel`, {
+    const wcRes = await fetch(`${WC_PAY_API_URL}/v1/payments/${paymentId}/cancel`, {
       method: "POST",
       headers: { "Api-Key": WC_PAY_API_KEY, "Merchant-Id": WC_PAY_MERCHANT_ID, "Content-Type": "application/json" },
       body: "{}",
@@ -1891,7 +1993,7 @@ function InvoicesDashboard({ companyId }: { companyId: Id<"companies"> }) {
       description: description || "Invoice",
     });
 
-    const referenceId = `arc_${companyId}_${invoiceId}`;
+    const referenceId = `arc::${companyId}::${invoiceId}`;
 
     const res = await fetch("/api/wcpay/payments", {
       method: "POST",
@@ -2482,7 +2584,7 @@ describe("invoices", () => {
       invoiceId,
       wcPaymentId: "pay_test",
       gatewayUrl: "https://pay.walletconnect.com/?pid=pay_test",
-      referenceId: `arc_${companyId}_${invoiceId}`,
+      referenceId: `arc::${companyId}::${invoiceId}`,
     });
     const inv = await t.query(api.invoices.getById, { id: invoiceId });
     expect(inv?.status).toBe("sent");
@@ -2562,6 +2664,45 @@ git commit -m "test: Convex function tests for companies, invoices, API keys, ba
 
 ---
 
+### Task 20: Wire Sidebar Navigation
+
+**Files:**
+- Modify: `revamp/components/app-sidebar.tsx`
+
+The existing dashboard has an `AppSidebar` component with navigation items. Add links for the new pages.
+
+- [ ] **Step 1: Read the existing AppSidebar component**
+
+Read `components/app-sidebar.tsx` to understand the current nav structure and add entries for:
+- "Invoices" → `/dashboard/invoices`
+- "API Keys" → `/dashboard/api-keys`
+
+These should appear in the sidebar navigation alongside the existing items, matching the PRODUCT-UX.md shell spec:
+`Overview`, `Employees`, `Customers`, `Employee Payments`, `Customer Payments`, `Products & SDK`, `Treasury`, `Settings`
+
+"Invoices" maps to Customer Payments. "API Keys" maps to Products & SDK.
+
+- [ ] **Step 2: Update the sidebar component**
+
+Add the navigation entries following the existing pattern in the component. Use the same icon style and link pattern as existing items.
+
+- [ ] **Step 3: Verify navigation works**
+
+```bash
+npm run dev
+```
+
+Click each new sidebar link. Confirm they navigate to `/dashboard/invoices` and `/dashboard/api-keys`.
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add components/app-sidebar.tsx
+git commit -m "feat: wire Invoices and API Keys into sidebar navigation"
+```
+
+---
+
 ## Summary
 
 | # | Task | What it builds |
@@ -2569,7 +2710,7 @@ git commit -m "test: Convex function tests for companies, invoices, API keys, ba
 | 1 | WC Pay client | `lib/wcpay-client.ts` — single merchant, `parseReferenceId()` |
 | 2 | QR helper | `lib/qr.ts` — branded QR data URLs |
 | 3 | API key utils | `lib/api-key.ts` — generate + hash |
-| 4 | Convex schema | 7 tables: companies, customers, invoices, wcpayPayments, apiKeys, companyBalances, balanceEntries |
+| 4 | Convex schema | 8 tables: companies, customers, invoices, wcpayPayments, apiKeys, companyBalances, balanceEntries, syncState |
 | 5 | Convex provider | Wire into Next.js layout |
 | 6 | Companies | CRUD queries/mutations |
 | 7 | Invoices | CRUD + WC Pay linking + markPaid |
@@ -2585,6 +2726,7 @@ git commit -m "test: Convex function tests for companies, invoices, API keys, ba
 | 17 | API keys page | Generate, revoke, curl examples |
 | 18 | Landing page | Full product landing with brand tokens |
 | 19 | Tests | Companies, invoices, API keys, balances |
+| 20 | Sidebar nav wiring | Add Invoices + API Keys to AppSidebar |
 
 ### Flow
 
@@ -2595,8 +2737,8 @@ Company's App → POST /api/v1/payments (X-Api-Key: arc_live_...)
 Arc Counting middleware (Convex HTTP):
   1. Hash key → lookup apiKeys → get companyId
   2. Create invoice in Convex (draft)
-  3. Build referenceId = "arc_{companyId}_{invoiceId}"
-  4. POST /merchant/payment to WC Pay (SINGLE merchant)
+  3. Build referenceId = "arc::{companyId}::{invoiceId}"
+  4. POST /v1/merchants/payment to WC Pay (SINGLE merchant)
   5. Link paymentId + gatewayUrl to invoice (sent)
   6. Return { paymentId, gatewayUrl, expiresAt }
   │
@@ -2605,7 +2747,7 @@ Customer scans QR → pays via wallet → WC Pay processes
   │
   ▼
 Cron (every 2 min):
-  GET /merchants/payments (ONE call, all payments)
+  GET /v1/merchants/payments (ONE call, all payments)
   For each payment:
     Parse referenceId → extract companyId
     Upsert into wcpayPayments (tagged with companyId)
