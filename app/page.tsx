@@ -469,33 +469,39 @@ export default function Page() {
         <h2 className="mb-8 text-center text-3xl font-light tracking-tight md:text-4xl">
           How it works
         </h2>
-        <div className="space-y-4">
+        <div className="grid gap-6 md:grid-cols-3">
           {howItWorks.map((step, i) => (
             <div
               key={step.title}
-              className="flex items-start gap-4 rounded-lg border p-5"
+              className="relative overflow-hidden rounded-lg border p-6"
               style={{ borderColor: "var(--tone-border)", background: "var(--tone-linen)" }}
             >
               <div
-                className="flex size-8 shrink-0 items-center justify-center rounded-full border"
-                style={{ borderColor: "var(--tone-border)", color: "var(--tone-green)" }}
-              >
-                <step.icon className="size-4" />
-              </div>
-              <div>
-                <p className="text-xs" style={{ color: "var(--tone-green)" }}>Step {i + 1}</p>
-                <h3 className="text-sm font-semibold">{step.title}</h3>
-                <div className="mt-2 flex flex-wrap justify-center gap-2">
-                  {step.lines.map((line) => (
-                    <span
-                      key={line}
-                      className="rounded border px-3 py-2 text-xs"
-                      style={{ borderColor: "var(--tone-border)", color: "var(--tone-muted)" }}
-                    >
-                      {line}
-                    </span>
-                  ))}
+                className="absolute inset-x-0 top-0 h-1"
+                style={{ background: "var(--tone-green)" }}
+              />
+              <div className="mb-4 flex items-center gap-3">
+                <div
+                  className="flex size-9 items-center justify-center rounded-full text-sm font-semibold"
+                  style={{ background: "var(--tone-green)", color: "var(--tone-paper)" }}
+                >
+                  {i + 1}
                 </div>
+                <div>
+                  <h3 className="text-base font-semibold">{step.title}</h3>
+                </div>
+              </div>
+              <div className="space-y-2">
+                {step.lines.map((line) => (
+                  <div
+                    key={line}
+                    className="flex items-start gap-2 rounded px-3 py-2 text-sm"
+                    style={{ background: "var(--tone-paper)", color: "var(--tone-carbon)" }}
+                  >
+                    <step.icon className="mt-0.5 size-3.5 shrink-0" style={{ color: "var(--tone-green)" }} />
+                    <span>{line}</span>
+                  </div>
+                ))}
               </div>
             </div>
           ))}
