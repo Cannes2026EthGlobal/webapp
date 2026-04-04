@@ -50,22 +50,18 @@ export function usePayrollDeposit() {
   return { deposit, hash, isPending, isConfirming, isSuccess, error };
 }
 
-export function usePayrollPay() {
-  const { writeContract, data: hash, isPending, error } = useWriteContract();
+// Note: There is no usePayrollPay() hook. Payments are triggered by
+// Chainlink CRE via KeystoneForwarder → onReport() → _processReport().
+// The webapp creates advance requests in Convex, and CRE picks them up
+// on its cron cycle, executes the on-chain payment, and marks them fulfilled.
 
-  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
-    hash,
+export function usePayrollForwarder() {
+  const { data } = useReadContract({
+    address: PAYROLL_ADDRESS,
+    abi: PAYROLL_ABI,
+    functionName: "getForwarderAddress",
+    query: { enabled: !!PAYROLL_ADDRESS },
   });
 
-  function pay(recipient: `0x${string}`, amountCents: number) {
-    if (!PAYROLL_ADDRESS) throw new Error("Payroll contract address not set");
-    writeContract({
-      address: PAYROLL_ADDRESS,
-      abi: PAYROLL_ABI,
-      functionName: "pay",
-      args: [recipient, centsToWei(amountCents)],
-    });
-  }
-
-  return { pay, hash, isPending, isConfirming, isSuccess, error };
+  return data as `0x${string}` | undefined;
 }

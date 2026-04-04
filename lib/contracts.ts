@@ -1,4 +1,7 @@
-export const PAYROLL_ADDRESS = process.env.NEXT_PUBLIC_PAYROLL_ADDRESS as `0x${string}` | undefined;
+// CRE-compatible Payroll contract (deployed on Arc Testnet)
+// Payments are triggered by Chainlink CRE via KeystoneForwarder → onReport() ��� _processReport()
+// The webapp can only deposit() funds and read contractBalance(). It cannot call pay() directly.
+export const PAYROLL_ADDRESS = (process.env.NEXT_PUBLIC_PAYROLL_ADDRESS ?? "0xb2C0CBFc616199509AA0a890782c81772Bf632E1") as `0x${string}`;
 
 export const PAYROLL_ABI = [
   {
@@ -10,16 +13,6 @@ export const PAYROLL_ABI = [
   },
   {
     type: "function",
-    name: "pay",
-    inputs: [
-      { name: "recipient", type: "address" },
-      { name: "amount", type: "uint256" },
-    ],
-    outputs: [],
-    stateMutability: "nonpayable",
-  },
-  {
-    type: "function",
     name: "contractBalance",
     inputs: [],
     outputs: [{ name: "", type: "uint256" }],
@@ -28,6 +21,13 @@ export const PAYROLL_ABI = [
   {
     type: "function",
     name: "owner",
+    inputs: [],
+    outputs: [{ name: "", type: "address" }],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "getForwarderAddress",
     inputs: [],
     outputs: [{ name: "", type: "address" }],
     stateMutability: "view",

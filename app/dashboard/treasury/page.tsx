@@ -5,9 +5,9 @@ import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useCompany } from "@/hooks/use-company";
 import { formatCents, formatDate } from "@/lib/format";
-import { usePayrollBalance, usePayrollDeposit, usePayrollPay } from "@/hooks/use-payroll-contract";
+import { usePayrollBalance, usePayrollDeposit, usePayrollForwarder } from "@/hooks/use-payroll-contract";
 import { useCctpBridge } from "@/hooks/use-cctp-bridge";
-import { centsToWei } from "@/lib/contracts";
+import { centsToWei, PAYROLL_ADDRESS } from "@/lib/contracts";
 import { toast } from "sonner";
 
 import { PageHeader } from "@/components/page-header";
@@ -168,17 +168,15 @@ function TreasuryContent() {
 function PayrollContractCard() {
   const { balanceCents, isLoading, refetch } = usePayrollBalance();
   const { deposit, isPending: isDepositing, isSuccess: depositSuccess } = usePayrollDeposit();
-  const { pay, isPending: isPaying, isSuccess: paySuccess } = usePayrollPay();
+  const forwarder = usePayrollForwarder();
   const [depositAmount, setDepositAmount] = useState("");
-  const [payAddress, setPayAddress] = useState("");
-  const [payAmount, setPayAmount] = useState("");
 
   return (
     <Card>
       <CardHeader>
         <CardTitle>Payroll Contract (On-Chain)</CardTitle>
         <CardDescription>
-          Native USDC balance on Arc — {isLoading ? "..." : formatCents(balanceCents)}
+          CRE-managed payroll on Arc — {isLoading ? "..." : formatCents(balanceCents)} available
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -197,32 +195,24 @@ function PayrollContractCard() {
             }}
             disabled={isDepositing || !depositAmount}
           >
-            {isDepositing ? "Depositing..." : "Deposit"}
+            {isDepositing ? "Depositing..." : "Deposit USDC"}
           </Button>
         </div>
-        <div className="flex gap-2">
-          <Input
-            placeholder="Recipient 0x..."
-            value={payAddress}
-            onChange={(e) => setPayAddress(e.target.value)}
-            className="flex-1"
-          />
-          <Input
-            type="number"
-            placeholder="Amount (USD)"
-            value={payAmount}
-            onChange={(e) => setPayAmount(e.target.value)}
-          />
-          <Button
-            onClick={() => {
-              const cents = Math.round(parseFloat(payAmount) * 100);
-              pay(payAddress as `0x${string}`, cents);
-              toast.success("Pay transaction submitted");
-            }}
-            disabled={isPaying || !payAddress || !payAmount}
-          >
-            {isPaying ? "Paying..." : "Pay"}
-          </Button>
+        <div className="rounded bg-muted p-3 text-xs space-y-1">
+          <p className="font-medium">Payments via Chainlink CRE</p>
+          <p className="text-muted-foreground">
+            Salary payments are executed automatically by the Chainlink Runtime Environment.
+            The CRE workflow checks for due advance requests every 30 seconds, verifies credit
+            limits, and triggers on-chain payments through the KeystoneForwarder.
+          </p>
+          {forwarder && (
+            <p className="font-mono text-muted-foreground">
+              Forwarder: {forwarder.slice(0, 10)}...{forwarder.slice(-8)}
+            </p>
+          )}
+          <p className="font-mono text-muted-foreground">
+            Contract: {PAYROLL_ADDRESS.slice(0, 10)}...{PAYROLL_ADDRESS.slice(-8)}
+          </p>
         </div>
       </CardContent>
     </Card>
