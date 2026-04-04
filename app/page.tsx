@@ -65,20 +65,31 @@ const inboundRows = [
 const howItWorks = [
   {
     title: "Set up your workspace",
-    description:
-      "Add employees with salaries, onboard customers, and create products with checkout links. Configure advance rates and treasury thresholds.",
+    lines: [
+      "Add employees with salaries",
+      "Onboard customers",
+      "Create products with checkout links",
+      "Configure advance rates and thresholds",
+    ],
     icon: BriefcaseBusiness,
   },
   {
     title: "Collect and pay",
-    description:
-      "Customers pay via WalletConnect Pay checkout links. Approve payroll batches and salary advance requests. Interest is deducted upfront.",
+    lines: [
+      "Customers pay via WalletConnect Pay",
+      "Approve payroll batches",
+      "Review salary advance requests",
+      "Interest deducted upfront",
+    ],
     icon: ReceiptText,
   },
   {
     title: "Settle on-chain",
-    description:
-      "Chainlink CRE executes approved payments through the Payroll contract on Arc. Customer payments settle via WalletConnect Pay.",
+    lines: [
+      "Chainlink CRE executes payments",
+      "Payroll contract settles on Arc",
+      "Customer payments via WalletConnect Pay",
+    ],
     icon: Workflow,
   },
 ];
@@ -462,9 +473,11 @@ export default function Page() {
               <div>
                 <p className="text-xs" style={{ color: "var(--tone-green)" }}>Step {i + 1}</p>
                 <h3 className="text-sm font-semibold">{step.title}</h3>
-                <p className="mt-0.5 text-xs leading-relaxed" style={{ color: "var(--tone-muted)" }}>
-                  {step.description}
-                </p>
+                <ul className="mt-1 space-y-0.5">
+                  {step.lines.map((line) => (
+                    <li key={line} className="text-xs" style={{ color: "var(--tone-muted)" }}>{line}</li>
+                  ))}
+                </ul>
               </div>
             </div>
           ))}
