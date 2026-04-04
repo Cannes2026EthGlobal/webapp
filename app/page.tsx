@@ -428,12 +428,12 @@ export default function Page() {
           ].map((tech) => (
             <div
               key={tech.name}
-              className="rounded-lg border p-5"
+              className="rounded-lg border p-6"
               style={{ borderColor: "var(--tone-border)", background: "var(--tone-linen)" }}
             >
-              <p className="text-sm font-semibold">{tech.name}</p>
-              <p className="text-xs font-medium" style={{ color: "var(--tone-green)" }}>{tech.role}</p>
-              <p className="mt-2 text-xs leading-relaxed" style={{ color: "var(--tone-muted)" }}>{tech.detail}</p>
+              <p className="text-lg font-semibold">{tech.name}</p>
+              <p className="text-sm font-medium" style={{ color: "var(--tone-green)" }}>{tech.role}</p>
+              <p className="mt-3 text-sm leading-relaxed" style={{ color: "var(--tone-muted)" }}>{tech.detail}</p>
             </div>
           ))}
         </div>
