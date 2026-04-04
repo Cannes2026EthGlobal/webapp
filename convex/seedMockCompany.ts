@@ -192,7 +192,7 @@ export const create = mutation({
       companyId,
       enabled: true,
       interestRateBps: 200,
-      maxAdvancePercent: 80,
+      maxCreditPercent: 80,
       autoDisableThresholdMonths: 2,
       autoDisabled: false,
     });
