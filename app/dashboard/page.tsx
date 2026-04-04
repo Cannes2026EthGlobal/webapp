@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useCompany } from "@/hooks/use-company";
@@ -9,7 +10,9 @@ import { formatCents, formatUsdc } from "@/lib/format";
 
 import { PageHeader } from "@/components/page-header";
 import { CompanyGuard } from "@/components/company-guard";
+import { DepositDialog } from "@/components/deposit-dialog";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardAction,
@@ -24,7 +27,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 function OverviewContent() {
   const { companyId, company } = useCompany();
   const { payrollContractAddress } = useBusinessProfile();
-  const { balanceUsdc, isLoading: onChainLoading } = usePayrollBalance(payrollContractAddress);
+  const { balanceUsdc, isLoading: onChainLoading, refetch: refetchOnChain } = usePayrollBalance(payrollContractAddress);
+  const [showDeposit, setShowDeposit] = useState(false);
   const stats = useQuery(
     api.overview.stats,
     companyId ? { companyId } : "skip"
@@ -75,6 +79,7 @@ function OverviewContent() {
         {cards.map((card) => {
           const icon =
             card.direction === "up" ? ChartUpIcon : ChartDownIcon;
+          const isTreasury = card.title === "Treasury available";
           return (
             <Card key={card.title} className="@container/card">
               <CardHeader>
@@ -83,10 +88,20 @@ function OverviewContent() {
                   {card.value}
                 </CardTitle>
                 <CardAction>
-                  <Badge variant="outline">
-                    <HugeiconsIcon icon={icon} strokeWidth={2} />
-                    {card.trend}
-                  </Badge>
+                  {isTreasury && payrollContractAddress ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowDeposit(true)}
+                    >
+                      Deposit
+                    </Button>
+                  ) : (
+                    <Badge variant="outline">
+                      <HugeiconsIcon icon={icon} strokeWidth={2} />
+                      {card.trend}
+                    </Badge>
+                  )}
                 </CardAction>
               </CardHeader>
             </Card>
@@ -94,6 +109,12 @@ function OverviewContent() {
         })}
       </div>
       <RecentActivity />
+      <DepositDialog
+        open={showDeposit}
+        onOpenChange={setShowDeposit}
+        contractAddress={payrollContractAddress}
+        onSuccess={() => void refetchOnChain()}
+      />
     </div>
   );
 }

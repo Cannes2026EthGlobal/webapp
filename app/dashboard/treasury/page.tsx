@@ -2,30 +2,17 @@
 
 import { useState } from "react";
 import { useQuery } from "convex/react";
-import { useSendTransaction, useWaitForTransactionReceipt } from "wagmi";
-import { parseEther } from "viem";
 import { api } from "@/convex/_generated/api";
 import { useCompany } from "@/hooks/use-company";
 import { useBusinessProfile } from "@/hooks/use-business-profile";
 import { usePayrollBalance } from "@/hooks/use-payroll-contract";
 import { formatCents, formatDate } from "@/lib/format";
-import { PAYROLL_ABI } from "@/lib/payroll-contract";
-import { toast } from "sonner";
 
 import { PageHeader } from "@/components/page-header";
 import { CompanyGuard } from "@/components/company-guard";
+import { DepositDialog } from "@/components/deposit-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import {
   Card,
   CardContent,
@@ -41,7 +28,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 
 function TreasuryContent() {
@@ -254,88 +240,6 @@ function TreasuryContent() {
         onSuccess={() => void refetchOnChain()}
       />
     </div>
-  );
-}
-
-function DepositDialog({
-  open,
-  onOpenChange,
-  contractAddress,
-  onSuccess,
-}: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  contractAddress: `0x${string}` | undefined;
-  onSuccess: () => void;
-}) {
-  const [amount, setAmount] = useState("");
-  const { sendTransaction, data: txHash, isPending } = useSendTransaction();
-  const { data: receipt, isLoading: isWaiting } = useWaitForTransactionReceipt({
-    hash: txHash,
-  });
-
-  if (receipt && !isWaiting) {
-    toast.success("Deposit confirmed");
-    onSuccess();
-    onOpenChange(false);
-  }
-
-  const handleDeposit = () => {
-    if (!contractAddress || !amount) return;
-    sendTransaction(
-      {
-        to: contractAddress,
-        value: parseEther(amount),
-      },
-      {
-        onError: (err) => {
-          toast.error(err.message.slice(0, 100));
-        },
-      }
-    );
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Deposit USDC to payroll contract</DialogTitle>
-          <DialogDescription>
-            Send native USDC to fund your payroll contract on Arc testnet.
-          </DialogDescription>
-        </DialogHeader>
-        <div className="grid gap-4 py-4">
-          <div className="grid gap-2">
-            <Label>Amount (USDC)</Label>
-            <Input
-              type="number"
-              step="0.01"
-              min="0"
-              placeholder="5.00"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-            />
-          </div>
-          {txHash && (
-            <div className="flex items-center gap-2">
-              <div className="size-2 animate-pulse rounded-full bg-yellow-500" />
-              <span className="text-sm">Waiting for confirmation...</span>
-            </div>
-          )}
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
-          </Button>
-          <Button
-            onClick={handleDeposit}
-            disabled={isPending || !amount || parseFloat(amount) <= 0}
-          >
-            {isPending ? "Confirm in wallet..." : "Deposit"}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
   );
 }
 
