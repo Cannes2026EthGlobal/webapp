@@ -10,6 +10,8 @@
 
 import type * as advanceRequests from "../advanceRequests.js";
 import type * as advanceSettings from "../advanceSettings.js";
+import type * as agentBilling from "../agentBilling.js";
+import type * as agentSettlement from "../agentSettlement.js";
 import type * as aiInsights from "../aiInsights.js";
 import type * as balances from "../balances.js";
 import type * as businessProfiles from "../businessProfiles.js";
@@ -32,8 +34,6 @@ import type * as overview from "../overview.js";
 import type * as payrollForecast from "../payrollForecast.js";
 import type * as products from "../products.js";
 import type * as seed from "../seed.js";
-import type * as seedHistory from "../seedHistory.js";
-import type * as seedMockCompany from "../seedMockCompany.js";
 import type * as usageTabs from "../usageTabs.js";
 import type * as users from "../users.js";
 
@@ -46,6 +46,8 @@ import type {
 declare const fullApi: ApiFromModules<{
   advanceRequests: typeof advanceRequests;
   advanceSettings: typeof advanceSettings;
+  agentBilling: typeof agentBilling;
+  agentSettlement: typeof agentSettlement;
   aiInsights: typeof aiInsights;
   balances: typeof balances;
   businessProfiles: typeof businessProfiles;
@@ -68,8 +70,6 @@ declare const fullApi: ApiFromModules<{
   payrollForecast: typeof payrollForecast;
   products: typeof products;
   seed: typeof seed;
-  seedHistory: typeof seedHistory;
-  seedMockCompany: typeof seedMockCompany;
   usageTabs: typeof usageTabs;
   users: typeof users;
 }>;
