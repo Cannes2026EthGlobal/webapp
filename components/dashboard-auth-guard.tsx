@@ -41,10 +41,19 @@ export function DashboardAuthGuard({
   useEffect(() => {
     if (!isHydrated) return;
 
-    // If already connected or reconnecting, we're ready
-    if (isConnected || status === "reconnecting" || status === "connecting") {
+    // If already connected, we're ready immediately
+    if (isConnected) {
       setIsReady(true);
       return;
+    }
+
+    // For reconnecting/connecting, set ready but also add a safety timeout
+    // in case the RPC is unreachable and status never resolves
+    if (status === "reconnecting" || status === "connecting") {
+      const timeout = setTimeout(() => {
+        setIsReady(true);
+      }, 5000);
+      return () => clearTimeout(timeout);
     }
 
     // Status is "disconnected" — wait briefly for AppKit to start reconnecting
@@ -62,7 +71,7 @@ export function DashboardAuthGuard({
     }
   }, [isReady, isConnected, status, router]);
 
-  if (!isHydrated || !isReady || status === "reconnecting" || status === "connecting") {
+  if (!isHydrated || !isReady) {
     return <DashboardLoadingState message="Checking session..." />;
   }
 
