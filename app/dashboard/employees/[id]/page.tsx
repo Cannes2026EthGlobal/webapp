@@ -486,7 +486,9 @@ function CompensationCard({
                         <Badge variant="outline" className="capitalize">{line.type}</Badge>
                       </TableCell>
                       <TableCell className="tabular-nums">{formatCents(line.amountCents)} <span className="text-xs text-muted-foreground">{line.asset}</span></TableCell>
-                      <TableCell className="capitalize">{line.frequency}</TableCell>
+                      <TableCell className="capitalize">
+                        {line.type === "salary" ? line.frequency : line.type === "hourly" ? "Per hour" : line.type === "bonus" ? "One-time" : "Per task"}
+                      </TableCell>
                       <TableCell className="text-muted-foreground text-xs">
                         {line.startDate ? formatDateShort(line.startDate) : "No start"}
                         {" — "}
@@ -558,20 +560,27 @@ function CompensationCard({
               <Label>Description (optional)</Label>
               <Input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Monthly base compensation" />
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-2">
-                <Label>Type</Label>
-                <Select value={form.type} onValueChange={(v) => setForm({ ...form, type: v })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="salary">Salary</SelectItem>
-                    <SelectItem value="hourly">Hourly</SelectItem>
-                    <SelectItem value="per-task">Per task</SelectItem>
-                    <SelectItem value="milestone">Milestone</SelectItem>
-                    <SelectItem value="bonus">Bonus</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+            <div className="grid gap-2">
+              <Label>Type</Label>
+              <Select
+                value={form.type}
+                onValueChange={(v) => setForm({
+                  ...form,
+                  type: v,
+                  frequency: v === "salary" ? form.frequency : v === "hourly" ? "biweekly" : v === "bonus" ? "one-time" : "per-task",
+                })}
+              >
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="salary">Salary</SelectItem>
+                  <SelectItem value="hourly">Hourly</SelectItem>
+                  <SelectItem value="per-task">Per task</SelectItem>
+                  <SelectItem value="milestone">Milestone</SelectItem>
+                  <SelectItem value="bonus">Bonus</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {form.type === "salary" && (
               <div className="grid gap-2">
                 <Label>Frequency</Label>
                 <Select value={form.frequency} onValueChange={(v) => setForm({ ...form, frequency: v })}>
@@ -580,12 +589,10 @@ function CompensationCard({
                     <SelectItem value="monthly">Monthly</SelectItem>
                     <SelectItem value="biweekly">Biweekly</SelectItem>
                     <SelectItem value="weekly">Weekly</SelectItem>
-                    <SelectItem value="per-task">Per task</SelectItem>
-                    <SelectItem value="one-time">One-time</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
-            </div>
+            )}
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label>Amount (USD)</Label>
