@@ -1,9 +1,11 @@
 import { cronJobs } from "convex/server";
 import { internalAction, internalQuery, internalMutation } from "./_generated/server";
-import { internal } from "./_generated/api";
+import { internal, api } from "./_generated/api";
 import { v } from "convex/values";
 
-// ─── Internal helpers (called by the action) ───
+// ═══════════════════════════════════════════════════════════════════════
+// ADVANCE THRESHOLD CHECK
+// ═══════════════════════════════════════════════════════════════════════
 
 export const listAllCompanies = internalQuery({
   args: {},
@@ -74,8 +76,6 @@ export const setAutoDisabledInternal = internalMutation({
   },
 });
 
-// ─── Main cron action ───
-
 export const checkAdvanceThresholds = internalAction({
   args: {},
   handler: async (ctx) => {
@@ -111,7 +111,80 @@ export const checkAdvanceThresholds = internalAction({
   },
 });
 
-// ─── Cron schedule ───
+// ═══════════════════════════════════════════════════════════════════════
+// WC PAY PAYMENT SYNC
+// ═══════════════════════════════════════════════════════════════════════
+
+const WC_PAY_API_URL = process.env.WC_PAY_API_URL ?? "https://api.pay.walletconnect.com";
+const WC_PAY_API_KEY = process.env.WC_PAY_API_KEY ?? "";
+const WC_PAY_MERCHANT_ID = process.env.WC_PAY_MERCHANT_ID ?? "";
+const IS_MOCK = process.env.WC_PAY_MOCK === "true";
+
+export const getPendingWcPayments = internalQuery({
+  args: {},
+  handler: async (ctx) => {
+    const all = await ctx.db
+      .query("customerPayments")
+      .take(200);
+    return all.filter(
+      (p) => p.status === "pending" && p.wcPayPaymentId
+    );
+  },
+});
+
+export const syncWcPayStatuses = internalAction({
+  args: {},
+  handler: async (ctx): Promise<void> => {
+    if (IS_MOCK) return;
+
+    const pending: Array<{ _id: any; wcPayPaymentId?: string }> =
+      await ctx.runQuery(internal.crons.getPendingWcPayments, {});
+
+    for (const payment of pending) {
+      if (!payment.wcPayPaymentId) continue;
+
+      try {
+        const res = await fetch(
+          `${WC_PAY_API_URL}/v1/merchants/payment/${payment.wcPayPaymentId}/status`,
+          {
+            headers: {
+              "Api-Key": WC_PAY_API_KEY,
+              "Merchant-Id": WC_PAY_MERCHANT_ID,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+
+        if (!res.ok) continue;
+
+        const data = (await res.json()) as {
+          status: string;
+          isFinal: boolean;
+        };
+
+        if (data.status === "succeeded") {
+          await ctx.runMutation(api.checkout.confirmPayment, {
+            paymentId: payment._id,
+          });
+        } else if (
+          data.isFinal &&
+          (data.status === "failed" || data.status === "expired")
+        ) {
+          await ctx.runMutation(api.customerPayments.updateStatus, {
+            id: payment._id,
+            status: "cancelled",
+          });
+        }
+      } catch {
+        // Skip failures, retry next cycle
+      }
+    }
+  },
+});
+
+// ═══════════════════════════════════════════════════════════════════════
+// CRON SCHEDULE
+// ═══════════════════════════════════════════════════════════════════════
 
 const crons = cronJobs();
 
@@ -125,7 +198,7 @@ crons.interval(
 crons.interval(
   "sync wcpay payment statuses",
   { minutes: 2 },
-  internal.wcpaySync.syncPaymentStatuses,
+  internal.crons.syncWcPayStatuses,
   {}
 );
 
