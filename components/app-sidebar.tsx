@@ -44,6 +44,7 @@ import {
 import { HugeiconsIcon } from "@hugeicons/react";
 
 const navItems = [
+  // ─── Operations ───
   {
     title: "Overview",
     url: "/dashboard",
@@ -59,25 +60,27 @@ const navItems = [
     url: "/dashboard/customers",
     icon: <HugeiconsIcon icon={Menu01Icon} strokeWidth={2} />,
   },
+  // ─── Money ───
   {
-    title: "Employee Payments",
+    title: "Payroll",
     url: "/dashboard/employee-payments",
     icon: <HugeiconsIcon icon={ChartHistogramIcon} strokeWidth={2} />,
   },
   {
-    title: "Customer Payments",
+    title: "Receivables",
     url: "/dashboard/customer-payments",
     icon: <HugeiconsIcon icon={Folder01Icon} strokeWidth={2} />,
-  },
-  {
-    title: "Products & SDK",
-    url: "/dashboard/products",
-    icon: <HugeiconsIcon icon={Database01Icon} strokeWidth={2} />,
   },
   {
     title: "Treasury",
     url: "/dashboard/treasury",
     icon: <HugeiconsIcon icon={Analytics01Icon} strokeWidth={2} />,
+  },
+  // ─── Platform ───
+  {
+    title: "Products",
+    url: "/dashboard/products",
+    icon: <HugeiconsIcon icon={Database01Icon} strokeWidth={2} />,
   },
 ];
 
@@ -86,16 +89,6 @@ const secondaryItems = [
     title: "Settings",
     url: "/dashboard/settings",
     icon: <HugeiconsIcon icon={Settings05Icon} strokeWidth={2} />,
-  },
-  {
-    title: "Search",
-    url: "#",
-    icon: <HugeiconsIcon icon={SearchIcon} strokeWidth={2} />,
-  },
-  {
-    title: "Support",
-    url: "#",
-    icon: <HugeiconsIcon icon={HelpCircleIcon} strokeWidth={2} />,
   },
 ];
 
