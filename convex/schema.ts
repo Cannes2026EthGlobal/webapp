@@ -296,6 +296,22 @@ export default defineSchema({
     slug: v.string(),
     label: v.optional(v.string()),
     isActive: v.boolean(),
+    recipientAddress: v.optional(v.string()),
+    customization: v.optional(v.object({
+      primaryColor: v.optional(v.string()),
+      backgroundColor: v.optional(v.string()),
+      textColor: v.optional(v.string()),
+      buttonText: v.optional(v.string()),
+      heading: v.optional(v.string()),
+      thankYouMessage: v.optional(v.string()),
+      effect: v.optional(v.union(
+        v.literal("none"),
+        v.literal("confetti"),
+        v.literal("fireworks"),
+        v.literal("snow"),
+        v.literal("bubbles"),
+      )),
+    })),
   })
     .index("by_slug", ["slug"])
     .index("by_productId", ["productId"])

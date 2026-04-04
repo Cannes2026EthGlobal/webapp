@@ -178,15 +178,28 @@ export default function CheckoutPage() {
     }
   };
 
+  const customization = checkout?.link?.customization;
+  const customBg = customization?.backgroundColor;
+  const customText = customization?.textColor;
+  const customPrimary = customization?.primaryColor;
+  const customHeading = customization?.heading ?? product.name;
+  const customButtonText = customization?.buttonText ?? "Pay with WalletConnect";
+  const customThankYou = customization?.thankYouMessage ?? "Payment successful!";
+  const customEffect = customization?.effect ?? "confetti";
+
   // ─── Confirmed State ───
   if (status === "confirmed") {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background p-4">
+      <div
+        className="flex min-h-screen items-center justify-center bg-background p-4"
+        style={{ backgroundColor: customBg, color: customText }}
+      >
+        <CelebrationEffect effect={customEffect} />
         <Card className="w-full max-w-md">
           <CardHeader>
             <CardTitle>Payment confirmed</CardTitle>
             <CardDescription>
-              Thank you for your purchase
+              {customThankYou}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -230,7 +243,10 @@ export default function CheckoutPage() {
   // ─── Awaiting Payment / Polling State ───
   if ((status === "awaiting_payment" || status === "polling") && gatewayUrl) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background p-4">
+      <div
+        className="flex min-h-screen items-center justify-center bg-background p-4"
+        style={{ backgroundColor: customBg, color: customText }}
+      >
         <Card className="w-full max-w-md">
           <CardHeader>
             <CardTitle>Complete your payment</CardTitle>
@@ -272,13 +288,16 @@ export default function CheckoutPage() {
 
   // ─── Initial Checkout Form ───
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background p-4">
+    <div
+      className="flex min-h-screen items-center justify-center bg-background p-4"
+      style={{ backgroundColor: customBg, color: customText }}
+    >
       <Card className="w-full max-w-md">
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
               <CardDescription>{companyName}</CardDescription>
-              <CardTitle className="text-2xl">{product.name}</CardTitle>
+              <CardTitle className="text-2xl">{customHeading}</CardTitle>
             </div>
             <Badge variant="outline">{product.settlementAsset}</Badge>
           </div>
@@ -377,14 +396,101 @@ export default function CheckoutPage() {
             size="lg"
             onClick={() => void handlePay()}
             disabled={status === "processing"}
+            style={customPrimary ? { backgroundColor: customPrimary, borderColor: customPrimary } : undefined}
           >
-            {status === "processing" ? "Creating payment..." : "Pay with WalletConnect"}
+            {status === "processing" ? "Creating payment..." : customButtonText}
           </Button>
           <p className="text-xs text-muted-foreground text-center">
             Powered by Arc Counting &middot; Settlement on Arc
           </p>
         </CardFooter>
       </Card>
+    </div>
+  );
+}
+
+function CelebrationEffect({ effect }: { effect?: string }) {
+  if (!effect || effect === "none") return null;
+
+  const particles = Array.from({ length: 30 }, (_, i) => i);
+
+  return (
+    <div className="pointer-events-none fixed inset-0 z-50 overflow-hidden">
+      {particles.map((i) => {
+        const left = Math.random() * 100;
+        const delay = Math.random() * 2;
+        const duration = 2 + Math.random() * 3;
+        const size = 6 + Math.random() * 10;
+
+        const colors = ["#ff0", "#f0f", "#0ff", "#f00", "#0f0", "#00f", "#ff6b35", "#ffd700"];
+        const color = colors[Math.floor(Math.random() * colors.length)];
+
+        if (effect === "snow") {
+          return (
+            <div
+              key={i}
+              className="absolute rounded-full bg-white opacity-80"
+              style={{
+                left: `${left}%`,
+                top: "-10px",
+                width: size / 2,
+                height: size / 2,
+                animation: `fall ${duration + 2}s linear ${delay}s forwards`,
+              }}
+            />
+          );
+        }
+
+        if (effect === "bubbles") {
+          return (
+            <div
+              key={i}
+              className="absolute rounded-full border-2 opacity-60"
+              style={{
+                left: `${left}%`,
+                bottom: "-20px",
+                width: size * 2,
+                height: size * 2,
+                borderColor: color,
+                animation: `rise ${duration + 1}s ease-out ${delay}s forwards`,
+              }}
+            />
+          );
+        }
+
+        // confetti / fireworks
+        return (
+          <div
+            key={i}
+            className="absolute"
+            style={{
+              left: `${left}%`,
+              top: effect === "fireworks" ? "50%" : "-10px",
+              width: size,
+              height: size,
+              backgroundColor: color,
+              borderRadius: Math.random() > 0.5 ? "50%" : "2px",
+              animation: effect === "fireworks"
+                ? `explode ${duration}s ease-out ${delay}s forwards`
+                : `fall ${duration}s ease-in ${delay}s forwards`,
+              transform: `rotate(${Math.random() * 360}deg)`,
+            }}
+          />
+        );
+      })}
+      <style>{`
+        @keyframes fall {
+          to { transform: translateY(110vh) rotate(720deg); opacity: 0; }
+        }
+        @keyframes rise {
+          to { transform: translateY(-110vh); opacity: 0; }
+        }
+        @keyframes explode {
+          0% { transform: scale(0); opacity: 1; }
+          50% { transform: scale(1) translate(${Math.random() * 200 - 100}px, ${Math.random() * 200 - 100}px); opacity: 0.8; }
+          100% { transform: scale(0.5) translate(${Math.random() * 400 - 200}px, ${Math.random() * 400 - 200}px); opacity: 0; }
+        }
+      `}</style>
     </div>
   );
 }

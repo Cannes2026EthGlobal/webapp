@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useCompany } from "@/hooks/use-company";
@@ -54,6 +55,7 @@ function ProductsContent({
   showCreate: boolean;
   setShowCreate: (v: boolean) => void;
 }) {
+  const router = useRouter();
   const { companyId } = useCompany();
   const products = useQuery(
     api.products.listByCompany,
@@ -309,15 +311,24 @@ function ProductsContent({
                             </Badge>
                           </TableCell>
                           <TableCell>
-                            {link.isActive && (
+                            <div className="flex items-center gap-1">
                               <Button
-                                variant="ghost"
+                                variant="outline"
                                 size="sm"
-                                onClick={() => void deactivateLink({ id: link._id })}
+                                onClick={() => router.push(`/dashboard/products/${link._id}`)}
                               >
-                                Deactivate
+                                Customize
                               </Button>
-                            )}
+                              {link.isActive && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => void deactivateLink({ id: link._id })}
+                                >
+                                  Deactivate
+                                </Button>
+                              )}
+                            </div>
                           </TableCell>
                         </TableRow>
                       ))}
