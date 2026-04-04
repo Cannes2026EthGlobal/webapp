@@ -32,6 +32,9 @@ export default function CheckoutPage() {
 
   const [quantity, setQuantity] = useState(1);
   const [walletAddress, setWalletAddress] = useState("");
+  const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
+  const [country, setCountry] = useState("");
   const [status, setStatus] = useState<CheckoutStatus>("idle");
   const [gatewayUrl, setGatewayUrl] = useState<string | null>(null);
   const [wcPaymentId, setWcPaymentId] = useState<string | null>(null);
@@ -130,6 +133,9 @@ export default function CheckoutPage() {
         slug,
         quantity,
         buyerWallet: walletAddress || undefined,
+        buyerFullName: fullName || undefined,
+        buyerEmail: email || undefined,
+        buyerCountry: country || undefined,
       });
 
       setConvexPaymentId(result.paymentId);
@@ -308,16 +314,49 @@ export default function CheckoutPage() {
             </div>
           )}
 
-          <div className="grid gap-2">
-            <Label htmlFor="wallet">Wallet address (optional)</Label>
-            <Input
-              id="wallet"
-              placeholder="0x..."
-              value={walletAddress}
-              onChange={(e) => setWalletAddress(e.target.value)}
-            />
+          <div className="space-y-3">
+            <p className="text-sm font-medium">Your details <span className="text-muted-foreground font-normal">(optional)</span></p>
+            <div className="grid gap-2">
+              <Label htmlFor="fullName">Full name</Label>
+              <Input
+                id="fullName"
+                placeholder="John Doe"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="grid gap-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="john@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="country">Country</Label>
+                <Input
+                  id="country"
+                  placeholder="US"
+                  value={country}
+                  onChange={(e) => setCountry(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="wallet">Wallet address</Label>
+              <Input
+                id="wallet"
+                placeholder="0x..."
+                value={walletAddress}
+                onChange={(e) => setWalletAddress(e.target.value)}
+              />
+            </div>
             <p className="text-xs text-muted-foreground">
-              Providing your wallet registers you as a customer automatically.
+              Your details are shared with the merchant for order fulfillment.
             </p>
           </div>
 

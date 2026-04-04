@@ -23,6 +23,9 @@ export const initiateCheckout = mutation({
     slug: v.string(),
     quantity: v.optional(v.number()),
     buyerWallet: v.optional(v.string()),
+    buyerFullName: v.optional(v.string()),
+    buyerEmail: v.optional(v.string()),
+    buyerCountry: v.optional(v.string()),
   },
   handler: async (ctx, args): Promise<{
     paymentId: Id<"customerPayments">;
@@ -52,6 +55,9 @@ export const initiateCheckout = mutation({
       customerId = await findOrCreateCustomerByWallet(ctx, {
         companyId: link.companyId,
         walletAddress: args.buyerWallet,
+        fullName: args.buyerFullName,
+        email: args.buyerEmail,
+        country: args.buyerCountry,
       });
     }
 
