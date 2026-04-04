@@ -163,7 +163,7 @@ function ProductsContent({
                                 </span>
                                 {activeLinks.length > 0 && (
                                   <Button
-                                    variant="ghost"
+                                    variant="outline"
                                     size="sm"
                                     onClick={() => copyLink(activeLinks[0].slug)}
                                   >
@@ -190,7 +190,7 @@ function ProductsContent({
                             </TableCell>
                             <TableCell>
                               <Button
-                                variant="ghost"
+                                variant="outline"
                                 size="sm"
                                 onClick={() => void removeProduct({ id: prod._id })}
                               >
@@ -222,8 +222,7 @@ function ProductsContent({
                     <TableHeader>
                       <TableRow>
                         <TableHead>Product</TableHead>
-                        <TableHead>Slug</TableHead>
-                        <TableHead>URL</TableHead>
+                        <TableHead>Checkout URL</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead />
                       </TableRow>
@@ -234,17 +233,24 @@ function ProductsContent({
                           <TableCell className="font-medium">
                             {link.productName}
                           </TableCell>
-                          <TableCell className="font-mono text-xs">
-                            {link.slug}
-                          </TableCell>
                           <TableCell>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => copyLink(link.slug)}
-                            >
-                              Copy link
-                            </Button>
+                            <div className="flex items-center gap-2">
+                              <a
+                                href={`${typeof window !== "undefined" ? window.location.origin : ""}/checkout/${link.slug}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="font-mono text-xs text-primary underline break-all"
+                              >
+                                {typeof window !== "undefined" ? window.location.origin : ""}/checkout/{link.slug}
+                              </a>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => copyLink(link.slug)}
+                              >
+                                Copy
+                              </Button>
+                            </div>
                           </TableCell>
                           <TableCell>
                             <Badge variant={link.isActive ? "default" : "secondary"}>
@@ -254,7 +260,7 @@ function ProductsContent({
                           <TableCell>
                             {link.isActive && (
                               <Button
-                                variant="ghost"
+                                variant="outline"
                                 size="sm"
                                 onClick={() => void deactivateLink({ id: link._id })}
                               >
