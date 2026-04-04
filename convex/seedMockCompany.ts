@@ -2,14 +2,6 @@ import { mutation } from "./_generated/server";
 import { v } from "convex/values";
 import { creditBalance, debitBalance } from "./balances";
 
-/**
- * Creates a fully populated mock company with realistic generated data.
- * Use for demos and testing. Does NOT touch any existing companies.
- *
- * Usage:
- *   npx convex run seedMockCompany:create '{"wallet": "0x..."}'
- *   npx convex run seedMockCompany:create '{"wallet": "0x...", "companyName": "Acme Corp"}'
- */
 export const create = mutation({
   args: {
     wallet: v.string(),
@@ -19,13 +11,29 @@ export const create = mutation({
     const name = args.companyName ?? "Mock Corp";
     const slug = name.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
 
-    // Create company
+    // Get or create user
+    let user = await ctx.db
+      .query("users")
+      .withIndex("by_walletAddress", (q) => q.eq("walletAddress", args.wallet))
+      .unique();
+    if (!user) {
+      const userId = await ctx.db.insert("users", { walletAddress: args.wallet });
+      user = (await ctx.db.get(userId))!;
+    }
+
     const companyId = await ctx.db.insert("companies", {
       name,
       slug,
-      ownerWallet: args.wallet,
+      ownerId: user._id,
       industry: "Technology",
       website: `https://${slug}.example.com`,
+    });
+
+    // Create membership
+    await ctx.db.insert("companyMembers", {
+      userId: user._id,
+      companyId,
+      role: "owner",
     });
 
     const now = Date.now();
@@ -52,16 +60,13 @@ export const create = mutation({
     }
 
     // ─── Compensation Lines ───
-    const compLines = [
-      { idx: 0, name: "Base Salary", amountCents: 1000000, frequency: "monthly" as const },
-      { idx: 0, name: "Housing Allowance", amountCents: 200000, frequency: "monthly" as const },
-      { idx: 1, name: "Base Salary", amountCents: 800000, frequency: "monthly" as const },
-      { idx: 2, name: "Contract Rate", amountCents: 700000, frequency: "biweekly" as const },
-      { idx: 3, name: "Base Salary", amountCents: 900000, frequency: "monthly" as const },
-      { idx: 4, name: "Part-time Salary", amountCents: 500000, frequency: "biweekly" as const },
-    ];
-
-    for (const line of compLines) {
+    for (const line of [
+      { idx: 0, name: "Base Salary", amountCents: 95, frequency: "monthly" as const },
+      { idx: 1, name: "Base Salary", amountCents: 80, frequency: "monthly" as const },
+      { idx: 2, name: "Contract Rate", amountCents: 70, frequency: "biweekly" as const },
+      { idx: 3, name: "Base Salary", amountCents: 85, frequency: "monthly" as const },
+      { idx: 4, name: "Part-time Salary", amountCents: 50, frequency: "biweekly" as const },
+    ]) {
       await ctx.db.insert("compensationLines", {
         employeeId: employeeIds[line.idx],
         companyId,
@@ -89,8 +94,8 @@ export const create = mutation({
     // ─── Products ───
     const products = [
       { name: "API Access", billingUnit: "1K requests", pricingModel: "per-unit" as const, unitPriceCents: 50, description: "Pay-per-use API access" },
-      { name: "Pro License", billingUnit: "license", pricingModel: "flat" as const, unitPriceCents: 1500000, description: "Annual pro license" },
-      { name: "Event Pass", billingUnit: "ticket", pricingModel: "flat" as const, unitPriceCents: 25000, description: "Conference admission" },
+      { name: "Pro License", billingUnit: "license", pricingModel: "per-unit" as const, unitPriceCents: 1500000, description: "Annual pro license" },
+      { name: "Event Pass", billingUnit: "ticket", pricingModel: "per-unit" as const, unitPriceCents: 25000, description: "Conference admission" },
     ];
 
     const productIds = [];
@@ -107,15 +112,15 @@ export const create = mutation({
       productIds.push(id);
     }
 
-    // ─── Employee Payments (realistic mix) ───
+    // ─── Employee Payments ───
     const empPayments = [
-      { idx: 0, type: "salary" as const, amountCents: 1000000, status: "settled" as const, description: "March salary", settledAt: now - 5 * day },
-      { idx: 1, type: "salary" as const, amountCents: 800000, status: "settled" as const, description: "March salary", settledAt: now - 5 * day },
-      { idx: 3, type: "salary" as const, amountCents: 900000, status: "settled" as const, description: "March salary", settledAt: now - 5 * day },
-      { idx: 0, type: "salary" as const, amountCents: 1000000, status: "approved" as const, description: "April salary", scheduledDate: now + 2 * day },
-      { idx: 1, type: "salary" as const, amountCents: 800000, status: "approved" as const, description: "April salary", scheduledDate: now + 2 * day },
-      { idx: 2, type: "freelance" as const, amountCents: 350000, status: "draft" as const, description: "Sprint 12 contract work" },
-      { idx: 0, type: "advance" as const, amountCents: 490000, status: "settled" as const, description: "Salary advance (2% interest deducted)", settledAt: now - 1 * day },
+      { idx: 0, type: "salary" as const, amountCents: 95, status: "settled" as const, description: "March salary", settledAt: now - 5 * day },
+      { idx: 1, type: "salary" as const, amountCents: 80, status: "settled" as const, description: "March salary", settledAt: now - 5 * day },
+      { idx: 3, type: "salary" as const, amountCents: 85, status: "settled" as const, description: "March salary", settledAt: now - 5 * day },
+      { idx: 0, type: "salary" as const, amountCents: 95, status: "approved" as const, description: "April salary", scheduledDate: now + 2 * day },
+      { idx: 1, type: "salary" as const, amountCents: 80, status: "approved" as const, description: "April salary", scheduledDate: now + 2 * day },
+      { idx: 2, type: "freelance" as const, amountCents: 70, status: "draft" as const, description: "Sprint 12 contract work" },
+      { idx: 0, type: "credit" as const, amountCents: 47, status: "settled" as const, description: "Salary credit (2% interest deducted)", settledAt: now - 1 * day },
     ];
 
     for (const p of empPayments) {
@@ -132,10 +137,10 @@ export const create = mutation({
       });
     }
 
-    // ─── Customer Payments (realistic mix) ───
+    // ─── Customer Payments ───
     const custPayments = [
       { custIdx: 0, prodIdx: 1, mode: "invoice" as const, amountCents: 1500000, status: "paid" as const, description: "Pro License Q1", paidAt: now - 10 * day },
-      { custIdx: 1, prodIdx: 0, mode: "usage" as const, amountCents: 87500, status: "paid" as const, description: "Feb API usage - 1750 requests", paidAt: now - 3 * day },
+      { custIdx: 1, prodIdx: 0, mode: "usage" as const, amountCents: 87500, status: "paid" as const, description: "Feb API usage", paidAt: now - 3 * day },
       { custIdx: 1, prodIdx: 0, mode: "usage" as const, amountCents: 62000, status: "pending" as const, description: "March API usage (running)" },
       { custIdx: 2, prodIdx: null, mode: "usage" as const, amountCents: 12500, status: "paid" as const, description: "Agent compute credits", paidAt: now - 1 * day },
       { custIdx: 0, prodIdx: 1, mode: "invoice" as const, amountCents: 1500000, status: "sent" as const, description: "Pro License Q2", dueDate: now + 15 * day },
@@ -156,8 +161,7 @@ export const create = mutation({
       });
     }
 
-    // ─── Balance Ledger (matches the payments above) ───
-    // Settled employee payments → debits
+    // ─── Balance Ledger ───
     for (const p of empPayments.filter((p) => p.status === "settled")) {
       await debitBalance(ctx, {
         companyId,
@@ -167,7 +171,6 @@ export const create = mutation({
       });
     }
 
-    // Paid customer payments → credits
     for (const p of custPayments.filter((p) => p.status === "paid")) {
       await creditBalance(ctx, {
         companyId,
@@ -177,7 +180,6 @@ export const create = mutation({
       });
     }
 
-    // Initial deposit
     await creditBalance(ctx, {
       companyId,
       amountCents: 5000000,
@@ -185,12 +187,12 @@ export const create = mutation({
       reason: "Initial treasury deposit — 50,000 USDC",
     });
 
-    // ─── Advance Settings ───
-    await ctx.db.insert("advanceSettings", {
+    // ─── Credit Settings ───
+    await ctx.db.insert("creditSettings", {
       companyId,
       enabled: true,
       interestRateBps: 200,
-      maxAdvancePercent: 80,
+      maxCreditPercent: 80,
       autoDisableThresholdMonths: 2,
       autoDisabled: false,
     });

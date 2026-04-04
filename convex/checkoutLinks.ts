@@ -97,9 +97,49 @@ export const listByProduct = query({
   },
 });
 
+export const getById = query({
+  args: { id: v.id("checkoutLinks") },
+  handler: async (ctx, args) => {
+    const link = await ctx.db.get(args.id);
+    if (!link) return null;
+    const product = await ctx.db.get(link.productId);
+    return { ...link, productName: product?.name ?? "Unknown" };
+  },
+});
+
 export const deactivate = mutation({
   args: { id: v.id("checkoutLinks") },
   handler: async (ctx, args) => {
     await ctx.db.patch(args.id, { isActive: false });
+  },
+});
+
+export const update = mutation({
+  args: {
+    id: v.id("checkoutLinks"),
+    recipientAddress: v.optional(v.string()),
+    customization: v.optional(v.object({
+      primaryColor: v.optional(v.string()),
+      backgroundColor: v.optional(v.string()),
+      textColor: v.optional(v.string()),
+      buttonText: v.optional(v.string()),
+      heading: v.optional(v.string()),
+      thankYouMessage: v.optional(v.string()),
+      effect: v.optional(v.union(
+        v.literal("none"),
+        v.literal("confetti"),
+        v.literal("fireworks"),
+        v.literal("snow"),
+        v.literal("bubbles"),
+      )),
+    })),
+  },
+  handler: async (ctx, args) => {
+    const { id, ...fields } = args;
+    const updates: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(fields)) {
+      if (value !== undefined) updates[key] = value;
+    }
+    await ctx.db.patch(id, updates);
   },
 });

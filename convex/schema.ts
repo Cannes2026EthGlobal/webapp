@@ -22,12 +22,13 @@ export default defineSchema({
 
   // ─── Business Profiles (1:1 per user, gates dashboard access) ───
   businessProfiles: defineTable({
-    userId: v.id("users"),
+    userId: v.optional(v.id("users")),
     businessName: v.string(),
     description: v.optional(v.string()),
     industry: v.optional(v.string()),
     website: v.optional(v.string()),
     payrollContractAddress: v.optional(v.string()),
+    ownerWallet: v.optional(v.string()), // legacy field from old schema
   }).index("by_userId", ["userId"]),
 
   // ─── Onboarding Wizard State (persisted across refreshes) ───
@@ -50,7 +51,8 @@ export default defineSchema({
   companies: defineTable({
     name: v.string(),
     slug: v.string(),
-    ownerId: v.id("users"),
+    ownerId: v.optional(v.id("users")),
+    ownerWallet: v.optional(v.string()), // legacy
     treasuryAddress: v.optional(v.string()),
     industry: v.optional(v.string()),
     website: v.optional(v.string()),
@@ -296,6 +298,22 @@ export default defineSchema({
     slug: v.string(),
     label: v.optional(v.string()),
     isActive: v.boolean(),
+    recipientAddress: v.optional(v.string()),
+    customization: v.optional(v.object({
+      primaryColor: v.optional(v.string()),
+      backgroundColor: v.optional(v.string()),
+      textColor: v.optional(v.string()),
+      buttonText: v.optional(v.string()),
+      heading: v.optional(v.string()),
+      thankYouMessage: v.optional(v.string()),
+      effect: v.optional(v.union(
+        v.literal("none"),
+        v.literal("confetti"),
+        v.literal("fireworks"),
+        v.literal("snow"),
+        v.literal("bubbles"),
+      )),
+    })),
   })
     .index("by_slug", ["slug"])
     .index("by_productId", ["productId"])
@@ -397,4 +415,67 @@ export default defineSchema({
     .index("by_companyId_and_status", ["companyId", "status"])
     .index("by_employeeId", ["employeeId"])
     .index("by_employeeId_and_status", ["employeeId", "status"]),
+
+  // ─── Agent API Keys (per-customer agent authentication) ───
+  agentApiKeys: defineTable({
+    companyId: v.id("companies"),
+    customerId: v.id("customers"),
+    apiKey: v.string(),
+    label: v.string(),
+    rateLimit: v.optional(v.number()), // requests per minute
+    isActive: v.boolean(),
+    lastUsedAt: v.optional(v.number()),
+  })
+    .index("by_companyId", ["companyId"])
+    .index("by_apiKey", ["apiKey"])
+    .index("by_customerId", ["customerId"]),
+
+  // ─── Agent Sessions (metered billing sessions for autonomous agents) ───
+  agentSessions: defineTable({
+    companyId: v.id("companies"),
+    customerId: v.id("customers"),
+    apiKeyId: v.id("agentApiKeys"),
+    productId: v.id("products"),
+    tabId: v.optional(v.id("usageTabs")),
+    sessionId: v.string(), // external session identifier
+    status: v.union(
+      v.literal("active"),
+      v.literal("completed"),
+      v.literal("billed"),
+      v.literal("settled")
+    ),
+    totalUnits: v.number(),
+    totalMicroCents: v.number(), // sub-cent precision for nanopayments
+    startedAt: v.number(),
+    endedAt: v.optional(v.number()),
+    settledAt: v.optional(v.number()),
+    settlementTxHash: v.optional(v.string()),
+  })
+    .index("by_companyId", ["companyId"])
+    .index("by_sessionId", ["sessionId"])
+    .index("by_customerId", ["customerId"])
+    .index("by_companyId_and_status", ["companyId", "status"])
+    .index("by_apiKeyId", ["apiKeyId"]),
+
+  // ─── Agent Settlements (agent-to-agent clearing) ───
+  agentSettlements: defineTable({
+    companyId: v.id("companies"),
+    fromCustomerId: v.id("customers"),
+    toCustomerId: v.id("customers"),
+    amountMicroCents: v.number(),
+    currency: v.union(v.literal("USD"), v.literal("EUR")),
+    status: v.union(
+      v.literal("initiated"),
+      v.literal("confirmed"),
+      v.literal("disputed"),
+      v.literal("resolved")
+    ),
+    reason: v.optional(v.string()),
+    initiatedAt: v.number(),
+    confirmedAt: v.optional(v.number()),
+    txHash: v.optional(v.string()),
+  })
+    .index("by_companyId", ["companyId"])
+    .index("by_fromCustomerId", ["fromCustomerId"])
+    .index("by_toCustomerId", ["toCustomerId"]),
 });

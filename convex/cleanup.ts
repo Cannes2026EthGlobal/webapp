@@ -2,71 +2,64 @@ import { mutation } from "./_generated/server";
 import { v } from "convex/values";
 
 /**
- * Clears ALL seeded data for companies owned by the given wallet.
- * Deletes: balance entries, balances, employee payments, customer payments,
- * compensation lines, employees, customers, products, checkout links,
- * advance requests, advance settings.
+ * Delete stale legacy documents that don't match the new schema.
+ * Run once: npx convex run cleanup:deleteStaleDocuments
  */
+export const deleteStaleDocuments = mutation({
+  args: {},
+  handler: async (ctx) => {
+    let deleted = 0;
+    // Delete businessProfiles without userId
+    const profiles = await ctx.db.query("businessProfiles").take(100);
+    for (const p of profiles) {
+      if (!p.userId) {
+        await ctx.db.delete(p._id);
+        deleted++;
+      }
+    }
+    // Delete companies without ownerId
+    const companies = await ctx.db.query("companies").take(100);
+    for (const c of companies) {
+      if (!c.ownerId) {
+        await ctx.db.delete(c._id);
+        deleted++;
+      }
+    }
+    return { deleted };
+  },
+});
+
 export const clearAllData = mutation({
   args: { wallet: v.string() },
   handler: async (ctx, args) => {
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_walletAddress", (q) => q.eq("walletAddress", args.wallet))
+      .unique();
+    if (!user) return { companiesFound: 0, deleted: 0 };
+
     const companies = await ctx.db
       .query("companies")
-      .withIndex("by_ownerWallet", (q) => q.eq("ownerWallet", args.wallet))
+      .withIndex("by_ownerId", (q) => q.eq("ownerId", user._id))
       .take(10);
 
     let deleted = 0;
 
     for (const company of companies) {
-      const tables = [
-        "balanceEntries",
-        "companyBalances",
-        "employeePayments",
-        "customerPayments",
-        "compensationLines",
-        "advanceRequests",
-        "advanceSettings",
-        "checkoutLinks",
-      ] as const;
-
-      for (const table of tables) {
-        const docs = await ctx.db
-          .query(table)
-          .withIndex("by_companyId", (q) => q.eq("companyId", company._id))
-          .take(500);
-        for (const doc of docs) {
-          await ctx.db.delete(doc._id);
-          deleted++;
-        }
-      }
-
-      // Employees and customers
-      const employees = await ctx.db
-        .query("employees")
-        .withIndex("by_companyId", (q) => q.eq("companyId", company._id))
-        .take(200);
-      for (const e of employees) {
-        await ctx.db.delete(e._id);
-        deleted++;
-      }
-
-      const customers = await ctx.db
-        .query("customers")
-        .withIndex("by_companyId", (q) => q.eq("companyId", company._id))
-        .take(200);
-      for (const c of customers) {
-        await ctx.db.delete(c._id);
-        deleted++;
-      }
-
-      const products = await ctx.db
-        .query("products")
-        .withIndex("by_companyId", (q) => q.eq("companyId", company._id))
-        .take(200);
-      for (const p of products) {
-        await ctx.db.delete(p._id);
-        deleted++;
-      }
+      // Delete from each table individually (can't use generic loop with Convex types)
+      for (const doc of await ctx.db.query("balanceEntries").withIndex("by_companyId", (q) => q.eq("companyId", company._id)).take(500)) { await ctx.db.delete(doc._id); deleted++; }
+      for (const doc of await ctx.db.query("companyBalances").withIndex("by_companyId", (q) => q.eq("companyId", company._id)).take(500)) { await ctx.db.delete(doc._id); deleted++; }
+      for (const doc of await ctx.db.query("employeePayments").withIndex("by_companyId", (q) => q.eq("companyId", company._id)).take(500)) { await ctx.db.delete(doc._id); deleted++; }
+      for (const doc of await ctx.db.query("customerPayments").withIndex("by_companyId", (q) => q.eq("companyId", company._id)).take(500)) { await ctx.db.delete(doc._id); deleted++; }
+      for (const doc of await ctx.db.query("compensationLines").withIndex("by_companyId", (q) => q.eq("companyId", company._id)).take(500)) { await ctx.db.delete(doc._id); deleted++; }
+      // compensationSplits are deleted via cascade when compensationLines are deleted
+      for (const doc of await ctx.db.query("creditRequests").withIndex("by_companyId", (q) => q.eq("companyId", company._id)).take(500)) { await ctx.db.delete(doc._id); deleted++; }
+      for (const doc of await ctx.db.query("creditSettings").withIndex("by_companyId", (q) => q.eq("companyId", company._id)).take(500)) { await ctx.db.delete(doc._id); deleted++; }
+      for (const doc of await ctx.db.query("checkoutLinks").withIndex("by_companyId", (q) => q.eq("companyId", company._id)).take(500)) { await ctx.db.delete(doc._id); deleted++; }
+      for (const doc of await ctx.db.query("usageTabs").withIndex("by_companyId", (q) => q.eq("companyId", company._id)).take(500)) { await ctx.db.delete(doc._id); deleted++; }
+      for (const doc of await ctx.db.query("employees").withIndex("by_companyId", (q) => q.eq("companyId", company._id)).take(200)) { await ctx.db.delete(doc._id); deleted++; }
+      for (const doc of await ctx.db.query("customers").withIndex("by_companyId", (q) => q.eq("companyId", company._id)).take(200)) { await ctx.db.delete(doc._id); deleted++; }
+      for (const doc of await ctx.db.query("products").withIndex("by_companyId", (q) => q.eq("companyId", company._id)).take(200)) { await ctx.db.delete(doc._id); deleted++; }
     }
 
     return { companiesFound: companies.length, deleted };

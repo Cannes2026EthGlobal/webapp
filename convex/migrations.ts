@@ -23,7 +23,7 @@ export const backfillPayrollContractToCompanies = internalMutation({
       // Find all companies owned by this user
       const memberships = await ctx.db
         .query("companyMembers")
-        .withIndex("by_userId", (q) => q.eq("userId", profile.userId))
+        .withIndex("by_userId", (q) => q.eq("userId", profile.userId!))
         .take(50);
 
       for (const membership of memberships) {

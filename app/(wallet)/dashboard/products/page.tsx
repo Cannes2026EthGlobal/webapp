@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useCompany } from "@/hooks/use-company";
@@ -44,7 +45,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 
 function ProductsContent({
@@ -54,6 +54,7 @@ function ProductsContent({
   showCreate: boolean;
   setShowCreate: (v: boolean) => void;
 }) {
+  const router = useRouter();
   const { companyId } = useCompany();
   const products = useQuery(
     api.products.listByCompany,
@@ -63,24 +64,9 @@ function ProductsContent({
     api.checkoutLinks.listByCompany,
     companyId ? { companyId } : "skip"
   );
-  const recentPayments = useQuery(
-    api.customerPayments.listByCompany,
-    companyId ? { companyId } : "skip"
-  );
-  const createProduct = useMutation(api.products.create);
   const removeProduct = useMutation(api.products.remove);
   const createCheckoutLink = useMutation(api.checkoutLinks.create);
   const deactivateLink = useMutation(api.checkoutLinks.deactivate);
-
-  const [formData, setFormData] = useState({
-    name: "",
-    description: "",
-    billingUnit: "",
-    pricingModel: "per-unit" as const,
-    unitPriceCents: 0,
-    privacyMode: "standard" as const,
-    refundPolicy: "no-refund" as const,
-  });
 
   if (!products || !checkoutLinks) {
     return (
@@ -89,34 +75,6 @@ function ProductsContent({
       </div>
     );
   }
-
-  const handleCreate = async () => {
-    if (!companyId || !formData.name || !formData.billingUnit) return;
-    await createProduct({
-      companyId,
-      name: formData.name,
-      description: formData.description || undefined,
-      billingUnit: formData.billingUnit,
-      pricingModel: formData.pricingModel,
-      unitPriceCents: formData.unitPriceCents,
-      currency: "USD",
-      settlementAsset: "USDC",
-      privacyMode: formData.privacyMode,
-      refundPolicy: formData.refundPolicy,
-      isActive: true,
-    });
-    setShowCreate(false);
-    setFormData({
-      name: "",
-      description: "",
-      billingUnit: "",
-      pricingModel: "per-unit",
-      unitPriceCents: 0,
-      privacyMode: "standard",
-      refundPolicy: "no-refund",
-    });
-    toast.success("Product created");
-  };
 
   const handleCreateLink = async (productId: Id<"products">) => {
     if (!companyId) return;
@@ -138,22 +96,9 @@ function ProductsContent({
     linksByProduct.set(link.productId, existing);
   }
 
-  // SDK activity: recent checkout/usage payments
-  const sdkPayments = (recentPayments ?? [])
-    .filter((p) => p.mode === "checkout" || p.mode === "usage")
-    .slice(0, 20);
-
   return (
     <div className="flex flex-col gap-4 p-4 lg:p-6">
-      <Tabs defaultValue="products">
-        <TabsList>
-          <TabsTrigger value="products">Products</TabsTrigger>
-          <TabsTrigger value="sdk">SDK & Integration</TabsTrigger>
-          <TabsTrigger value="activity">Activity</TabsTrigger>
-        </TabsList>
-
-        {/* ─── Products Tab ─── */}
-        <TabsContent value="products" className="space-y-4">
+      <div className="space-y-4">
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
@@ -211,7 +156,7 @@ function ProductsContent({
                               {prod.pricingModel}
                             </TableCell>
                             <TableCell className="tabular-nums">
-                              {formatCentsDetailed(prod.unitPriceCents)}
+                              ${(prod.unitPriceCents / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 18 })}
                             </TableCell>
                             <TableCell>
                               <div className="flex items-center gap-2">
@@ -220,7 +165,7 @@ function ProductsContent({
                                 </span>
                                 {activeLinks.length > 0 && (
                                   <Button
-                                    variant="ghost"
+                                    variant="outline"
                                     size="sm"
                                     onClick={() => copyLink(activeLinks[0].slug)}
                                   >
@@ -247,7 +192,7 @@ function ProductsContent({
                             </TableCell>
                             <TableCell>
                               <Button
-                                variant="ghost"
+                                variant="outline"
                                 size="sm"
                                 onClick={() => void removeProduct({ id: prod._id })}
                               >
@@ -296,7 +241,7 @@ function ProductsContent({
                           </TableCell>
                           <TableCell>
                             <Button
-                              variant="ghost"
+                              variant="outline"
                               size="sm"
                               onClick={() => copyLink(link.slug)}
                             >
@@ -309,15 +254,24 @@ function ProductsContent({
                             </Badge>
                           </TableCell>
                           <TableCell>
-                            {link.isActive && (
+                            <div className="flex gap-1">
                               <Button
-                                variant="ghost"
+                                variant="outline"
                                 size="sm"
-                                onClick={() => void deactivateLink({ id: link._id })}
+                                onClick={() => router.push(`/dashboard/products/${link._id}`)}
                               >
-                                Deactivate
+                                Customize
                               </Button>
-                            )}
+                              {link.isActive && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => void deactivateLink({ id: link._id })}
+                                >
+                                  Deactivate
+                                </Button>
+                              )}
+                            </div>
                           </TableCell>
                         </TableRow>
                       ))}
@@ -327,300 +281,143 @@ function ProductsContent({
               </CardContent>
             </Card>
           )}
-        </TabsContent>
+      </div>
 
-        {/* ─── SDK Tab ─── */}
-        <TabsContent value="sdk" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Quick Start</CardTitle>
-              <CardDescription>
-                Integrate Arc Counting payments into your app
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div>
-                <h4 className="text-sm font-medium mb-2">Configuration</h4>
-                <div className="rounded-lg bg-muted p-4 font-mono text-xs space-y-1 overflow-x-auto">
-                  <div className="text-muted-foreground">// Your company ID for API calls</div>
-                  <div>COMPANY_ID = &quot;{companyId ?? "..."}&quot;</div>
-                  <div>API_BASE = &quot;{typeof window !== "undefined" ? window.location.origin : ""}/api/pay&quot;</div>
-                </div>
-              </div>
+      <CreateProductDialog
+        open={showCreate}
+        onOpenChange={setShowCreate}
+        companyId={companyId}
+      />
+    </div>
+  );
+}
 
-              <div>
-                <h4 className="text-sm font-medium mb-2">Per-unit purchase (checkout link)</h4>
-                <div className="rounded-lg bg-muted p-4 font-mono text-xs overflow-x-auto whitespace-pre">{`// Redirect customers to your checkout link
-const checkoutUrl = "${typeof window !== "undefined" ? window.location.origin : ""}/checkout/{slug}";
-window.open(checkoutUrl);`}</div>
-              </div>
+function CreateProductDialog({
+  open,
+  onOpenChange,
+  companyId,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  companyId: any;
+}) {
+  const createProduct = useMutation(api.products.create);
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [billingUnit, setBillingUnit] = useState("");
+  const [pricingModel, setPricingModel] = useState<"per-unit" | "pay-as-you-go">("per-unit");
+  const [priceInput, setPriceInput] = useState("");
+  const [privacyMode, setPrivacyMode] = useState<"standard" | "pseudonymous" | "shielded">("standard");
+  const [refundPolicy, setRefundPolicy] = useState<"no-refund" | "partial" | "full">("no-refund");
 
-              <div>
-                <h4 className="text-sm font-medium mb-2">Pay-as-you-go (usage billing via SDK)</h4>
-                <div className="rounded-lg bg-muted p-4 font-mono text-xs overflow-x-auto whitespace-pre">{`// 1. Initiate usage payment via Convex
-const payment = await convex.mutation("checkout:initiateUsagePayment", {
-  companyId: "${companyId ?? "..."}",
-  productId: "<your-product-id>",
-  amountCents: 500,  // $5.00
-  currency: "USD",
-  description: "50 API calls",
-  buyerWallet: "0x...",  // auto-registers customer
-});
+  const handleCreate = async () => {
+    if (!companyId || !name || !billingUnit) return;
+    const val = parseFloat(priceInput || "0");
+    await createProduct({
+      companyId,
+      name,
+      description: description || undefined,
+      billingUnit,
+      pricingModel,
+      unitPriceCents: Math.floor(val * 100 * 1e10) / 1e10,
+      currency: "USD",
+      settlementAsset: "USDC",
+      privacyMode,
+      refundPolicy,
+      isActive: true,
+    });
+    onOpenChange(false);
+    setName("");
+    setDescription("");
+    setBillingUnit("");
+    setPricingModel("per-unit");
+    setPriceInput("");
+    setPrivacyMode("standard");
+    setRefundPolicy("no-refund");
+    toast.success("Product created");
+  };
 
-// 2. Create WC Pay session
-const res = await fetch("/api/pay/create", {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({
-    referenceId: payment.referenceId,
-    amountCents: payment.amountCents,
-    currency: payment.currency,
-  }),
-});
-const { gatewayUrl } = await res.json();
-
-// 3. Redirect user to pay
-window.open(gatewayUrl);`}</div>
-              </div>
-
-              <div>
-                <h4 className="text-sm font-medium mb-2">Check payment status</h4>
-                <div className="rounded-lg bg-muted p-4 font-mono text-xs overflow-x-auto whitespace-pre">{`const res = await fetch("/api/pay/status?paymentId=<wc-pay-id>");
-const { status, isFinal } = await res.json();
-// status: "requires_action" | "processing" | "succeeded" | "failed"`}</div>
-              </div>
-
-              <div>
-                <h4 className="text-sm font-medium mb-2">Webhook (server-to-server)</h4>
-                <div className="rounded-lg bg-muted p-4 font-mono text-xs overflow-x-auto whitespace-pre">{`// Configure WC Pay to POST to:
-POST ${typeof window !== "undefined" ? window.location.origin : ""}/api/pay/webhook
-
-// Body: { paymentId, referenceId }
-// Auto-confirms payment and credits your treasury`}</div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>How it works</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3 text-sm text-muted-foreground">
-                <p>
-                  <strong className="text-foreground">Per-unit products:</strong> Create a checkout link for any product. Share the URL with customers. They select quantity, pay via WalletConnect Pay, and the payment + customer registration happen automatically.
-                </p>
-                <p>
-                  <strong className="text-foreground">Pay-as-you-go / Usage:</strong> Your app calls the SDK to create a usage payment with a dynamic amount. The buyer is redirected to WalletConnect Pay. On completion, the payment is confirmed and your treasury is credited.
-                </p>
-                <p>
-                  <strong className="text-foreground">Auto-CRM:</strong> Any wallet that transacts with your business is automatically registered as a customer. You can enrich their profile later from the Customers page.
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* ─── Activity Tab ─── */}
-        <TabsContent value="activity">
-          <Card>
-            <CardHeader>
-              <CardTitle>SDK Activity</CardTitle>
-              <CardDescription>
-                Recent checkout and usage payments
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {sdkPayments.length === 0 ? (
-                <p className="py-8 text-center text-sm text-muted-foreground">
-                  No SDK-initiated payments yet
-                </p>
-              ) : (
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Mode</TableHead>
-                        <TableHead>Description</TableHead>
-                        <TableHead>Amount</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Date</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {sdkPayments.map((p) => (
-                        <TableRow key={p._id}>
-                          <TableCell>
-                            <Badge variant="outline" className="capitalize">
-                              {p.mode}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="max-w-48 truncate text-muted-foreground">
-                            {p.description ?? "-"}
-                          </TableCell>
-                          <TableCell className="tabular-nums">
-                            {formatCentsDetailed(p.amountCents)}
-                          </TableCell>
-                          <TableCell>
-                            <Badge
-                              variant={
-                                p.status === "paid"
-                                  ? "default"
-                                  : p.status === "cancelled"
-                                    ? "destructive"
-                                    : "secondary"
-                              }
-                              className="capitalize"
-                            >
-                              {p.status}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-muted-foreground">
-                            {formatDate(p.paidAt ?? p._creationTime)}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
-
-      {/* ─── Create Product Dialog ─── */}
-      <Dialog open={showCreate} onOpenChange={setShowCreate}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Create product</DialogTitle>
-            <DialogDescription>
-              Define a new billable product for this workspace.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Create product</DialogTitle>
+          <DialogDescription>
+            Define a new billable product for this workspace.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-4 py-4">
+          <div className="grid gap-2">
+            <Label htmlFor="name">Product name</Label>
+            <Input id="name" value={name} onChange={(e) => setName(e.target.value)} />
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="description">Description (optional)</Label>
+            <Input id="description" value={description} onChange={(e) => setDescription(e.target.value)} />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
             <div className="grid gap-2">
-              <Label htmlFor="name">Product name</Label>
-              <Input
-                id="name"
-                value={formData.name}
-                onChange={(e) =>
-                  setFormData({ ...formData, name: e.target.value })
-                }
-              />
+              <Label htmlFor="billingUnit">Billing unit</Label>
+              <Input id="billingUnit" placeholder="e.g., request, token, hour" value={billingUnit} onChange={(e) => setBillingUnit(e.target.value)} />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="description">Description (optional)</Label>
-              <Input
-                id="description"
-                value={formData.description}
-                onChange={(e) =>
-                  setFormData({ ...formData, description: e.target.value })
-                }
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-2">
-                <Label htmlFor="billingUnit">Billing unit</Label>
-                <Input
-                  id="billingUnit"
-                  placeholder="e.g., request, token, hour"
-                  value={formData.billingUnit}
-                  onChange={(e) =>
-                    setFormData({ ...formData, billingUnit: e.target.value })
-                  }
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label>Pricing model</Label>
-                <Select
-                  value={formData.pricingModel}
-                  onValueChange={(v) =>
-                    setFormData({
-                      ...formData,
-                      pricingModel: v as typeof formData.pricingModel,
-                    })
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="per-unit">Per unit</SelectItem>
-                    <SelectItem value="pay-as-you-go">Pay as you go</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="unitPrice">Unit price (USD)</Label>
-              <Input
-                id="unitPrice"
-                type="number"
-                step="any"
-                value={formData.unitPriceCents / 100 || ""}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    unitPriceCents: parseFloat(e.target.value || "0") * 100,
-                  })
-                }
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-2">
-                <Label>Privacy mode</Label>
-                <Select
-                  value={formData.privacyMode}
-                  onValueChange={(v) =>
-                    setFormData({
-                      ...formData,
-                      privacyMode: v as typeof formData.privacyMode,
-                    })
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="standard">Standard</SelectItem>
-                    <SelectItem value="pseudonymous">Pseudonymous</SelectItem>
-                    <SelectItem value="shielded">Shielded</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid gap-2">
-                <Label>Refund policy</Label>
-                <Select
-                  value={formData.refundPolicy}
-                  onValueChange={(v) =>
-                    setFormData({
-                      ...formData,
-                      refundPolicy: v as typeof formData.refundPolicy,
-                    })
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="no-refund">No refund</SelectItem>
-                    <SelectItem value="partial">Partial</SelectItem>
-                    <SelectItem value="full">Full</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+              <Label>Pricing model</Label>
+              <Select value={pricingModel} onValueChange={(v) => setPricingModel(v as typeof pricingModel)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="per-unit">Per unit</SelectItem>
+                  <SelectItem value="pay-as-you-go">Pay as you go</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowCreate(false)}>
-              Cancel
-            </Button>
-            <Button onClick={() => void handleCreate()}>Create product</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </div>
+          <div className="grid gap-2">
+            <Label htmlFor="unitPrice">Unit price (USDC)</Label>
+            <Input
+              id="unitPrice"
+              type="text"
+              inputMode="decimal"
+              placeholder="0.0001"
+              value={priceInput}
+              onChange={(e) => {
+                const v = e.target.value;
+                if (v === "" || /^\d*\.?\d*$/.test(v)) {
+                  setPriceInput(v);
+                }
+              }}
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="grid gap-2">
+              <Label>Privacy mode</Label>
+              <Select value={privacyMode} onValueChange={(v) => setPrivacyMode(v as typeof privacyMode)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="standard">Standard</SelectItem>
+                  <SelectItem value="pseudonymous">Pseudonymous</SelectItem>
+                  <SelectItem value="shielded">Shielded</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label>Refund policy</Label>
+              <Select value={refundPolicy} onValueChange={(v) => setRefundPolicy(v as typeof refundPolicy)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="no-refund">No refund</SelectItem>
+                  <SelectItem value="partial">Partial</SelectItem>
+                  <SelectItem value="full">Full</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button onClick={() => void handleCreate()}>Create product</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 

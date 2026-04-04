@@ -153,9 +153,9 @@ export const stats = query({
       )
       .take(200);
 
-    // Pending advance requests
+    // Pending credit requests
     const pendingAdvances = await ctx.db
-      .query("advanceRequests")
+      .query("creditRequests")
       .withIndex("by_companyId_and_status", (q) =>
         q.eq("companyId", args.companyId).eq("status", "pending")
       )

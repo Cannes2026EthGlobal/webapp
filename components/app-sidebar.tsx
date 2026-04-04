@@ -30,11 +30,9 @@ import {
   Add01Icon,
   Analytics01Icon,
   ArrowDown01Icon,
-  ChartHistogramIcon,
   CommandIcon,
   DashboardSquare01Icon,
   Database01Icon,
-  Folder01Icon,
   HelpCircleIcon,
   Menu01Icon,
   SearchIcon,
@@ -44,7 +42,6 @@ import {
 import { HugeiconsIcon } from "@hugeicons/react";
 
 const navItems = [
-  // ─── Operations ───
   {
     title: "Overview",
     url: "/dashboard",
@@ -60,17 +57,20 @@ const navItems = [
     url: "/dashboard/customers",
     icon: <HugeiconsIcon icon={Menu01Icon} strokeWidth={2} />,
   },
-  // ─── Money ───
   {
     title: "Treasury",
     url: "/dashboard/treasury",
     icon: <HugeiconsIcon icon={Analytics01Icon} strokeWidth={2} />,
   },
-  // ─── Platform ───
   {
     title: "My Products",
     url: "/dashboard/products",
     icon: <HugeiconsIcon icon={Database01Icon} strokeWidth={2} />,
+  },
+  {
+    title: "Agents",
+    url: "/dashboard/agents",
+    icon: <HugeiconsIcon icon={CommandIcon} strokeWidth={2} />,
   },
   {
     title: "Integration",
@@ -84,6 +84,7 @@ const secondaryItems = [
     title: "Settings",
     url: "/dashboard/settings",
     icon: <HugeiconsIcon icon={Settings05Icon} strokeWidth={2} />,
+    icon: <HugeiconsIcon icon={HelpCircleIcon} strokeWidth={2} />,
   },
 ];
 
