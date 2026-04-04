@@ -424,17 +424,17 @@ export default function Page() {
             {
               name: "Arc (Circle)",
               role: "Settlement rail",
-              detail: "USDC-native L1 blockchain. All payroll and customer payments settle here. The Payroll smart contract holds company funds and executes payments.",
+              detail: "USDC-native L1 blockchain.\nAll payroll and customer payments settle here.\nThe Payroll smart contract holds company funds and executes payments.",
             },
             {
               name: "Chainlink CRE",
               role: "Payment automation",
-              detail: "A cron-triggered workflow fetches due salary requests from our backend via Confidential HTTP, then executes on-chain payments through the KeystoneForwarder.",
+              detail: "A cron-triggered workflow fetches due salary requests from our backend via Confidential HTTP.\nThen executes on-chain payments through the KeystoneForwarder.",
             },
             {
               name: "WalletConnect Pay",
               role: "Customer checkout",
-              detail: "Customers pay through checkout links. We add per-invoice customization (amount, currency, metadata) on top of the standard WC Pay flow.",
+              detail: "Customers pay through checkout links.\nWe add per-invoice customization (amount, currency, metadata) on top of the standard WC Pay flow.",
             },
           ].map((tech) => (
             <div
@@ -446,7 +446,7 @@ export default function Page() {
                 <p className="text-base font-semibold">{tech.name}</p>
                 <p className="text-sm" style={{ color: "var(--tone-green)" }}>{tech.role}</p>
               </div>
-              <p className="text-sm leading-relaxed" style={{ color: "var(--tone-muted)" }}>{tech.detail}</p>
+              <p className="whitespace-pre-line text-sm leading-relaxed" style={{ color: "var(--tone-muted)" }}>{tech.detail}</p>
             </div>
           ))}
         </div>
