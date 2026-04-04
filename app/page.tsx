@@ -151,7 +151,7 @@ export default function Page() {
         >
           {[
             { value: "USDC", label: "Payroll & invoices in stablecoins" },
-            { value: "Up to 100%", label: "Of your salary upfront (against interest)" },
+            { value: "100%", label: "Salary advance against interest" },
             { value: "Custom", label: "Per-invoice reception parameters" },
             { value: "Any chain", label: "Supported by Circle CCTP" },
           ].map((s) => (
