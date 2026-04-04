@@ -10,6 +10,7 @@
 
 import type * as advanceRequests from "../advanceRequests.js";
 import type * as advanceSettings from "../advanceSettings.js";
+import type * as aiInsights from "../aiInsights.js";
 import type * as balances from "../balances.js";
 import type * as businessProfiles from "../businessProfiles.js";
 import type * as checkout from "../checkout.js";
@@ -41,6 +42,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   advanceRequests: typeof advanceRequests;
   advanceSettings: typeof advanceSettings;
+  aiInsights: typeof aiInsights;
   balances: typeof balances;
   businessProfiles: typeof businessProfiles;
   checkout: typeof checkout;

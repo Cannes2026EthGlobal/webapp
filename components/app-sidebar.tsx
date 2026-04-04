@@ -37,6 +37,7 @@ import {
   Menu01Icon,
   SearchIcon,
   Settings05Icon,
+  SparklesIcon,
   UserGroupIcon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
@@ -71,6 +72,11 @@ const navItems = [
     title: "Treasury",
     url: "/dashboard/treasury",
     icon: <HugeiconsIcon icon={Analytics01Icon} strokeWidth={2} />,
+  },
+  {
+    title: "AI Insights",
+    url: "/dashboard/ai-insights",
+    icon: <HugeiconsIcon icon={SparklesIcon} strokeWidth={2} />,
   },
 ];
 
