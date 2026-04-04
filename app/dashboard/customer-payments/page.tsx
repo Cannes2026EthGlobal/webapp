@@ -46,6 +46,9 @@ import {
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
+import { generateQrDataUrl } from "@/lib/qr";
+import { usePaymentStatus } from "@/hooks/use-payment-status";
+import { isMockMode } from "@/lib/wcpay-client";
 
 function CustomerPaymentsContent({ showCreate, setShowCreate }: { showCreate: boolean; setShowCreate: (v: boolean) => void }) {
   const { companyId } = useCompany();
@@ -66,6 +69,13 @@ function CustomerPaymentsContent({ showCreate, setShowCreate }: { showCreate: bo
     amountCents: 0,
     description: "",
   });
+  const [checkoutState, setCheckoutState] = useState<{
+    paymentDbId: string;
+    wcPaymentId: string;
+    qrDataUrl: string;
+    gatewayUrl: string;
+  } | null>(null);
+  const updatePayment = useMutation(api.customerPayments.update);
 
   if (!payments || !customers) {
     return (
@@ -96,6 +106,40 @@ function CustomerPaymentsContent({ showCreate, setShowCreate }: { showCreate: bo
       amountCents: 0,
       description: "",
     });
+  };
+
+  const handleGenerateCheckout = async (paymentId: Id<"customerPayments">, amountCents: number) => {
+    if (!companyId) return;
+    const referenceId = `arc::${companyId}::${paymentId}`;
+
+    try {
+      const res = await fetch("/api/wcpay/payments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ referenceId, amountCents, currency: "USD" }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        toast.error(err.error ?? "Failed to create checkout link");
+        return;
+      }
+
+      const { paymentId: wcPaymentId, gatewayUrl } = await res.json();
+
+      // Store the referenceId on the customer payment
+      await updatePayment({ id: paymentId, referenceId });
+
+      // Transition to sent
+      await updateStatus({ id: paymentId, status: "sent" });
+
+      const qrDataUrl = await generateQrDataUrl(gatewayUrl);
+      setCheckoutState({ paymentDbId: paymentId, wcPaymentId, qrDataUrl, gatewayUrl });
+
+      toast.success(isMockMode ? "Checkout link generated (mock mode)" : "Checkout link generated");
+    } catch (e: any) {
+      toast.error(e.message ?? "Failed to generate checkout");
+    }
   };
 
   const modeGroups = {
@@ -217,12 +261,20 @@ function CustomerPaymentsContent({ showCreate, setShowCreate }: { showCreate: bo
                       toast.error(e instanceof Error ? e.message : "Failed to remove");
                     }
                   }}
+                  onGenerateCheckout={handleGenerateCheckout}
                 />
               </TabsContent>
             ))}
           </Tabs>
         </CardContent>
       </Card>
+
+      {checkoutState && (
+        <CheckoutLinkCard
+          checkoutState={checkoutState}
+          onClose={() => setCheckoutState(null)}
+        />
+      )}
 
       <Dialog open={showCreate} onOpenChange={setShowCreate}>
         <DialogContent>
@@ -323,6 +375,7 @@ function CustomerPaymentsTable({
   customerMap,
   onTransition,
   onRemove,
+  onGenerateCheckout,
 }: {
   payments: Array<{
     _id: Id<"customerPayments">;
@@ -338,6 +391,7 @@ function CustomerPaymentsTable({
   customerMap: Map<string, { displayName: string }>;
   onTransition: (id: Id<"customerPayments">, status: "draft" | "sent" | "pending" | "paid" | "overdue" | "cancelled") => void;
   onRemove: (id: Id<"customerPayments">) => void;
+  onGenerateCheckout: (id: Id<"customerPayments">, amountCents: number) => void;
 }) {
   if (payments.length === 0) {
     return (
@@ -393,9 +447,14 @@ function CustomerPaymentsTable({
               <TableCell>
                 <div className="flex gap-1">
                   {p.status === "draft" && (
-                    <Button variant="outline" size="sm" onClick={() => onTransition(p._id, "sent")}>
-                      Send
-                    </Button>
+                    <>
+                      <Button variant="outline" size="sm" onClick={() => onTransition(p._id, "sent")}>
+                        Send
+                      </Button>
+                      <Button variant="default" size="sm" onClick={() => onGenerateCheckout(p._id, p.amountCents)}>
+                        Checkout link
+                      </Button>
+                    </>
                   )}
                   {p.status === "sent" && (
                     <Button variant="outline" size="sm" onClick={() => onTransition(p._id, "pending")}>
@@ -429,6 +488,83 @@ function CustomerPaymentsTable({
         </TableBody>
       </Table>
     </div>
+  );
+}
+
+function CheckoutLinkCard({
+  checkoutState,
+  onClose,
+}: {
+  checkoutState: {
+    paymentDbId: string;
+    wcPaymentId: string;
+    qrDataUrl: string;
+    gatewayUrl: string;
+  };
+  onClose: () => void;
+}) {
+  const status = usePaymentStatus(checkoutState.wcPaymentId);
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle className="text-sm">Checkout Link</CardTitle>
+            <CardDescription>
+              Share this QR code or link with your customer
+              {isMockMode && " (mock mode — payment auto-succeeds)"}
+            </CardDescription>
+          </div>
+          <Button variant="ghost" size="sm" onClick={onClose}>
+            Close
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="flex items-start gap-6">
+          <img src={checkoutState.qrDataUrl} alt="Payment QR" className="h-40 w-40 rounded" />
+          <div className="flex flex-col gap-2 min-w-0">
+            <div>
+              <p className="text-xs text-muted-foreground">Payment ID</p>
+              <p className="font-mono text-xs break-all">{checkoutState.wcPaymentId}</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Gateway URL</p>
+              <a
+                href={checkoutState.gatewayUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-mono text-xs text-primary underline break-all"
+              >
+                {checkoutState.gatewayUrl}
+              </a>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Status</p>
+              {status.status ? (
+                <Badge variant={status.status === "succeeded" ? "default" : status.isFinal ? "destructive" : "secondary"} className="capitalize">
+                  {status.status}
+                </Badge>
+              ) : (
+                <span className="text-xs text-muted-foreground">Polling...</span>
+              )}
+            </div>
+            {status.isFinal && status.status === "succeeded" && (
+              <p className="text-sm font-medium text-green-600">Payment confirmed</p>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-fit mt-1"
+              onClick={() => navigator.clipboard.writeText(checkoutState.gatewayUrl)}
+            >
+              Copy link
+            </Button>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
