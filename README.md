@@ -41,6 +41,32 @@ To delete stale legacy documents after schema migration:
 npx convex run cleanup:deleteStaleDocuments
 ```
 
+### Seed Full Demo Data
+
+Populate a company with employees, customers, products, and payments:
+
+```bash
+npx convex run seedData:seedFullDemo '{"wallet": "YOUR_WALLET_ADDRESS"}'
+```
+
+### Add Individual Records
+
+```bash
+# Add an employee with salary
+npx convex run seedData:addEmployee '{"wallet":"0x...","displayName":"Alice","role":"Engineer","employmentType":"full-time","salaryAmountCents":95}'
+
+# Add a customer
+npx convex run seedData:addCustomer '{"wallet":"0x...","displayName":"Acme Corp","customerType":"company","email":"billing@acme.io"}'
+
+# Add a product
+npx convex run seedData:addProduct '{"wallet":"0x...","name":"API Access","billingUnit":"1K requests","priceCents":50}'
+
+# Add a payment
+npx convex run seedData:addPayment '{"wallet":"0x...","employeeId":"EMPLOYEE_ID","type":"salary","amountCents":95}'
+```
+
+All commands use your wallet address to find your company automatically.
+
 ### Seed Influencer Demo
 
 Creates 2 products with fully branded checkout links — simulates influencer partnerships where each influencer has their own checkout page with custom colors, text, celebration effects, and a custom recipient wallet for direct payout.
