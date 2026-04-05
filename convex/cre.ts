@@ -1,175 +1,288 @@
-import { mutation, query } from "./_generated/server";
-import { v } from "convex/values";
-import { Id } from "./_generated/dataModel";
+import { query, mutation } from './_generated/server'
+import { v } from 'convex/values'
 
-// ---------------------------------------------------------------------------
-// HELPERS
-// ---------------------------------------------------------------------------
+// ─── Helpers ───
 
-/**
- * Returns the start of the current pay period (midnight UTC).
- * Used to check whether an employee has already been paid this period.
- *   monthly  → 1st of the current month
- *   biweekly → 14 days ago (rolling)
- *   weekly   → 7 days ago (rolling)
- */
-function getPeriodStart(todayMidnightUtc: number, frequency: string): number {
+function advanceNextPaymentDate(
+  currentDate: number,
+  frequency: "monthly" | "biweekly" | "weekly",
+): number {
+  const d = new Date(currentDate)
   if (frequency === "monthly") {
-    const d = new Date(todayMidnightUtc);
-    return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1);
+    d.setUTCMonth(d.getUTCMonth() + 1)
+  } else if (frequency === "biweekly") {
+    d.setUTCDate(d.getUTCDate() + 14)
+  } else {
+    d.setUTCDate(d.getUTCDate() + 7)
   }
-  const days = frequency === "biweekly" ? 14 : 7;
-  return todayMidnightUtc - (days - 1) * 24 * 60 * 60 * 1000;
+  return d.getTime()
 }
 
-// ---------------------------------------------------------------------------
-// DEBUG
-// ---------------------------------------------------------------------------
-
-export const debugListAll = query({
-  args: {},
-  handler: async (ctx) => {
-    const employees = await ctx.db.query("employees").take(50)
-    const companies = await ctx.db.query("companies").take(20)
-    return { employees, companies }
-  },
-})
-
-// ---------------------------------------------------------------------------
-// QUERIES
-// ---------------------------------------------------------------------------
+// ─── Queries ───
 
 /**
- * Returns all active employees whose nextPaymentDate is today or overdue,
- * joined with their company's payrollContractAddress.
- *
- * Called by the CRE workflow every day at 09:00 UTC.
- *
- * Skips employees that are missing:
- *   - walletAddress
- *   - payoutAmountCents
- *   - payoutFrequency (or is 'per-task')
- *   - company.payrollContractAddress
+ * Returns a flat list of due payment items across all companies.
+ * Includes both salary payments (with credit deductions) and credit advance payments.
+ * Called by the CRE workflow via POST /api/query.
  */
 export const getDueEmployees = query({
   args: {},
   handler: async (ctx) => {
-    const now = Date.now();
-    const todayStart = Date.UTC(
-      new Date(now).getUTCFullYear(),
-      new Date(now).getUTCMonth(),
-      new Date(now).getUTCDate(),
-    );
+    const now = Date.now()
 
-    // Fetch all active compensation lines whose startDate has passed
-    const activeLines = await ctx.db
-      .query("compensationLines")
-      .filter((q) =>
-        q.and(
-          q.eq(q.field("isActive"), true),
-          q.lte(q.field("startDate"), now),
+    const allCompanies = await ctx.db.query("companies").take(100)
+
+    const results: Array<{
+      employeeId: string
+      walletAddress: string
+      amountCents: number
+      payrollContractAddress: string
+      companyId: string
+      frequency: string
+      compensationLineId?: string
+      compensationSplitId?: string
+      description: string
+      type: "salary" | "credit"
+      employeePaymentId?: string
+    }> = []
+
+    for (const company of allCompanies) {
+      if (!company.payrollContractAddress) continue
+
+      const employees = await ctx.db
+        .query("employees")
+        .withIndex("by_companyId_and_status", (q) =>
+          q.eq("companyId", company._id).eq("status", "active")
         )
-      )
-      .collect();
+        .take(200)
 
-    // Group lines by employeeId, summing amounts
-    // (an employee may have multiple lines — e.g. base salary + housing allowance)
-    const byEmployee = new Map<
-      Id<"employees">,
-      { amountCents: number; frequency: string; companyId: Id<"companies"> }
-    >();
-    for (const line of activeLines) {
-      if (line.endDate && line.endDate < now) continue; // expired
-      const existing = byEmployee.get(line.employeeId);
-      if (existing) {
-        existing.amountCents += line.amountCents;
-      } else {
-        byEmployee.set(line.employeeId, {
-          amountCents: line.amountCents,
-          frequency: line.frequency,
-          companyId: line.companyId,
-        });
-      }
-    }
+      for (const employee of employees) {
+        if (!employee.walletAddress) continue
 
-    const result: Array<{
-      _id: string;
-      walletAddress: string;
-      amountCents: number;
-      payrollContractAddress: string;
-      companyId: string;
-      frequency: string;
-    }> = [];
-
-    for (const [employeeId, data] of byEmployee) {
-      // Skip if already paid during the current period
-      const periodStart = getPeriodStart(todayStart, data.frequency);
-      const recentPayment = await ctx.db
-        .query("employeePayments")
-        .withIndex("by_employeeId", (q) => q.eq("employeeId", employeeId))
-        .filter((q) =>
-          q.and(
-            q.eq(q.field("status"), "settled"),
-            q.gte(q.field("settledAt"), periodStart),
+        // ── Credit advance payments (approved, waiting for on-chain settlement) ──
+        const approvedCredits = await ctx.db
+          .query("employeePayments")
+          .withIndex("by_employeeId", (q) =>
+            q.eq("employeeId", employee._id)
           )
+          .take(50)
+
+        for (const payment of approvedCredits) {
+          if (payment.type !== "credit" || payment.status !== "approved") continue
+
+          results.push({
+            employeeId: employee._id,
+            walletAddress: employee.walletAddress,
+            amountCents: payment.amountCents,
+            payrollContractAddress: company.payrollContractAddress,
+            companyId: company._id,
+            frequency: "",
+            description: payment.description ?? "Salary advance",
+            type: "credit",
+            employeePaymentId: payment._id,
+          })
+
+          if (results.length >= 50) break
+        }
+
+        // ── Salary payments (due based on nextPaymentDate) ──
+        if (employee.nextPaymentDate && employee.nextPaymentDate > now) continue
+
+        const lines = await ctx.db
+          .query("compensationLines")
+          .withIndex("by_employeeId_and_isActive", (q) =>
+            q.eq("employeeId", employee._id).eq("isActive", true)
+          )
+          .take(20)
+
+        // Check for settled credits that need to be deducted from salary
+        const settledCredits = await ctx.db
+          .query("creditRequests")
+          .withIndex("by_employeeId_and_status", (q) =>
+            q.eq("employeeId", employee._id).eq("status", "settled")
+          )
+          .take(10)
+        const totalDeduction = settledCredits.reduce(
+          (sum, cr) => sum + cr.requestedAmountCents,
+          0,
         )
-        .first();
-      if (recentPayment) continue;
 
-      const emp = await ctx.db.get(employeeId);
-      if (!emp || emp.status !== "active" || !emp.walletAddress) continue;
+        // Sum total salary across all lines
+        const totalSalary = lines.reduce((sum, l) => sum + l.amountCents, 0)
+        const netSalary = Math.max(0, totalSalary - totalDeduction)
 
-      const company = await ctx.db.get(emp.companyId);
-      if (!company?.payrollContractAddress) continue;
+        if (totalSalary === 0) continue
 
-      result.push({
-        _id: emp._id,
-        walletAddress: emp.walletAddress,
-        amountCents: data.amountCents,
-        payrollContractAddress: company.payrollContractAddress,
-        companyId: emp.companyId,
-        frequency: data.frequency,
-      });
+        const deductionRatio = netSalary / totalSalary
+
+        for (const line of lines) {
+          const splits = await ctx.db
+            .query("compensationSplits")
+            .withIndex("by_compensationLineId", (q) =>
+              q.eq("compensationLineId", line._id)
+            )
+            .take(20)
+
+          if (splits.length === 0) {
+            const adjusted = Math.round(line.amountCents * deductionRatio)
+            if (adjusted <= 0) continue
+
+            results.push({
+              employeeId: employee._id,
+              walletAddress: employee.walletAddress,
+              amountCents: adjusted,
+              payrollContractAddress: company.payrollContractAddress,
+              companyId: company._id,
+              frequency: line.frequency,
+              compensationLineId: line._id,
+              description: totalDeduction > 0
+                ? `${line.name} (after ${totalDeduction}¢ credit deduction)`
+                : line.name,
+              type: "salary",
+            })
+          } else {
+            for (const split of splits) {
+              const adjusted = Math.round(split.amountCents * deductionRatio)
+              if (adjusted <= 0) continue
+
+              results.push({
+                employeeId: employee._id,
+                walletAddress: split.walletAddress,
+                amountCents: adjusted,
+                payrollContractAddress: company.payrollContractAddress,
+                companyId: company._id,
+                frequency: line.frequency,
+                compensationLineId: line._id,
+                compensationSplitId: split._id,
+                description: split.label
+                  ? `${line.name} (${split.label})`
+                  : line.name,
+                type: "salary",
+              })
+            }
+          }
+
+          if (results.length >= 50) break
+        }
+        if (results.length >= 50) break
+      }
+      if (results.length >= 50) break
     }
 
-    return result;
+    return results
   },
-});
+})
 
-// ---------------------------------------------------------------------------
-// MUTATIONS
-// ---------------------------------------------------------------------------
+// ─── Mutations ───
 
 /**
- * Records a successful on-chain payroll payment and advances nextPaymentDate.
- *
- * Called by the CRE workflow after evmClient.writeReport() succeeds.
- * If this call fails after an on-chain success the CRE logs a warning;
- * the employee's nextPaymentDate won't advance so they'll appear due again
- * on the next cycle — operators should investigate before then.
+ * Records a settled on-chain payment.
+ * Handles both salary and credit payment types.
+ * Called by the CRE workflow via POST /api/mutation after a successful
+ * evmClient.writeReport().
  */
 export const markPaid = mutation({
   args: {
-    employeeId: v.id("employees"),
-    txHash: v.string(),
-    amountCents: v.number(),
-    paidAt: v.number(), // ms UTC
+    employeeId:          v.id("employees"),
+    type:                v.union(v.literal("salary"), v.literal("credit")),
+    compensationLineId:  v.optional(v.id("compensationLines")),
+    compensationSplitId: v.optional(v.id("compensationSplits")),
+    employeePaymentId:   v.optional(v.id("employeePayments")),
+    walletAddress:       v.string(),
+    txHash:              v.string(),
+    amountCents:         v.number(),
+    paidAt:              v.number(),
   },
   handler: async (ctx, args) => {
-    const emp = await ctx.db.get(args.employeeId);
-    if (!emp) throw new Error(`Employee ${args.employeeId} not found`);
+    const employee = await ctx.db.get(args.employeeId)
+    if (!employee) throw new Error(`Employee ${args.employeeId} not found`)
 
-    // Record the settled payment — this is also the idempotency guard:
-    // getDueEmployees checks for a recent employeePayments record before including
-    await ctx.db.insert("employeePayments", {
-      companyId: emp.companyId,
-      employeeId: args.employeeId,
-      type: "salary",
-      amountCents: args.amountCents,
-      currency: "USD",
-      status: "settled",
-      txHash: args.txHash,
-      settledAt: args.paidAt,
-    });
+    if (args.type === "credit") {
+      // ── Credit payment: patch existing employeePayment, settle credit request ──
+      if (!args.employeePaymentId) {
+        throw new Error("employeePaymentId required for credit payments")
+      }
+
+      const payment = await ctx.db.get(args.employeePaymentId)
+      if (!payment) throw new Error(`Payment ${args.employeePaymentId} not found`)
+      if (payment.status !== "approved") {
+        throw new Error(`Payment ${args.employeePaymentId} is ${payment.status}, expected approved`)
+      }
+
+      await ctx.db.patch(args.employeePaymentId, {
+        status: "settled",
+        settledAt: args.paidAt,
+        txHash: args.txHash,
+        txExplorerUrl: `https://testnet.arcscan.app/tx/${args.txHash}`,
+        walletAddress: args.walletAddress,
+      })
+
+      // Find and settle the linked credit request
+      const creditRequests = await ctx.db
+        .query("creditRequests")
+        .withIndex("by_employeeId_and_status", (q) =>
+          q.eq("employeeId", args.employeeId).eq("status", "approved")
+        )
+        .take(5)
+
+      for (const cr of creditRequests) {
+        if (cr.creditPaymentId === args.employeePaymentId) {
+          await ctx.db.patch(cr._id, { status: "settled" })
+          break
+        }
+      }
+    } else {
+      // ── Salary payment: insert new employeePayment, advance date, deduct credits ──
+      if (!args.compensationLineId) {
+        throw new Error("compensationLineId required for salary payments")
+      }
+
+      const line = await ctx.db.get(args.compensationLineId)
+      if (!line) throw new Error(`Compensation line ${args.compensationLineId} not found`)
+
+      let description = line.name
+      if (args.compensationSplitId) {
+        const split = await ctx.db.get(args.compensationSplitId)
+        if (split?.label) {
+          description = `${line.name} (${split.label})`
+        }
+      }
+
+      await ctx.db.insert("employeePayments", {
+        companyId: employee.companyId,
+        employeeId: args.employeeId,
+        type: "salary",
+        amountCents: args.amountCents,
+        currency: "USD",
+        status: "settled",
+        settledAt: args.paidAt,
+        txHash: args.txHash,
+        txExplorerUrl: `https://testnet.arcscan.app/tx/${args.txHash}`,
+        compensationLineId: args.compensationLineId,
+        compensationSplitId: args.compensationSplitId,
+        walletAddress: args.walletAddress,
+        description,
+      })
+
+      // Advance nextPaymentDate (idempotent: only if still <= paidAt)
+      if (!employee.nextPaymentDate || employee.nextPaymentDate <= args.paidAt) {
+        const base = employee.nextPaymentDate ?? args.paidAt
+        await ctx.db.patch(args.employeeId, {
+          nextPaymentDate: advanceNextPaymentDate(base, line.frequency),
+        })
+      }
+
+      // Mark any settled credit requests as deducted
+      const settledCredits = await ctx.db
+        .query("creditRequests")
+        .withIndex("by_employeeId_and_status", (q) =>
+          q.eq("employeeId", args.employeeId).eq("status", "settled")
+        )
+        .take(10)
+
+      for (const cr of settledCredits) {
+        await ctx.db.patch(cr._id, { status: "deducted" })
+      }
+    }
   },
-});
+})

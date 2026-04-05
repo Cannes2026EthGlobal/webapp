@@ -96,23 +96,17 @@ export const request = mutation({
     const interestRateBps = settings?.interestRateBps ?? 200;
     const maxCreditPercent = settings?.maxCreditPercent ?? 80;
 
-    const existing = await ctx.db
+    // Block if there's already an approved or settled credit outstanding
+    const outstanding = await ctx.db
       .query("creditRequests")
-      .withIndex("by_employeeId_and_status", (q) =>
-        q.eq("employeeId", args.employeeId).eq("status", "pending")
+      .withIndex("by_employeeId", (q) =>
+        q.eq("employeeId", args.employeeId)
       )
-      .take(1);
-    if (existing.length > 0) {
-      throw new Error("You already have a pending credit request");
-    }
-
-    const settledCredits = await ctx.db
-      .query("creditRequests")
-      .withIndex("by_employeeId_and_status", (q) =>
-        q.eq("employeeId", args.employeeId).eq("status", "settled")
-      )
-      .take(1);
-    if (settledCredits.length > 0) {
+      .take(20);
+    const hasOutstanding = outstanding.some(
+      (r) => r.status === "approved" || r.status === "settled"
+    );
+    if (hasOutstanding) {
       throw new Error("You have an outstanding credit that hasn't been deducted yet");
     }
 
@@ -151,18 +145,35 @@ export const request = mutation({
     );
     const netAmountCents = args.requestedAmountCents - interestAmountCents;
 
-    return await ctx.db.insert("creditRequests", {
+    // Auto-approve: create credit request + payment in one step
+    const creditRequestId = await ctx.db.insert("creditRequests", {
       companyId: args.companyId,
       employeeId: args.employeeId,
       requestedAmountCents: args.requestedAmountCents,
       interestAmountCents,
       netAmountCents,
       currency: args.currency,
-      status: "pending",
+      status: "approved",
       reason: args.reason,
       nextPaycheckDate,
       nextPaycheckAmountCents: payoutCents,
     });
+
+    // Create the employeePayment for CRE to pick up and settle on-chain
+    const paymentId = await ctx.db.insert("employeePayments", {
+      companyId: args.companyId,
+      employeeId: args.employeeId,
+      type: "credit",
+      amountCents: netAmountCents,
+      currency: args.currency,
+      status: "approved",
+      description: `Salary advance (${interestAmountCents}¢ interest deducted)`,
+      scheduledDate: Date.now(),
+    });
+
+    await ctx.db.patch(creditRequestId, { creditPaymentId: paymentId });
+
+    return creditRequestId;
   },
 });
 

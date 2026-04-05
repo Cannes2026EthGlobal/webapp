@@ -164,6 +164,7 @@ export const update = mutation({
     email: v.optional(v.string()),
     notes: v.optional(v.string()),
     status: v.optional(statusValidator),
+    nextPaymentDate: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const { id, ...fields } = args;

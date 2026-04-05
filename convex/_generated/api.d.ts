@@ -34,6 +34,7 @@ import type * as overview from "../overview.js";
 import type * as payrollForecast from "../payrollForecast.js";
 import type * as products from "../products.js";
 import type * as seed from "../seed.js";
+import type * as seedInfluencers from "../seedInfluencers.js";
 import type * as usageTabs from "../usageTabs.js";
 import type * as users from "../users.js";
 
@@ -70,6 +71,7 @@ declare const fullApi: ApiFromModules<{
   payrollForecast: typeof payrollForecast;
   products: typeof products;
   seed: typeof seed;
+  seedInfluencers: typeof seedInfluencers;
   usageTabs: typeof usageTabs;
   users: typeof users;
 }>;
