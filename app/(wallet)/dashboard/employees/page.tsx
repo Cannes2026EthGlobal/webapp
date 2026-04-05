@@ -116,7 +116,7 @@ function EmployeesContent({
   const employeeMap = new Map(employees.map((e) => [e._id, e]));
 
   const handleCreate = async () => {
-    if (!companyId || !formData.displayName || !formData.role) return;
+    if (!companyId || !formData.displayName || !formData.role || !formData.walletAddress) return;
     await createEmployee({
       companyId,
       displayName: formData.displayName,
@@ -126,7 +126,7 @@ function EmployeesContent({
       privacyLevel: "pseudonymous",
       status: "active",
       email: formData.email || undefined,
-      walletAddress: formData.walletAddress || undefined,
+      walletAddress: formData.walletAddress,
     });
     setShowCreate(false);
     setFormData({
@@ -468,7 +468,7 @@ function EmployeesContent({
                 />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="walletAddress">Wallet address (optional)</Label>
+                <Label htmlFor="walletAddress">Wallet address</Label>
                 <Input
                   id="walletAddress"
                   placeholder="0x..."
