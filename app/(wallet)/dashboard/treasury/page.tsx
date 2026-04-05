@@ -66,7 +66,7 @@ function TreasuryContent() {
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
-                <CardDescription>Payroll Contract</CardDescription>
+                <CardDescription>Available balance</CardDescription>
                 <CardTitle className="text-3xl tabular-nums">
                   {onChainLoading
                     ? "..."
@@ -89,19 +89,6 @@ function TreasuryContent() {
               </div>
             </div>
           </CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <Badge variant="outline">Arc Testnet</Badge>
-              <a
-                href={`https://testnet.arcscan.app/address/${payrollContractAddress}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="font-mono hover:underline"
-              >
-                {payrollContractAddress.slice(0, 10)}...{payrollContractAddress.slice(-8)}
-              </a>
-            </div>
-          </CardContent>
         </Card>
       )}
 
