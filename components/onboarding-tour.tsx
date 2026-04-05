@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 
@@ -195,6 +195,7 @@ export function OnboardingTour() {
   const [highlightStyle, setHighlightStyle] = useState<React.CSSProperties>({});
   const [showEffect, setShowEffect] = useState(false);
   const [navigating, setNavigating] = useState(false);
+  const highlightedElRef = useRef<Element | null>(null);
   const router = useRouter();
   const pathname = usePathname();
 
@@ -205,6 +206,36 @@ export function OnboardingTour() {
       return () => clearTimeout(timer);
     }
   }, [pathname]);
+
+  // Boost brightness of highlighted element
+  useEffect(() => {
+    // Clean up previous
+    if (highlightedElRef.current) {
+      const el = highlightedElRef.current as HTMLElement;
+      el.style.removeProperty("filter");
+      el.style.removeProperty("z-index");
+      el.style.removeProperty("position");
+      highlightedElRef.current = null;
+    }
+
+    if (!active || navigating || step === 0) return;
+
+    const currentStep = TOUR_STEPS[step];
+    const el = document.querySelector(currentStep.selector);
+    if (!el) return;
+
+    const htmlEl = el as HTMLElement;
+    htmlEl.style.filter = "brightness(1.4)";
+    htmlEl.style.zIndex = "9999";
+    htmlEl.style.position = "relative";
+    highlightedElRef.current = el;
+
+    return () => {
+      htmlEl.style.removeProperty("filter");
+      htmlEl.style.removeProperty("z-index");
+      htmlEl.style.removeProperty("position");
+    };
+  }, [active, step, navigating]);
 
   const positionTooltip = useCallback(() => {
     if (!active || navigating) return;
