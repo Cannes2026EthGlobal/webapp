@@ -44,6 +44,7 @@ import {
 import { HugeiconsIcon } from "@hugeicons/react";
 
 const navItems = [
+  // ─── Operations ───
   {
     title: "Overview",
     url: "/dashboard",
@@ -59,6 +60,7 @@ const navItems = [
     url: "/dashboard/customers",
     icon: <HugeiconsIcon icon={Menu01Icon} strokeWidth={2} />,
   },
+  // ─── Money ───
   {
     title: "Treasury",
     url: "/dashboard/treasury",
@@ -68,16 +70,6 @@ const navItems = [
     title: "My Products",
     url: "/dashboard/products",
     icon: <HugeiconsIcon icon={Database01Icon} strokeWidth={2} />,
-  },
-  {
-    title: "Agents",
-    url: "/dashboard/agents",
-    icon: <HugeiconsIcon icon={CommandIcon} strokeWidth={2} />,
-  },
-  {
-    title: "Integration",
-    url: "/dashboard/integration",
-    icon: <HugeiconsIcon icon={CommandIcon} strokeWidth={2} />,
   },
   // ─── AI ───
   {
@@ -89,6 +81,17 @@ const navItems = [
     title: "AI Chat",
     url: "/dashboard/ai-chat",
     icon: <HugeiconsIcon icon={AiChat02Icon} strokeWidth={2} />,
+  },
+  // ─── Platform ───
+  {
+    title: "Agents",
+    url: "/dashboard/agents",
+    icon: <HugeiconsIcon icon={CommandIcon} strokeWidth={2} />,
+  },
+  {
+    title: "Integration",
+    url: "/dashboard/integration",
+    icon: <HugeiconsIcon icon={CommandIcon} strokeWidth={2} />,
   },
 ];
 
