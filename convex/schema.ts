@@ -254,7 +254,6 @@ export default defineSchema({
     batchId: v.optional(v.string()),
     compensationLineId: v.optional(v.id("compensationLines")),
     compensationSplitId: v.optional(v.id("compensationSplits")),
-    walletAddress: v.optional(v.string()),
   })
     .index("by_companyId", ["companyId"])
     .index("by_companyId_and_status", ["companyId", "status"])
