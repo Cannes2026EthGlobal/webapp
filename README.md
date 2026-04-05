@@ -41,6 +41,21 @@ To delete stale legacy documents after schema migration:
 npx convex run cleanup:deleteStaleDocuments
 ```
 
+### Seed Influencer Demo
+
+Creates 2 products with fully branded checkout links — simulates influencer partnerships where each influencer has their own checkout page with custom colors, text, celebration effects, and a custom recipient wallet for direct payout.
+
+```bash
+npx convex run seedInfluencers:seed '{"companyId": "YOUR_COMPANY_ID"}'
+```
+
+| Influencer | Product | Price | Theme | Effect | Recipient |
+|-----------|---------|-------|-------|--------|-----------|
+| Luna (@LunaCryptoQueen) | Premium Access Pass | $49/mo | Violet on deep purple | Fireworks | Custom wallet |
+| Rex (@RexBuildoor) | Builder Toolkit | $25 | Emerald on dark green | Bubbles | Custom wallet |
+
+The command returns the checkout URLs for both influencers. Open them to see the branded checkout pages. Replace the placeholder recipient addresses with real wallets before the demo.
+
 ## Environment Variables
 
 Create a `.env` file in the project root:

@@ -92,7 +92,7 @@ export const seed = mutation({
         heading: "Rex's Builder Toolkit",
         buttonText: "Buy Toolkit — $25",
         thankYouMessage: "You're in! Check your email for the repo invite. Let's build. 🚀",
-        effect: "confetti" as const,
+        effect: "bubbles" as const,
       },
     });
 
