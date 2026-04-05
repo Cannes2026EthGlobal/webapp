@@ -1,8 +1,7 @@
 "use node";
 
-import { action, internalMutation, internalQuery } from "./_generated/server";
+import { action } from "./_generated/server";
 import { internal } from "./_generated/api";
-import { v } from "convex/values";
 import { createWalletClient, http, parseUnits, encodeFunctionData } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { arbitrumSepolia, baseSepolia } from "viem/chains";
@@ -25,64 +24,6 @@ const ERC20_TRANSFER_ABI = [
   },
 ];
 
-// ─── Internal helpers ───
-
-export const getUndispatchedPayments = internalQuery({
-  args: {},
-  handler: async (ctx) => {
-    const allPaid = await ctx.db.query("customerPayments").take(500);
-    return allPaid.filter((p) => p.status === "paid" && !p.dispatched);
-  },
-});
-
-export const markDispatched = internalMutation({
-  args: { paymentIds: v.array(v.id("customerPayments")) },
-  handler: async (ctx, args) => {
-    const now = Date.now();
-    for (const id of args.paymentIds) {
-      await ctx.db.patch(id, { dispatched: true, dispatchedAt: now });
-    }
-  },
-});
-
-export const createDispatchRecord = internalMutation({
-  args: {
-    companyId: v.id("companies"),
-    destinationAddress: v.string(),
-    amountCents: v.number(),
-    chain: v.string(),
-    paymentIds: v.array(v.id("customerPayments")),
-    txHash: v.optional(v.string()),
-    status: v.union(v.literal("sent"), v.literal("failed")),
-    errorMessage: v.optional(v.string()),
-    isReferral: v.optional(v.boolean()),
-    referralName: v.optional(v.string()),
-  },
-  handler: async (ctx, args) => {
-    return await ctx.db.insert("dispatchRecords", {
-      ...args,
-      currency: "USD",
-    });
-  },
-});
-
-export const getCompany = internalQuery({
-  args: { companyId: v.id("companies") },
-  handler: async (ctx, args) => await ctx.db.get(args.companyId),
-});
-
-export const getCheckoutLink = internalQuery({
-  args: { linkId: v.id("checkoutLinks") },
-  handler: async (ctx, args) => await ctx.db.get(args.linkId),
-});
-
-export const listRecent = internalQuery({
-  args: {},
-  handler: async (ctx) => await ctx.db.query("dispatchRecords").order("desc").take(50),
-});
-
-// ─── Send USDC ───
-
 async function sendUsdc(to: string, amountCents: number): Promise<{ txHash: string } | { error: string }> {
   if (!PRIVATE_KEY) return { error: "DISPATCH_PRIVATE_KEY not configured" };
   try {
@@ -104,8 +45,6 @@ async function sendUsdc(to: string, amountCents: number): Promise<{ txHash: stri
   }
 }
 
-// ─── Main dispatch ───
-
 export const dispatchAll = action({
   args: {},
   handler: async (ctx): Promise<{
@@ -117,7 +56,7 @@ export const dispatchAll = action({
       return { dispatched: 0, failed: 0, transfers: [{ to: "", amountCents: 0, error: "DISPATCH_PRIVATE_KEY not set" }] };
     }
 
-    const payments = await ctx.runQuery(internal.dispatch.getUndispatchedPayments, {});
+    const payments = await ctx.runQuery(internal.dispatchHelpers.getUndispatchedPayments, {});
     if (payments.length === 0) return { dispatched: 0, failed: 0, transfers: [] };
 
     type Transfer = { destinationAddress: string; amountCents: number; companyId: string; paymentIds: string[]; isReferral?: boolean; referralName?: string };
@@ -130,7 +69,7 @@ export const dispatchAll = action({
       let referralName: string | undefined;
 
       if (payment.checkoutLinkId) {
-        const link = await ctx.runQuery(internal.dispatch.getCheckoutLink, { linkId: payment.checkoutLinkId });
+        const link = await ctx.runQuery(internal.dispatchHelpers.getCheckoutLink, { linkId: payment.checkoutLinkId });
         if (link?.recipientAddress) destination = link.recipientAddress;
         if (link?.referralPercentage && link.referralPercentage > 0 && link.referralWalletAddress) {
           referralCut = Math.round((payment.amountCents * link.referralPercentage) / 100);
@@ -140,7 +79,7 @@ export const dispatchAll = action({
       }
 
       if (!destination) {
-        const company = await ctx.runQuery(internal.dispatch.getCompany, { companyId: payment.companyId });
+        const company = await ctx.runQuery(internal.dispatchHelpers.getCompany, { companyId: payment.companyId });
         destination = company?.settlementAddress;
       }
 
@@ -168,7 +107,7 @@ export const dispatchAll = action({
       if (transfer.amountCents <= 0) continue;
       const result = await sendUsdc(transfer.destinationAddress, transfer.amountCents);
       if ("txHash" in result) {
-        await ctx.runMutation(internal.dispatch.createDispatchRecord, {
+        await ctx.runMutation(internal.dispatchHelpers.createDispatchRecord, {
           companyId: transfer.companyId as any, destinationAddress: transfer.destinationAddress,
           amountCents: transfer.amountCents, chain: CHAIN, paymentIds: transfer.paymentIds as any[],
           txHash: result.txHash, status: "sent", isReferral: transfer.isReferral, referralName: transfer.referralName,
@@ -176,7 +115,7 @@ export const dispatchAll = action({
         dispatched++;
         results.push({ to: transfer.destinationAddress, amountCents: transfer.amountCents, txHash: result.txHash });
       } else {
-        await ctx.runMutation(internal.dispatch.createDispatchRecord, {
+        await ctx.runMutation(internal.dispatchHelpers.createDispatchRecord, {
           companyId: transfer.companyId as any, destinationAddress: transfer.destinationAddress,
           amountCents: transfer.amountCents, chain: CHAIN, paymentIds: transfer.paymentIds as any[],
           status: "failed", errorMessage: result.error,
@@ -186,7 +125,7 @@ export const dispatchAll = action({
       }
     }
 
-    await ctx.runMutation(internal.dispatch.markDispatched, { paymentIds: payments.map((p) => p._id) as any[] });
+    await ctx.runMutation(internal.dispatchHelpers.markDispatched, { paymentIds: payments.map((p) => p._id) as any[] });
     return { dispatched, failed, transfers: results };
   },
 });
