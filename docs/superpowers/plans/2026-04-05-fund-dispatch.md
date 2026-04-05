@@ -1,48 +1,58 @@
-# Fund Dispatch Plan — WC Pay → Arc Counting → Companies
+# Fund Dispatch — Automated Payout to Companies
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** When WalletConnect Pay collects customer payments, the USDC arrives on Arbitrum or Base at Arc Counting's master wallet. This plan implements the dispatch mechanism that splits and forwards those funds to each company's settlement address (or custom per-link recipient), handling referral commissions, and tracking everything in the Convex ledger.
+**Goal:** Automatically dispatch funds from Arc Counting's master wallet to each company's settlement address (or custom per-link recipient) after WalletConnect Pay collects customer payments on Arbitrum/Base. Uses a private key in the backend to sign and send ERC20 USDC transfers.
 
-**Architecture:** WC Pay sends all funds to one Arc Counting wallet on Arbitrum/Base. A Convex action ("dispatch") reads all `paid` customer payments that haven't been dispatched yet, groups them by company, calculates referral cuts, and creates `dispatchRecords` with the amounts + destination addresses. The operator then triggers on-chain USDC transfers from the treasury page (or a future cron automates it). Each dispatch is recorded in the balance ledger as a debit.
+**Architecture:** WC Pay sends all USDC to Arc Counting's wallet on Arbitrum or Base. A Convex action reads undispatched paid payments, groups by destination (company settlement address or custom recipient), calculates referral cuts, then uses viem + the backend private key to send ERC20 transfers. Each dispatch is recorded and the treasury ledger is debited.
 
-**Tech Stack:** Convex (dispatch logic + ledger), Wagmi/Viem (on-chain USDC transfers on Arbitrum/Base), existing CCTP bridge (for cross-chain if needed)
+**Tech Stack:** Convex (actions with `"use node"`), viem (wallet client from private key), USDC ERC20 transfers on Arbitrum Sepolia / Base Sepolia
 
 ---
 
-## The Problem
+## The Flow
 
 ```
-Customer pays $100 via WC Pay checkout link
-         ↓
+Customer pays $100 via WC Pay
+    ↓
 USDC arrives at Arc Counting's wallet on Arbitrum (or Base)
-         ↓
-NOW WHAT?
-         ↓
-Need to send:
-  - $85 to company's settlement address (company keeps 85%)
-  - $15 to referrer wallet (15% referral commission)
-  OR
-  - $100 to custom recipient address (if set on checkout link)
-  OR
-  - $100 to company's default settlement address (no referral)
+    ↓
+Convex dispatch action runs (triggered by operator or cron):
+    1. Query all paid + undispatched customerPayments
+    2. For each payment, resolve destination:
+       - If checkout link has recipientAddress → use that
+       - Else → use company.settlementAddress
+    3. Calculate referral cuts (if link has referralPercentage)
+    4. Group transfers by destination address
+    5. For each transfer:
+       - Sign USDC ERC20 transfer with private key
+       - Send tx on Arbitrum/Base
+       - Record txHash
+    6. Mark payments as dispatched
+    7. Debit company balance in ledger
 ```
 
-## What exists today
+## Env Vars Needed
 
-- `customerPayments` records with `status: "paid"` and `amountCents`
-- `checkoutLinkId` on each payment → links to referral config + custom recipient
-- Company `settlementAddress` in schema (where company wants funds)
-- `companyBalances` ledger (tracks credits/debits)
-- CCTP bridge helper (`lib/cctp.ts`) for cross-chain transfers
-- Treasury page with deposit UI
+```
+# Arc Counting master wallet private key (NEVER expose client-side)
+DISPATCH_PRIVATE_KEY=0x...
 
-## What's missing
+# Which chain Arc Counting receives WC Pay funds on
+DISPATCH_CHAIN=arbitrum  # or "base"
+DISPATCH_RPC_URL=https://sepolia-rollup.arbitrum.io/rpc
 
-- No record of which payments have been dispatched vs pending
-- No mechanism to calculate dispatch amounts per company
-- No UI to trigger dispatches
-- No on-chain transfer execution from the master wallet
+# USDC contract on the dispatch chain
+DISPATCH_USDC_ADDRESS=0xaf88d065e77c8cc2239327c5edb3a432268e5831
+```
+
+Set these on Convex too:
+```bash
+npx convex env set DISPATCH_PRIVATE_KEY "0x..."
+npx convex env set DISPATCH_CHAIN "arbitrum"
+npx convex env set DISPATCH_RPC_URL "https://sepolia-rollup.arbitrum.io/rpc"
+npx convex env set DISPATCH_USDC_ADDRESS "0xaf88d065e77c8cc2239327c5edb3a432268e5831"
+```
 
 ---
 
@@ -50,61 +60,52 @@ Need to send:
 
 ```
 convex/
-├── schema.ts                    # MODIFY: add dispatchRecords table
-├── dispatch.ts                  # CREATE: calculate + record dispatches
-├── crons.ts                     # MODIFY: optional auto-dispatch cron
-
-app/(wallet)/dashboard/treasury/
-└── page.tsx                     # MODIFY: add dispatch section
-
-lib/
-└── cctp.ts                      # EXISTS: CCTP bridge (used if cross-chain needed)
+├── schema.ts              # MODIFY: add dispatched flag + dispatchRecords table
+├── dispatch.ts            # CREATE: dispatch logic + on-chain transfer via private key
+├── crons.ts               # MODIFY: optional auto-dispatch cron
+app/(wallet)/dashboard/
+└── treasury/page.tsx      # MODIFY: add dispatch section to treasury
 ```
 
 ---
 
-### Task 1: Add dispatchRecords Table + dispatched Flag
+### Task 1: Schema Changes
 
 **Files:**
 - Modify: `convex/schema.ts`
 
-- [ ] **Step 1: Add `dispatched` flag to customerPayments**
+- [ ] **Step 1: Add dispatched flag to customerPayments**
 
-In `convex/schema.ts`, add to the `customerPayments` table (after `checkoutLinkId`):
+After `checkoutLinkId` in the customerPayments table, add:
 
 ```typescript
-    dispatched: v.optional(v.boolean()),          // true once funds have been sent
+    dispatched: v.optional(v.boolean()),
     dispatchedAt: v.optional(v.number()),
 ```
 
 - [ ] **Step 2: Add dispatchRecords table**
 
-Add after the `customerPayments` table:
+After the customerPayments table, add:
 
 ```typescript
-  // ─── Dispatch Records (tracking fund transfers to companies) ───
+  // ─── Dispatch Records (fund transfers from Arc Counting to companies) ───
   dispatchRecords: defineTable({
     companyId: v.id("companies"),
-    totalAmountCents: v.number(),
-    companyAmountCents: v.number(),          // amount going to company
-    referralAmountCents: v.number(),          // total referral cuts
+    destinationAddress: v.string(),
+    amountCents: v.number(),
     currency: v.union(v.literal("USD"), v.literal("EUR")),
-    destinationAddress: v.string(),           // company settlement address
-    destinationNetwork: v.string(),           // arbitrum, base, arc
+    chain: v.string(),
     status: v.union(
-      v.literal("pending"),                   // calculated, waiting for on-chain transfer
-      v.literal("sent"),                      // on-chain tx submitted
-      v.literal("confirmed"),                 // on-chain tx confirmed
+      v.literal("pending"),
+      v.literal("sent"),
+      v.literal("confirmed"),
       v.literal("failed")
     ),
     txHash: v.optional(v.string()),
-    paymentIds: v.array(v.id("customerPayments")),  // which payments are included
-    referralPayments: v.optional(v.array(v.object({
-      name: v.string(),
-      walletAddress: v.string(),
-      amountCents: v.number(),
-      paymentId: v.id("customerPayments"),
-    }))),
+    errorMessage: v.optional(v.string()),
+    paymentIds: v.array(v.id("customerPayments")),
+    isReferral: v.optional(v.boolean()),
+    referralName: v.optional(v.string()),
   })
     .index("by_companyId", ["companyId"])
     .index("by_status", ["status"]),
@@ -119,207 +120,296 @@ git commit -m "feat: add dispatchRecords table and dispatched flag on customerPa
 
 ---
 
-### Task 2: Dispatch Calculation Logic
+### Task 2: Dispatch Action (Backend with Private Key)
 
 **Files:**
 - Create: `convex/dispatch.ts`
 
-- [ ] **Step 1: Create dispatch functions**
+This file uses `"use node"` because it needs viem to sign transactions with the private key. Actions in Convex can use Node.js built-ins.
 
-Create `convex/dispatch.ts`:
+- [ ] **Step 1: Create `convex/dispatch.ts`**
 
 ```typescript
-import { query, mutation } from "./_generated/server";
-import { v } from "convex/values";
-import { debitBalance } from "./balances";
-import type { Id } from "./_generated/dataModel";
+"use node";
 
-/**
- * Get all paid-but-not-dispatched payments grouped by company,
- * with calculated dispatch amounts.
- */
-export const getPendingDispatches = query({
+import { action, internalMutation, internalQuery } from "./_generated/server";
+import { internal } from "./_generated/api";
+import { v } from "convex/values";
+import { createWalletClient, http, parseUnits, encodeFunctionData } from "viem";
+import { privateKeyToAccount } from "viem/accounts";
+import { arbitrumSepolia, baseSepolia } from "viem/chains";
+
+// ─── Config from env ───
+
+const PRIVATE_KEY = process.env.DISPATCH_PRIVATE_KEY as `0x${string}` | undefined;
+const CHAIN = process.env.DISPATCH_CHAIN ?? "arbitrum";
+const RPC_URL = process.env.DISPATCH_RPC_URL ?? "https://sepolia-rollup.arbitrum.io/rpc";
+const USDC_ADDRESS = (process.env.DISPATCH_USDC_ADDRESS ?? "0xaf88d065e77c8cc2239327c5edb3a432268e5831") as `0x${string}`;
+
+const ERC20_TRANSFER_ABI = [
+  {
+    type: "function",
+    name: "transfer",
+    inputs: [
+      { name: "to", type: "address" },
+      { name: "value", type: "uint256" },
+    ],
+    outputs: [{ name: "", type: "bool" }],
+    stateMutability: "nonpayable",
+  },
+] as const;
+
+// ─── Internal queries/mutations ───
+
+export const getUndispatchedPayments = internalQuery({
   args: {},
   handler: async (ctx) => {
-    // Get all paid, undispatched payments
-    const allPaid = await ctx.db
-      .query("customerPayments")
-      .take(500);
-    const undispatched = allPaid.filter(
-      (p) => p.status === "paid" && !p.dispatched
-    );
+    const allPaid = await ctx.db.query("customerPayments").take(500);
+    return allPaid.filter((p) => p.status === "paid" && !p.dispatched);
+  },
+});
 
-    // Group by company
-    const byCompany = new Map<string, typeof undispatched>();
-    for (const p of undispatched) {
-      const existing = byCompany.get(p.companyId) ?? [];
-      existing.push(p);
-      byCompany.set(p.companyId, existing);
+export const markDispatched = internalMutation({
+  args: {
+    paymentIds: v.array(v.id("customerPayments")),
+  },
+  handler: async (ctx, args) => {
+    const now = Date.now();
+    for (const id of args.paymentIds) {
+      await ctx.db.patch(id, { dispatched: true, dispatchedAt: now });
+    }
+  },
+});
+
+export const createDispatchRecord = internalMutation({
+  args: {
+    companyId: v.id("companies"),
+    destinationAddress: v.string(),
+    amountCents: v.number(),
+    chain: v.string(),
+    paymentIds: v.array(v.id("customerPayments")),
+    txHash: v.optional(v.string()),
+    status: v.union(v.literal("sent"), v.literal("failed")),
+    errorMessage: v.optional(v.string()),
+    isReferral: v.optional(v.boolean()),
+    referralName: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    return await ctx.db.insert("dispatchRecords", {
+      companyId: args.companyId,
+      destinationAddress: args.destinationAddress,
+      amountCents: args.amountCents,
+      currency: "USD",
+      chain: args.chain,
+      status: args.status,
+      txHash: args.txHash,
+      errorMessage: args.errorMessage,
+      paymentIds: args.paymentIds,
+      isReferral: args.isReferral,
+      referralName: args.referralName,
+    });
+  },
+});
+
+export const getCompany = internalQuery({
+  args: { companyId: v.id("companies") },
+  handler: async (ctx, args) => {
+    return await ctx.db.get(args.companyId);
+  },
+});
+
+export const getCheckoutLink = internalQuery({
+  args: { linkId: v.id("checkoutLinks") },
+  handler: async (ctx, args) => {
+    return await ctx.db.get(args.linkId);
+  },
+});
+
+// ─── Send USDC ERC20 transfer ───
+
+async function sendUsdc(
+  to: string,
+  amountCents: number
+): Promise<{ txHash: string } | { error: string }> {
+  if (!PRIVATE_KEY) return { error: "DISPATCH_PRIVATE_KEY not configured" };
+
+  try {
+    const account = privateKeyToAccount(PRIVATE_KEY);
+    const chain = CHAIN === "base" ? baseSepolia : arbitrumSepolia;
+
+    const client = createWalletClient({
+      account,
+      chain,
+      transport: http(RPC_URL),
+    });
+
+    // USDC has 6 decimals on Arbitrum/Base
+    const amount = parseUnits(String(amountCents / 100), 6);
+
+    const txHash = await client.sendTransaction({
+      to: USDC_ADDRESS,
+      data: encodeFunctionData({
+        abi: ERC20_TRANSFER_ABI,
+        functionName: "transfer",
+        args: [to as `0x${string}`, amount],
+      }),
+    });
+
+    return { txHash };
+  } catch (e: any) {
+    return { error: e.message?.slice(0, 200) ?? "Transfer failed" };
+  }
+}
+
+// ─── Main dispatch action ───
+
+export const dispatchAll = action({
+  args: {},
+  handler: async (ctx): Promise<{
+    dispatched: number;
+    failed: number;
+    transfers: Array<{ to: string; amountCents: number; txHash?: string; error?: string }>;
+  }> => {
+    if (!PRIVATE_KEY) {
+      return { dispatched: 0, failed: 0, transfers: [{ to: "", amountCents: 0, error: "DISPATCH_PRIVATE_KEY not set" }] };
     }
 
-    // Calculate dispatch amounts per company
-    const dispatches = [];
-    for (const [companyId, payments] of byCompany) {
-      const company = await ctx.db.get(companyId as Id<"companies">);
-      if (!company) continue;
+    const payments = await ctx.runQuery(internal.dispatch.getUndispatchedPayments, {});
+    if (payments.length === 0) {
+      return { dispatched: 0, failed: 0, transfers: [] };
+    }
 
-      let totalCents = 0;
-      let referralCents = 0;
-      const referralPayments: Array<{
-        name: string;
-        walletAddress: string;
-        amountCents: number;
-        paymentId: Id<"customerPayments">;
-      }> = [];
+    // Build transfer map: destinationAddress → { amountCents, paymentIds, companyId }
+    type Transfer = {
+      destinationAddress: string;
+      amountCents: number;
+      companyId: string;
+      paymentIds: string[];
+      isReferral?: boolean;
+      referralName?: string;
+    };
+    const transfers = new Map<string, Transfer>();
 
-      for (const payment of payments) {
-        totalCents += payment.amountCents;
+    for (const payment of payments) {
+      let destination: string | undefined;
+      let referralDestination: string | undefined;
+      let referralCut = 0;
+      let referralName: string | undefined;
 
-        // Check for referral commission on checkout link
-        if (payment.checkoutLinkId) {
-          const link = await ctx.db.get(payment.checkoutLinkId);
-          if (link?.referralPercentage && link.referralPercentage > 0 && link.referralName && link.referralWalletAddress) {
-            const commission = Math.round(
-              (payment.amountCents * link.referralPercentage) / 100
-            );
-            referralCents += commission;
-            referralPayments.push({
-              name: link.referralName,
-              walletAddress: link.referralWalletAddress,
-              amountCents: commission,
-              paymentId: payment._id,
-            });
-          }
+      // Check checkout link for custom recipient + referral
+      if (payment.checkoutLinkId) {
+        const link = await ctx.runQuery(internal.dispatch.getCheckoutLink, {
+          linkId: payment.checkoutLinkId,
+        });
+        if (link?.recipientAddress) {
+          destination = link.recipientAddress;
+        }
+        if (link?.referralPercentage && link.referralPercentage > 0 && link.referralWalletAddress) {
+          referralCut = Math.round((payment.amountCents * link.referralPercentage) / 100);
+          referralDestination = link.referralWalletAddress;
+          referralName = link.referralName ?? "Referrer";
         }
       }
 
-      const companyCents = totalCents - referralCents;
+      // Fall back to company settlement address
+      if (!destination) {
+        const company = await ctx.runQuery(internal.dispatch.getCompany, {
+          companyId: payment.companyId,
+        });
+        destination = company?.settlementAddress;
+      }
 
-      dispatches.push({
-        companyId,
-        companyName: company.name,
-        destinationAddress: company.settlementAddress ?? "Not configured",
-        destinationNetwork: company.settlementNetwork ?? "arbitrum",
-        totalAmountCents: totalCents,
-        companyAmountCents: companyCents,
-        referralAmountCents: referralCents,
-        referralPayments,
-        paymentCount: payments.length,
-        paymentIds: payments.map((p) => p._id),
-        currency: "USD" as const,
-      });
+      if (!destination) continue; // skip if no destination configured
+
+      // Main transfer (minus referral cut)
+      const mainAmount = payment.amountCents - referralCut;
+      const mainKey = `${payment.companyId}::${destination}`;
+      const existing = transfers.get(mainKey);
+      if (existing) {
+        existing.amountCents += mainAmount;
+        existing.paymentIds.push(payment._id);
+      } else {
+        transfers.set(mainKey, {
+          destinationAddress: destination,
+          amountCents: mainAmount,
+          companyId: payment.companyId,
+          paymentIds: [payment._id],
+        });
+      }
+
+      // Referral transfer
+      if (referralDestination && referralCut > 0) {
+        const refKey = `${payment.companyId}::ref::${referralDestination}`;
+        const existingRef = transfers.get(refKey);
+        if (existingRef) {
+          existingRef.amountCents += referralCut;
+          existingRef.paymentIds.push(payment._id);
+        } else {
+          transfers.set(refKey, {
+            destinationAddress: referralDestination,
+            amountCents: referralCut,
+            companyId: payment.companyId,
+            paymentIds: [payment._id],
+            isReferral: true,
+            referralName,
+          });
+        }
+      }
     }
 
-    return dispatches;
-  },
-});
+    // Execute transfers
+    let dispatched = 0;
+    let failed = 0;
+    const results: Array<{ to: string; amountCents: number; txHash?: string; error?: string }> = [];
 
-/**
- * Create a dispatch record and mark payments as dispatched.
- * Called when operator confirms a dispatch from the treasury page.
- */
-export const createDispatch = mutation({
-  args: {
-    companyId: v.id("companies"),
-    totalAmountCents: v.number(),
-    companyAmountCents: v.number(),
-    referralAmountCents: v.number(),
-    destinationAddress: v.string(),
-    destinationNetwork: v.string(),
-    paymentIds: v.array(v.id("customerPayments")),
-    referralPayments: v.optional(v.array(v.object({
-      name: v.string(),
-      walletAddress: v.string(),
-      amountCents: v.number(),
-      paymentId: v.id("customerPayments"),
-    }))),
-  },
-  handler: async (ctx, args) => {
-    // Create dispatch record
-    const dispatchId = await ctx.db.insert("dispatchRecords", {
-      companyId: args.companyId,
-      totalAmountCents: args.totalAmountCents,
-      companyAmountCents: args.companyAmountCents,
-      referralAmountCents: args.referralAmountCents,
-      currency: "USD",
-      destinationAddress: args.destinationAddress,
-      destinationNetwork: args.destinationNetwork,
-      status: "pending",
-      paymentIds: args.paymentIds,
-      referralPayments: args.referralPayments,
-    });
+    for (const transfer of transfers.values()) {
+      if (transfer.amountCents <= 0) continue;
 
-    // Mark all payments as dispatched
-    const now = Date.now();
-    for (const paymentId of args.paymentIds) {
-      await ctx.db.patch(paymentId, {
-        dispatched: true,
-        dispatchedAt: now,
-      });
+      const result = await sendUsdc(transfer.destinationAddress, transfer.amountCents);
+
+      if ("txHash" in result) {
+        await ctx.runMutation(internal.dispatch.createDispatchRecord, {
+          companyId: transfer.companyId as any,
+          destinationAddress: transfer.destinationAddress,
+          amountCents: transfer.amountCents,
+          chain: CHAIN,
+          paymentIds: transfer.paymentIds as any[],
+          txHash: result.txHash,
+          status: "sent",
+          isReferral: transfer.isReferral,
+          referralName: transfer.referralName,
+        });
+        dispatched++;
+        results.push({ to: transfer.destinationAddress, amountCents: transfer.amountCents, txHash: result.txHash });
+      } else {
+        await ctx.runMutation(internal.dispatch.createDispatchRecord, {
+          companyId: transfer.companyId as any,
+          destinationAddress: transfer.destinationAddress,
+          amountCents: transfer.amountCents,
+          chain: CHAIN,
+          paymentIds: transfer.paymentIds as any[],
+          status: "failed",
+          errorMessage: result.error,
+        });
+        failed++;
+        results.push({ to: transfer.destinationAddress, amountCents: transfer.amountCents, error: result.error });
+      }
     }
 
-    // Debit the company balance (funds leaving Arc Counting's custody)
-    await debitBalance(ctx, {
-      companyId: args.companyId,
-      amountCents: args.totalAmountCents,
-      currency: "USD",
-      reason: `Fund dispatch — ${args.paymentIds.length} payment(s) to ${args.destinationAddress.slice(0, 10)}...`,
-    });
+    // Mark all source payments as dispatched
+    const allPaymentIds = payments.map((p) => p._id);
+    await ctx.runMutation(internal.dispatch.markDispatched, { paymentIds: allPaymentIds as any[] });
 
-    return { dispatchId };
+    return { dispatched, failed, transfers: results };
   },
 });
 
-/**
- * Mark a dispatch as sent (on-chain tx submitted).
- */
-export const markSent = mutation({
-  args: {
-    dispatchId: v.id("dispatchRecords"),
-    txHash: v.string(),
-  },
-  handler: async (ctx, args) => {
-    await ctx.db.patch(args.dispatchId, {
-      status: "sent",
-      txHash: args.txHash,
-    });
-  },
-});
+// ─── Query dispatch history ───
 
-/**
- * Mark a dispatch as confirmed (on-chain tx confirmed).
- */
-export const markConfirmed = mutation({
-  args: { dispatchId: v.id("dispatchRecords") },
-  handler: async (ctx, args) => {
-    await ctx.db.patch(args.dispatchId, { status: "confirmed" });
-  },
-});
-
-/**
- * List dispatch history for a company.
- */
-export const listByCompany = query({
-  args: { companyId: v.id("companies") },
-  handler: async (ctx, args) => {
-    return await ctx.db
-      .query("dispatchRecords")
-      .withIndex("by_companyId", (q) => q.eq("companyId", args.companyId))
-      .order("desc")
-      .take(50);
-  },
-});
-
-/**
- * List all pending dispatches (admin view).
- */
-export const listPending = query({
+export const listRecent = internalQuery({
   args: {},
   handler: async (ctx) => {
-    return await ctx.db
-      .query("dispatchRecords")
-      .withIndex("by_status", (q) => q.eq("status", "pending"))
-      .take(50);
+    return await ctx.db.query("dispatchRecords").order("desc").take(50);
   },
 });
 ```
@@ -328,70 +418,111 @@ export const listPending = query({
 
 ```bash
 git add convex/dispatch.ts
-git commit -m "feat: add dispatch calculation and record creation logic"
+git commit -m "feat: automated fund dispatch with private key signing
+
+Convex action that:
+1. Reads undispatched paid payments
+2. Resolves destination per payment (custom recipient > company settlement)
+3. Calculates referral splits
+4. Signs & sends ERC20 USDC transfers via private key
+5. Records dispatch + marks payments dispatched"
 ```
 
 ---
 
-### Task 3: Dispatch UI on Treasury Page
+### Task 3: Dispatch Button on Treasury Page
 
 **Files:**
 - Modify: `app/(wallet)/dashboard/treasury/page.tsx`
 
-- [ ] **Step 1: Add dispatch section to treasury page**
+- [ ] **Step 1: Add dispatch section**
 
-After the Ledger Entries card, add a "Fund Dispatch" section that:
-1. Shows pending dispatches (undispatched paid payments grouped by company)
-2. For each company: total amount, company cut, referral cuts, destination address
-3. "Dispatch" button that creates the dispatch record and marks payments
-4. Dispatch history table
+After the Ledger Entries card, add a "Fund Dispatch" card with:
+- A "Dispatch All" button that calls `api.dispatch.dispatchAll` via `useAction`
+- Shows result: how many dispatched, how many failed, tx hashes
+- Note: this calls the Convex action which signs and sends on-chain — no wallet popup needed
 
-The dispatch section uses:
-- `useQuery(api.dispatch.getPendingDispatches)` for pending
-- `useQuery(api.dispatch.listByCompany, { companyId })` for history
-- `useMutation(api.dispatch.createDispatch)` for the dispatch action
-- After creating dispatch, operator triggers the on-chain transfer manually (sends USDC from master wallet to the destination)
+```tsx
+// In TreasuryContent, add:
+const dispatchAll = useAction(api.dispatch.dispatchAll);
+const [isDispatching, setIsDispatching] = useState(false);
+const [dispatchResult, setDispatchResult] = useState<any>(null);
 
-Key UI elements:
-- Card titled "Fund Dispatch"
-- Table: Company, Total, Company Cut, Referral Cut, Destination, Network, Action
-- "Dispatch" button per company → creates record, debits ledger
-- After dispatch: shows as "Pending" → operator sends USDC on-chain → marks "Sent"
-- Dispatch history table below
+// Add card:
+<Card>
+  <CardHeader>
+    <CardTitle>Fund Dispatch</CardTitle>
+    <CardDescription>
+      Send collected USDC to companies and referrers
+    </CardDescription>
+  </CardHeader>
+  <CardContent className="space-y-3">
+    <Button
+      onClick={async () => {
+        setIsDispatching(true);
+        try {
+          const result = await dispatchAll({});
+          setDispatchResult(result);
+          toast.success(`Dispatched ${result.dispatched} transfer(s)`);
+        } catch (e: any) {
+          toast.error(e.message);
+        } finally {
+          setIsDispatching(false);
+        }
+      }}
+      disabled={isDispatching}
+    >
+      {isDispatching ? "Dispatching..." : "Dispatch All Pending"}
+    </Button>
+    {dispatchResult && (
+      <div className="text-sm space-y-1">
+        <p>Dispatched: {dispatchResult.dispatched}, Failed: {dispatchResult.failed}</p>
+        {dispatchResult.transfers.map((t, i) => (
+          <p key={i} className="font-mono text-xs">
+            {t.to.slice(0, 10)}... → ${(t.amountCents / 100).toFixed(2)}
+            {t.txHash ? ` ✓ ${t.txHash.slice(0, 14)}...` : ` ✗ ${t.error}`}
+          </p>
+        ))}
+      </div>
+    )}
+  </CardContent>
+</Card>
+```
 
 - [ ] **Step 2: Commit**
 
 ```bash
 git add "app/(wallet)/dashboard/treasury/page.tsx"
-git commit -m "feat: add fund dispatch UI to treasury page"
+git commit -m "feat: add Dispatch All button to treasury page"
 ```
 
 ---
 
-### Task 4: On-Chain Transfer Integration
+### Task 4: Optional Auto-Dispatch Cron
 
 **Files:**
-- Modify: `app/(wallet)/dashboard/treasury/page.tsx`
+- Modify: `convex/crons.ts`
 
-- [ ] **Step 1: Add USDC transfer for dispatches**
+- [ ] **Step 1: Add auto-dispatch cron (optional)**
 
-For each pending dispatch, add a "Send USDC" button that:
-1. Calls `sendTransactionAsync` to transfer USDC from the master wallet
-2. On Arbitrum/Base: direct ERC20 transfer (USDC.transfer(destination, amount))
-3. On Arc: native USDC transfer (send ETH-like tx)
-4. After tx confirms: call `dispatch.markSent({ dispatchId, txHash })`
+Add to the cron schedule in `convex/crons.ts`:
 
-Since Arc Counting receives funds on Arbitrum or Base (the chains WC Pay supports), the transfer is a simple ERC20 `transfer()` call on the same chain — no CCTP bridge needed for dispatch.
+```typescript
+crons.interval(
+  "auto-dispatch funds to companies",
+  { hours: 1 },
+  internal.dispatch.dispatchAll,
+  {}
+);
+```
 
-USDC addresses:
-- Arbitrum Sepolia: `0xaf88d065e77c8cc2239327c5edb3a432268e5831`
-- Base Sepolia: `0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913`
+This automatically dispatches every hour. Can be removed if manual dispatch is preferred.
 
 - [ ] **Step 2: Commit**
 
 ```bash
-git add "app/(wallet)/dashboard/treasury/page.tsx"
-git commit -m "feat: add on-chain USDC transfer for fund dispatches"
+git add convex/crons.ts
+git commit -m "feat: add optional hourly auto-dispatch cron"
 ```
 
 ---
@@ -400,34 +531,15 @@ git commit -m "feat: add on-chain USDC transfer for fund dispatches"
 
 | Task | What |
 |------|------|
-| 1 | Schema: `dispatchRecords` table + `dispatched` flag on `customerPayments` |
-| 2 | `convex/dispatch.ts`: calculate pending dispatches, create records, mark payments |
-| 3 | Treasury UI: dispatch section showing pending + history |
-| 4 | On-chain USDC transfer execution |
+| 1 | Schema: `dispatchRecords` table + `dispatched` flag |
+| 2 | `convex/dispatch.ts`: private key signing, ERC20 transfers, referral splits |
+| 3 | Treasury page: "Dispatch All" button |
+| 4 | Optional auto-dispatch cron |
 
-### Flow
+### Key Design Decisions
 
-```
-1. Customer pays via WC Pay checkout link
-   → USDC arrives at Arc Counting's wallet on Arbitrum/Base
-   → customerPayment marked "paid", treasury credited
-
-2. Operator opens Treasury → Fund Dispatch section
-   → Sees: "Company X has $500 in undispatched funds"
-   → Breakdown: $425 to company, $75 to referrers
-
-3. Operator clicks "Dispatch"
-   → dispatchRecord created (status: pending)
-   → Payments marked dispatched: true
-   → Treasury debited (funds leaving custody)
-
-4. Operator clicks "Send USDC"
-   → On-chain USDC transfer on Arbitrum/Base
-   → dispatchRecord updated: status: sent, txHash
-   → After confirmation: status: confirmed
-
-Referral commissions:
-   → Already handled: confirmPayment creates draft freelance payments
-   → Referral payouts tracked on dispatch record for visibility
-   → Actual referral transfer is a separate tx to referrer's wallet
-```
+- **Private key in Convex env** — `"use node"` action signs txs server-side. No wallet popup.
+- **USDC has 6 decimals** on Arbitrum/Base (not 18 like Arc). `parseUnits(amount, 6)`.
+- **Custom recipient address** is now wired: checkout link `recipientAddress` takes priority over company `settlementAddress`.
+- **Referral splits** are separate transfers — referrer gets their cut directly.
+- **No CCTP needed** — funds are already on Arbitrum/Base (where WC Pay sends them). Dispatch is a same-chain ERC20 transfer.
