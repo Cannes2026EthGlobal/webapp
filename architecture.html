@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Arc Counting — Architecture</title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #f8fafc;
+      color: #1e293b;
+      line-height: 1.6;
+      padding: 2rem 1rem;
+    }
+    .container { max-width: 1200px; margin: 0 auto; }
+    h1 {
+      font-size: 2rem;
+      font-weight: 700;
+      text-align: center;
+      margin-bottom: 0.25rem;
+      color: #0f172a;
+    }
+    .subtitle {
+      text-align: center;
+      color: #64748b;
+      font-size: 0.95rem;
+      margin-bottom: 2.5rem;
+    }
+    h2 {
+      font-size: 1.35rem;
+      font-weight: 600;
+      color: #0f172a;
+      margin: 2.5rem 0 1rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 2px solid #e2e8f0;
+    }
+    h3 {
+      font-size: 1.05rem;
+      font-weight: 600;
+      color: #334155;
+      margin: 2rem 0 0.75rem;
+    }
+    .diagram-card {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.06);
+      overflow-x: auto;
+    }
+    .diagram-card .mermaid { display: flex; justify-content: center; }
+    .legend-card {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 1rem 1.5rem;
+      margin-bottom: 2rem;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    }
+    .legend-card .mermaid { display: flex; justify-content: center; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 1rem;
+      font-size: 0.9rem;
+    }
+    th {
+      background: #f1f5f9;
+      text-align: left;
+      padding: 0.6rem 1rem;
+      font-weight: 600;
+      color: #334155;
+      border-bottom: 2px solid #e2e8f0;
+    }
+    td {
+      padding: 0.55rem 1rem;
+      border-bottom: 1px solid #f1f5f9;
+      color: #475569;
+    }
+    tr:hover td { background: #f8fafc; }
+    .badge {
+      display: inline-block;
+      padding: 0.15rem 0.5rem;
+      border-radius: 6px;
+      font-size: 0.78rem;
+      font-weight: 600;
+    }
+    .badge-blue   { background: #dbeafe; color: #1e40af; }
+    .badge-yellow { background: #fef9c3; color: #854d0e; }
+    .badge-green  { background: #d1fae5; color: #065f46; }
+    .badge-purple { background: #ede9fe; color: #5b21b6; }
+    .badge-pink   { background: #fce7f3; color: #9d174d; }
+    .badge-indigo { background: #e0e7ff; color: #3730a3; }
+    hr { border: none; border-top: 1px solid #e2e8f0; margin: 2rem 0; }
+    @media (max-width: 768px) {
+      body { padding: 1rem 0.5rem; }
+      h1 { font-size: 1.5rem; }
+      .diagram-card { padding: 1rem; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <h1>Arc Counting</h1>
+    <p class="subtitle">Private payroll, invoicing, and real-time usage settlement on Arc</p>
+
+    <!-- ============================================================ -->
+    <h2>System Architecture</h2>
+
+    <div class="legend-card">
+      <pre class="mermaid">
+%%{init: {'theme': 'base', 'themeVariables': {'fontSize': '13px'}}}%%
+graph LR
+    L1["Frontend"]
+    L2["API Layer"]
+    L3["Backend"]
+    L4["Blockchain"]
+    L5["External Services"]
+    L6["Bridges"]
+
+    style L1 fill:#dbeafe,stroke:#3b82f6,stroke-width:2px,color:#1e3a5f
+    style L2 fill:#fef9c3,stroke:#eab308,stroke-width:2px,color:#713f12
+    style L3 fill:#d1fae5,stroke:#10b981,stroke-width:2px,color:#064e3b
+    style L4 fill:#ede9fe,stroke:#8b5cf6,stroke-width:2px,color:#3b0764
+    style L5 fill:#fce7f3,stroke:#ec4899,stroke-width:2px,color:#831843
+    style L6 fill:#e0e7ff,stroke:#6366f1,stroke-width:2px,color:#312e81
+      </pre>
+    </div>
+
+    <div class="diagram-card">
+      <pre class="mermaid">
+%%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#e0f2fe', 'primaryTextColor': '#0c4a6e', 'lineColor': '#64748b', 'fontSize': '14px'}}}%%
+graph TB
+    subgraph FE["Frontend — Next.js 16 / React 19"]
+        direction TB
+        UI["Dashboard Shell\nTailwindCSS 4 + shadcn/ui"]
+        PAGES["Pages: Overview, Employees,\nCustomers, Products, Payroll,\nTreasury, AI Chat, Settings"]
+        PORTAL["Employee Portal\n+ Public Checkout"]
+        WALLET["Reown AppKit + Wagmi\nWallet Connection"]
+    end
+
+    subgraph API["API Routes — Next.js Server"]
+        direction TB
+        PAY_API["/api/pay — create, status, webhook"]
+        USAGE_API["/api/usage — record, bill, tab"]
+        AI_API["/api/ai — chat, analyze, usage"]
+        AGENT_API["/api/agent — keys, session"]
+    end
+
+    subgraph CONVEX["Backend — Convex Serverless"]
+        direction TB
+        QUERIES["Queries: users, companies, employees,\ncustomers, products, payments,\nbalances, overview, creditRequests"]
+        MUTATIONS["Mutations: CRUD for all entities,\ncheckout, billing, advances,\nbalance credits/debits"]
+        ACTIONS["Actions: dispatch USDC,\ntrigger CRE payroll, cron jobs"]
+        DB[("Database\n22 Tables")]
+    end
+
+    subgraph CHAIN["Blockchain — Arc Testnet"]
+        direction TB
+        PAYROLL["Payroll.sol\nCRE-triggered salary"]
+        ESCROW["AdvanceEscrow.sol\nSalary advance escrow"]
+        TOKENS["USDC + EURC"]
+    end
+
+    subgraph EXT["External Services"]
+        direction TB
+        WCPAY["WalletConnect Pay\nCheckout Payments"]
+        CRE_SVC["Chainlink CRE\nPayroll Automation"]
+        CCTP["Circle CCTP v2\nCross-chain Bridge"]
+        CLAUDE["Anthropic Claude\nAI Assistant"]
+        REOWN["Reown Auth\nWallet Provider"]
+    end
+
+    subgraph BRIDGES["Settlement Bridges"]
+        ARB["Arbitrum Sepolia"]
+        BASE["Base Sepolia"]
+    end
+
+    FE -->|"HTTP + JSON"| API
+    FE -->|"WebSocket real-time"| CONVEX
+    WALLET -->|"RPC"| CHAIN
+    WALLET -->|"Auth"| REOWN
+
+    API -->|"ConvexHttpClient"| CONVEX
+    PAY_API -->|"REST"| WCPAY
+    AI_API -->|"Streaming"| CLAUDE
+
+    ACTIONS -->|"viem RPC"| CHAIN
+    ACTIONS -->|"Confidential HTTP"| CRE_SVC
+    CRE_SVC -->|"onReport"| PAYROLL
+
+    CCTP ---|"Burn/Mint USDC"| CHAIN
+    CCTP ---|"Burn/Mint USDC"| ARB
+    CCTP ---|"Burn/Mint USDC"| BASE
+
+    QUERIES --> DB
+    MUTATIONS --> DB
+
+    style FE fill:#dbeafe,stroke:#3b82f6,stroke-width:2px,color:#1e3a5f
+    style API fill:#fef9c3,stroke:#eab308,stroke-width:2px,color:#713f12
+    style CONVEX fill:#d1fae5,stroke:#10b981,stroke-width:2px,color:#064e3b
+    style CHAIN fill:#ede9fe,stroke:#8b5cf6,stroke-width:2px,color:#3b0764
+    style EXT fill:#fce7f3,stroke:#ec4899,stroke-width:2px,color:#831843
+    style BRIDGES fill:#e0e7ff,stroke:#6366f1,stroke-width:2px,color:#312e81
+
+    style UI fill:#bfdbfe,stroke:#2563eb,color:#1e3a5f
+    style PAGES fill:#bfdbfe,stroke:#2563eb,color:#1e3a5f
+    style PORTAL fill:#bfdbfe,stroke:#2563eb,color:#1e3a5f
+    style WALLET fill:#93c5fd,stroke:#1d4ed8,color:#1e3a5f
+
+    style PAY_API fill:#fef08a,stroke:#ca8a04,color:#713f12
+    style USAGE_API fill:#fef08a,stroke:#ca8a04,color:#713f12
+    style AI_API fill:#fef08a,stroke:#ca8a04,color:#713f12
+    style AGENT_API fill:#fef08a,stroke:#ca8a04,color:#713f12
+
+    style QUERIES fill:#a7f3d0,stroke:#059669,color:#064e3b
+    style MUTATIONS fill:#a7f3d0,stroke:#059669,color:#064e3b
+    style ACTIONS fill:#6ee7b7,stroke:#047857,color:#064e3b
+    style DB fill:#34d399,stroke:#047857,color:#064e3b
+
+    style PAYROLL fill:#c4b5fd,stroke:#7c3aed,color:#3b0764
+    style ESCROW fill:#c4b5fd,stroke:#7c3aed,color:#3b0764
+    style TOKENS fill:#ddd6fe,stroke:#7c3aed,color:#3b0764
+
+    style WCPAY fill:#fbcfe8,stroke:#db2777,color:#831843
+    style CRE_SVC fill:#fbcfe8,stroke:#db2777,color:#831843
+    style CCTP fill:#fbcfe8,stroke:#db2777,color:#831843
+    style CLAUDE fill:#fbcfe8,stroke:#db2777,color:#831843
+    style REOWN fill:#fbcfe8,stroke:#db2777,color:#831843
+
+    style ARB fill:#c7d2fe,stroke:#4f46e5,color:#312e81
+    style BASE fill:#c7d2fe,stroke:#4f46e5,color:#312e81
+      </pre>
+    </div>
+
+    <!-- ============================================================ -->
+    <hr />
+    <h2>Data Flow Diagrams</h2>
+
+    <!-- Payroll -->
+    <h3>Payroll Settlement Flow — Outbound</h3>
+    <div class="diagram-card">
+      <pre class="mermaid">
+%%{init: {'theme': 'base', 'themeVariables': {'actorBkg': '#dbeafe', 'actorBorder': '#3b82f6', 'actorTextColor': '#1e3a5f', 'activationBkgColor': '#bfdbfe', 'activationBorderColor': '#3b82f6', 'signalColor': '#334155', 'signalTextColor': '#1e293b', 'noteBkgColor': '#fef9c3', 'noteBorderColor': '#eab308', 'noteTextColor': '#713f12'}}}%%
+sequenceDiagram
+    box rgb(219, 234, 254) Operator
+        participant Op as Operator Dashboard
+    end
+    box rgb(209, 250, 229) Backend
+        participant CX as Convex Backend
+    end
+    box rgb(252, 231, 243) Chainlink
+        participant CRE as Chainlink CRE
+    end
+    box rgb(237, 233, 254) On-Chain
+        participant PAY as Payroll.sol on Arc
+        participant EW as Employee Wallet
+    end
+
+    Op->>CX: Create salary payment draft
+    activate CX
+    Op->>CX: Approve payment batch
+    CX->>CX: employeePayments status → approved
+    deactivate CX
+    CRE->>CX: Fetch pending payments via Confidential HTTP
+    activate CX
+    CX-->>CRE: Return recipient + amount pairs
+    deactivate CX
+    activate CRE
+    CRE->>CRE: Encode report on DON via WASM
+    CRE->>PAY: KeystoneForwarder → onReport
+    deactivate CRE
+    activate PAY
+    PAY->>PAY: _processReport — decode recipients
+    PAY->>EW: Transfer USDC to each employee
+    PAY-->>CX: Emit event with txHash
+    deactivate PAY
+    activate CX
+    CX->>CX: employeePayments status → settled
+    deactivate CX
+      </pre>
+    </div>
+
+    <!-- Customer Payment -->
+    <h3>Customer Payment Flow — Inbound</h3>
+    <div class="diagram-card">
+      <pre class="mermaid">
+%%{init: {'theme': 'base', 'themeVariables': {'actorBkg': '#dbeafe', 'actorBorder': '#3b82f6', 'actorTextColor': '#1e3a5f', 'activationBkgColor': '#bfdbfe', 'activationBorderColor': '#3b82f6', 'signalColor': '#334155', 'signalTextColor': '#1e293b', 'noteBkgColor': '#fef9c3', 'noteBorderColor': '#eab308', 'noteTextColor': '#713f12'}}}%%
+sequenceDiagram
+    box rgb(237, 233, 254) Customer
+        participant CU as Customer
+    end
+    box rgb(219, 234, 254) Frontend
+        participant CK as Checkout Page
+    end
+    box rgb(254, 249, 195) API
+        participant API as Next.js API
+    end
+    box rgb(252, 231, 243) Payment
+        participant WC as WalletConnect Pay
+    end
+    box rgb(209, 250, 229) Backend
+        participant CX as Convex Backend
+        participant DP as Dispatch Action
+    end
+
+    CU->>CK: Visit checkout page
+    CK->>API: POST productId, amount, currency
+    activate API
+    API->>CX: checkout.initiateCheckout
+    activate CX
+    CX->>CX: Create customerPayment as pending
+    deactivate CX
+    API->>WC: createPayment with referenceId + amount
+    activate WC
+    WC-->>API: Return gatewayUrl + paymentId
+    deactivate WC
+    API-->>CK: Redirect to WC Pay gateway
+    deactivate API
+    CU->>WC: Pay via wallet
+    activate WC
+    WC->>API: Webhook — status succeeded
+    deactivate WC
+    activate API
+    API->>CX: customerPayments.recordWcPaySuccess
+    deactivate API
+    activate CX
+    CX->>CX: Status → paid
+    CX->>DP: dispatchRecords.create
+    deactivate CX
+    activate DP
+    DP->>DP: Send USDC to company treasury
+    DP->>CX: dispatchRecords.updateStatus confirmed
+    deactivate DP
+      </pre>
+    </div>
+
+    <!-- Usage Billing -->
+    <h3>Usage-Based Billing Flow</h3>
+    <div class="diagram-card">
+      <pre class="mermaid">
+%%{init: {'theme': 'base', 'themeVariables': {'actorBkg': '#dbeafe', 'actorBorder': '#3b82f6', 'actorTextColor': '#1e3a5f', 'activationBkgColor': '#bfdbfe', 'activationBorderColor': '#3b82f6', 'signalColor': '#334155', 'signalTextColor': '#1e293b', 'noteBkgColor': '#fef9c3', 'noteBorderColor': '#eab308', 'noteTextColor': '#713f12'}}}%%
+sequenceDiagram
+    box rgb(237, 233, 254) Client
+        participant Dev as Developer or Agent
+    end
+    box rgb(254, 249, 195) API
+        participant API as Usage API
+    end
+    box rgb(209, 250, 229) Backend
+        participant CX as Convex Backend
+    end
+    box rgb(219, 234, 254) Operator
+        participant Op as Operator Dashboard
+    end
+    box rgb(252, 231, 243) Payment
+        participant WC as WalletConnect Pay
+    end
+
+    Dev->>API: POST usage event — units, productId
+    activate API
+    API->>CX: usageTabs.recordUsage
+    deactivate API
+    activate CX
+    CX->>CX: Create or append to open tab
+    CX->>CX: Insert usageEntry for audit
+    deactivate CX
+    Note over CX: Tab accumulates usage over time
+    Op->>CX: Bill tab — usageTabs.billTab
+    activate CX
+    CX->>CX: Tab status → billed
+    CX->>CX: Create customerPayment
+    CX->>WC: Generate checkout link
+    deactivate CX
+    activate WC
+    WC-->>CX: Payment gateway URL
+    deactivate WC
+    Note over WC: Customer pays via checkout flow
+      </pre>
+    </div>
+
+    <!-- Salary Advance -->
+    <h3>Salary Advance Flow</h3>
+    <div class="diagram-card">
+      <pre class="mermaid">
+%%{init: {'theme': 'base', 'themeVariables': {'actorBkg': '#dbeafe', 'actorBorder': '#3b82f6', 'actorTextColor': '#1e3a5f', 'activationBkgColor': '#bfdbfe', 'activationBorderColor': '#3b82f6', 'signalColor': '#334155', 'signalTextColor': '#1e293b', 'noteBkgColor': '#fef9c3', 'noteBorderColor': '#eab308', 'noteTextColor': '#713f12'}}}%%
+sequenceDiagram
+    box rgb(237, 233, 254) Employee
+        participant EE as Employee
+        participant EP as Employee Portal
+    end
+    box rgb(209, 250, 229) Backend
+        participant CX as Convex Backend
+    end
+    box rgb(219, 234, 254) Operator
+        participant Op as Operator Dashboard
+    end
+    box rgb(237, 233, 254) On-Chain
+        participant AE as AdvanceEscrow on Arc
+    end
+
+    EE->>EP: View salary forecast
+    EE->>EP: Request advance — amount + reason
+    EP->>CX: creditRequests.create as pending
+    activate CX
+    CX->>CX: Calculate interest — rate x days
+    deactivate CX
+    Op->>CX: creditRequests.approveRequest
+    activate CX
+    CX->>CX: Status → approved
+    deactivate CX
+    Op->>AE: createAdvance — employee, amount, repayDate
+    activate AE
+    AE->>AE: Escrow USDC
+    AE->>EE: Release advance to wallet
+    Note over AE: At next paycheck cycle
+    AE->>AE: deductFromPayroll — principal + interest
+    EE->>AE: repayAdvance
+    AE-->>CX: Advance settled
+    deactivate AE
+    activate CX
+    CX->>CX: creditRequests status → settled
+    deactivate CX
+      </pre>
+    </div>
+
+    <!-- Auth -->
+    <h3>Authentication and Workspace Resolution</h3>
+    <div class="diagram-card">
+      <pre class="mermaid">
+%%{init: {'theme': 'base', 'themeVariables': {'actorBkg': '#dbeafe', 'actorBorder': '#3b82f6', 'actorTextColor': '#1e3a5f', 'activationBkgColor': '#bfdbfe', 'activationBorderColor': '#3b82f6', 'signalColor': '#334155', 'signalTextColor': '#1e293b', 'noteBkgColor': '#fef9c3', 'noteBorderColor': '#eab308', 'noteTextColor': '#713f12', 'altSectionBkgColor': '#f0fdf4', 'labelBoxBkgColor': '#e0f2fe'}}}%%
+sequenceDiagram
+    box rgb(237, 233, 254) User
+        participant U as User
+    end
+    box rgb(252, 231, 243) Auth
+        participant RO as Reown AppKit
+    end
+    box rgb(219, 234, 254) Frontend
+        participant FE as Frontend Next.js
+    end
+    box rgb(209, 250, 229) Backend
+        participant CX as Convex Backend
+    end
+
+    U->>RO: Connect Wallet
+    activate RO
+    RO-->>FE: wallet address
+    deactivate RO
+    FE->>CX: users.getByWallet address
+    activate CX
+    alt New user
+        CX-->>FE: null
+        FE->>CX: users.createOrUpdate address
+        CX-->>FE: userId
+    else Existing user
+        CX-->>FE: user record
+    end
+    deactivate CX
+    FE->>CX: companies.getByUserId userId
+    activate CX
+    CX-->>FE: company list
+    deactivate CX
+    alt No companies
+        FE->>FE: Show Onboarding Wizard
+        FE->>CX: companies.create — name, details
+    else Has companies
+        FE->>FE: Select active company from localStorage
+    end
+    FE->>FE: Render Dashboard Shell
+      </pre>
+    </div>
+
+    <!-- ============================================================ -->
+    <hr />
+    <h2>Database Schema Overview</h2>
+    <div class="diagram-card">
+      <pre class="mermaid">
+%%{init: {'theme': 'base', 'themeVariables': {'fontSize': '13px'}}}%%
+erDiagram
+    users ||--o{ companyMembers : "has roles"
+    companies ||--o{ companyMembers : "has members"
+    companies ||--o{ employees : "employs"
+    companies ||--o{ customers : "bills"
+    companies ||--o{ products : "offers"
+    companies ||--o{ companyBalances : "holds"
+
+    employees ||--o{ compensationLines : "earns"
+    employees ||--o{ employeePayments : "receives"
+    employees ||--o{ creditRequests : "requests advances"
+    compensationLines ||--o{ compensationSplits : "splits payout"
+
+    customers ||--o{ customerPayments : "pays"
+    customers ||--o{ usageTabs : "accumulates usage"
+    products ||--o{ checkoutLinks : "has links"
+    products ||--o{ customerPayments : "generates revenue"
+
+    usageTabs ||--o{ usageEntries : "records events"
+    companies ||--o{ dispatchRecords : "dispatches funds"
+    companies ||--o{ balanceEntries : "ledger entries"
+    companies ||--o{ agentApiKeys : "issues keys"
+    companies ||--o{ aiChatSessions : "AI conversations"
+      </pre>
+    </div>
+
+    <!-- ============================================================ -->
+    <hr />
+    <h2>Technology Stack</h2>
+    <div class="diagram-card" style="padding: 0.75rem 1.5rem;">
+      <table>
+        <thead>
+          <tr><th>Layer</th><th>Technology</th><th>Role</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><span class="badge badge-blue">Frontend</span></td><td>Next.js 16, React 19, TypeScript</td><td>Full-stack web framework</td></tr>
+          <tr><td><span class="badge badge-blue">UI</span></td><td>TailwindCSS 4, shadcn/ui, Radix UI</td><td>Component library and styling</td></tr>
+          <tr><td><span class="badge badge-blue">Wallet</span></td><td>Reown AppKit, Wagmi, viem</td><td>Wallet connection and on-chain interaction</td></tr>
+          <tr><td><span class="badge badge-green">Backend</span></td><td>Convex serverless</td><td>Real-time database, queries, mutations, actions</td></tr>
+          <tr><td><span class="badge badge-purple">Blockchain</span></td><td>Arc Testnet, Solidity, Foundry</td><td>Smart contracts for payroll and advances</td></tr>
+          <tr><td><span class="badge badge-pink">Payments</span></td><td>WalletConnect Pay</td><td>Customer checkout and USDC settlement</td></tr>
+          <tr><td><span class="badge badge-pink">Automation</span></td><td>Chainlink CRE</td><td>Scheduled on-chain payroll execution</td></tr>
+          <tr><td><span class="badge badge-indigo">Bridging</span></td><td>Circle CCTP v2</td><td>Cross-chain USDC/EURC transfers</td></tr>
+          <tr><td><span class="badge badge-pink">AI</span></td><td>Anthropic Claude, Vercel AI SDK</td><td>Dashboard assistant and analytics</td></tr>
+          <tr><td><span class="badge badge-yellow">Validation</span></td><td>Zod</td><td>Schema-based input validation</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+  </div>
+
+  <script>
+    mermaid.initialize({
+      startOnLoad: true,
+      securityLevel: 'loose',
+      fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+    });
+  </script>
+</body>
+</html>
