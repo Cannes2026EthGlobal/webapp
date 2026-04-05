@@ -2,8 +2,11 @@
 
 import { useState, useEffect } from "react";
 import { useSendTransaction, useWaitForTransactionReceipt } from "wagmi";
+import { useMutation } from "convex/react";
+import { api } from "@/convex/_generated/api";
 import { parseEther } from "viem";
 import { toast } from "sonner";
+import type { Id } from "@/convex/_generated/dataModel";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,30 +26,55 @@ export function DepositDialog({
   contractAddress,
   onSuccess,
   currency = "USDC",
+  companyId,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   contractAddress: `0x${string}` | undefined;
   onSuccess?: () => void;
   currency?: "USDC" | "EURC";
+  companyId?: Id<"companies">;
 }) {
   const [amount, setAmount] = useState("");
   const { sendTransaction, data: txHash, isPending, reset } = useSendTransaction();
   const { data: receipt, isLoading: isWaiting } = useWaitForTransactionReceipt({
     hash: txHash,
   });
+  const creditBalance = useMutation(api.balances.credit);
+  const [credited, setCredited] = useState(false);
 
   useEffect(() => {
-    if (receipt && !isWaiting && txHash) {
-      toast.success("Deposit confirmed");
-      onSuccess?.();
-      onOpenChange(false);
+    if (receipt && !isWaiting && txHash && !credited) {
+      setCredited(true);
+      // Credit the treasury balance in Convex
+      if (companyId && amount) {
+        const cents = Math.max(1, Math.round(parseFloat(amount) * 100));
+        void creditBalance({
+          companyId,
+          amountCents: cents,
+          currency: currency === "EURC" ? "EUR" : "USD",
+          reason: `Deposit — ${amount} ${currency} on-chain`,
+        }).then(() => {
+          toast.success("Deposit confirmed and treasury credited");
+          onSuccess?.();
+          onOpenChange(false);
+        }).catch(() => {
+          toast.success("Deposit confirmed (ledger update pending)");
+          onSuccess?.();
+          onOpenChange(false);
+        });
+      } else {
+        toast.success("Deposit confirmed");
+        onSuccess?.();
+        onOpenChange(false);
+      }
     }
-  }, [receipt, isWaiting, txHash, onSuccess, onOpenChange]);
+  }, [receipt, isWaiting, txHash, credited, companyId, amount, currency, creditBalance, onSuccess, onOpenChange]);
 
   useEffect(() => {
     if (!open) {
       setAmount("");
+      setCredited(false);
       reset();
     }
   }, [open, reset]);

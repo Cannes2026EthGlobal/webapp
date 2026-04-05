@@ -144,6 +144,7 @@ function OverviewContent() {
         open={showDeposit}
         onOpenChange={setShowDeposit}
         contractAddress={payrollContractAddress}
+        companyId={companyId}
         onSuccess={() => void refetchOnChain()}
       />
     </div>

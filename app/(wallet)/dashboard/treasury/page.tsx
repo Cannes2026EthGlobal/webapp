@@ -266,6 +266,7 @@ function TreasuryContent() {
         onOpenChange={setShowDeposit}
         contractAddress={payrollContractAddress}
         currency={depositCurrency}
+        companyId={companyId}
         onSuccess={() => void refetchOnChain()}
       />
 
