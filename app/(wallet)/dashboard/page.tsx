@@ -49,8 +49,12 @@ function OverviewContent() {
   const topCards = [
     {
       title: "Treasury",
-      value: onChainLoading ? "..." : formatUsdc(balanceUsdc),
-      trend: balanceUsdc && balanceUsdc > 0 ? "Funded" : "Empty",
+      value: (() => {
+        const dbCents = stats.treasuryAvailableCents;
+        const onChainCents = balanceUsdc ? Math.round(balanceUsdc * 100) : 0;
+        return formatCents(dbCents + onChainCents, "USD");
+      })(),
+      trend: (stats.treasuryAvailableCents > 0 || (balanceUsdc && balanceUsdc > 0)) ? "Funded" : "Empty",
       direction: "up" as const,
       isTreasury: true,
     },

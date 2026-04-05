@@ -98,8 +98,16 @@ function TreasuryContent() {
               <div>
                 <CardDescription>USDC Balance</CardDescription>
                 <CardTitle className="text-3xl tabular-nums">
-                  {usdBalance ? formatCents(usdBalance.availableCents, "USD") : "..."}
+                  {usdBalance ? formatCents(
+                    usdBalance.availableCents + (onChainBalance ? Math.round(onChainBalance * 100) : 0),
+                    "USD"
+                  ) : "..."}
                 </CardTitle>
+                {onChainBalance !== undefined && onChainBalance > 0 && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    incl. {formatCents(Math.round(onChainBalance * 100), "USD")} on-chain
+                  </p>
+                )}
               </div>
               <div className="flex gap-2">
                 {payrollContractAddress && (
