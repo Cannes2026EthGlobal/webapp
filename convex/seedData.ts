@@ -289,7 +289,6 @@ export const seedFullDemo = mutation({
       await ctx.db.insert("companyBalances", {
         companyId,
         currency: "USD",
-        availableCents: 5300000,
         totalCreditedCents: 8500000,
         totalDebitedCents: 3200000,
       });
@@ -304,7 +303,6 @@ export const seedFullDemo = mutation({
       await ctx.db.insert("companyBalances", {
         companyId,
         currency: "EUR",
-        availableCents: 1550000,
         totalCreditedCents: 2500000,
         totalDebitedCents: 950000,
       });
@@ -385,9 +383,9 @@ export const seedFullDemo = mutation({
 
     // ─── Products ───
     const products = [
-      { name: "API Access", billingUnit: "1K requests", priceCents: 5000, currency: "USD" as const },
-      { name: "Pro License", billingUnit: "license", priceCents: 1500000, currency: "USD" as const },
-      { name: "Event Pass", billingUnit: "ticket", priceCents: 2500000, currency: "USD" as const },
+      { name: "API Access", billingUnit: "1K requests", priceCents: 5000, currency: "USD" as "USD" | "EUR" },
+      { name: "Pro License", billingUnit: "license", priceCents: 1500000, currency: "USD" as "USD" | "EUR" },
+      { name: "Event Pass", billingUnit: "ticket", priceCents: 2500000, currency: "EUR" as "USD" | "EUR" },
     ];
 
     for (const prod of products) {
@@ -529,12 +527,13 @@ export const seedFullDemo = mutation({
     await ctx.db.insert("creditRequests", {
       companyId,
       employeeId: empIds[2],
-      requestedCents: 375000,
-      interestRateBps: 500,
-      interestCents: 18750,
-      netCents: 356250,
+      requestedAmountCents: 375000,
+      interestAmountCents: 18750,
+      netAmountCents: 356250,
+      currency: "USD",
       status: "pending" as const,
-      requestedAt: now - 1 * day,
+      nextPaycheckDate: now + 15 * day,
+      nextPaycheckAmountCents: employees[2].salaryCents,
     });
 
     return {

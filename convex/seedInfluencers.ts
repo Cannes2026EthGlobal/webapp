@@ -21,7 +21,7 @@ function generateSlug(): string {
  * Usage:
  *   npx convex run seedInfluencers:seed '{"wallet": "0x..."}'
  */
-export const seed = mutation({
+export const seedInfluencers = mutation({
   args: {
     wallet: v.string(),
   },
