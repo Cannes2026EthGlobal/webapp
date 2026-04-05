@@ -46,7 +46,7 @@ npx convex run cleanup:deleteStaleDocuments
 Creates 2 products with fully branded checkout links — simulates influencer partnerships where each influencer has their own checkout page with custom colors, text, celebration effects, and a custom recipient wallet for direct payout.
 
 ```bash
-npx convex run seedInfluencers:seed '{"companyId": "YOUR_COMPANY_ID"}'
+npx convex run seedInfluencers:seed '{"wallet": "YOUR_WALLET_ADDRESS"}'
 ```
 
 | Influencer | Product | Price | Theme | Effect | Recipient |

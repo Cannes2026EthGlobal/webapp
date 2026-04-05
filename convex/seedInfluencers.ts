@@ -19,14 +19,27 @@ function generateSlug(): string {
  * receive a cut directly on-chain.
  *
  * Usage:
- *   npx convex run seedInfluencers:seed '{"companyId": "YOUR_COMPANY_ID"}'
+ *   npx convex run seedInfluencers:seed '{"wallet": "0x..."}'
  */
 export const seed = mutation({
   args: {
-    companyId: v.id("companies"),
+    wallet: v.string(),
   },
   handler: async (ctx, args) => {
-    const { companyId } = args;
+    // Look up user → company from wallet
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_walletAddress", (q) => q.eq("walletAddress", args.wallet))
+      .unique();
+    if (!user) throw new Error("No user found for this wallet");
+
+    const membership = await ctx.db
+      .query("companyMembers")
+      .withIndex("by_userId", (q) => q.eq("userId", user._id))
+      .first();
+    if (!membership) throw new Error("No company found for this wallet");
+
+    const companyId = membership.companyId;
 
     // ─── Influencer 1: Luna — Crypto lifestyle, premium aesthetic ───
     const lunaProductId = await ctx.db.insert("products", {
