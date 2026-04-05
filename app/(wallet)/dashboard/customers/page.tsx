@@ -162,7 +162,7 @@ function CustomersContent({
     .reduce((s, p) => s + p.amountCents, 0);
 
   return (
-    <div className="flex flex-col gap-4 p-4 lg:p-6">
+    <div className="flex flex-col gap-4 p-4 lg:p-6" data-tour="customer-list">
       {/* ─── Payment Summary ─── */}
       <div className="grid grid-cols-1 gap-4 @xl/main:grid-cols-3">
         <Card>

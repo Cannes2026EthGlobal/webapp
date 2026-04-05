@@ -249,7 +249,7 @@ function EmployeesContent({
       </div>
 
       {/* ─── Employee Roster ─── */}
-      <Card>
+      <Card data-tour="employee-roster">
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
@@ -341,7 +341,7 @@ function EmployeesContent({
       </Card>
 
       {/* ─── Payment Runs ─── */}
-      <Card>
+      <Card data-tour="payment-runs">
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>

@@ -191,7 +191,7 @@ function RecentActivity() {
     .slice(0, 12);
 
   return (
-    <div className="px-4 lg:px-6">
+    <div className="px-4 lg:px-6" data-tour="recent-activity">
       <Card>
         <CardHeader>
           <CardTitle>Recent activity</CardTitle>
