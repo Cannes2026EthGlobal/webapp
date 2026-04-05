@@ -313,6 +313,18 @@ export function OnboardingTour() {
   const prev = () => { if (step > 0) setStep(step - 1); };
   const finish = () => { setActive(false); setStep(0); localStorage.setItem(TOUR_KEY, "true"); };
 
+  // Keyboard navigation
+  useEffect(() => {
+    if (!active) return;
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "ArrowRight" || e.key === "Enter") next();
+      else if (e.key === "ArrowLeft") prev();
+      else if (e.key === "Escape") finish();
+    };
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  });
+
   if (!active) return null;
 
   const currentStep = TOUR_STEPS[step];
