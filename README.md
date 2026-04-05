@@ -27,13 +27,7 @@ npm run dev
 
 Open http://localhost:3000, connect your wallet, and click "Create demo workspace" to seed a basic workspace (employees, customers, products — no fake payments).
 
-### Seed a Fully Populated Mock Company
-
-To create a demo company with realistic data (employees, customers, products, payments, balance ledger, advance settings):
-
-```bash
-npx convex run seedMockCompany:create '{"wallet": "YOUR_WALLET_ADDRESS", "companyName": "My Demo Co"}'
-```
+### Clean Up Data
 
 To clear all data for a wallet and start fresh:
 
@@ -41,9 +35,26 @@ To clear all data for a wallet and start fresh:
 npx convex run cleanup:clearAllData '{"wallet": "YOUR_WALLET_ADDRESS"}'
 ```
 
-### Employee Portal
+To delete stale legacy documents after schema migration:
 
-Open http://localhost:3000/employee-portal and connect with an employee wallet to view salary info and request advances.
+```bash
+npx convex run cleanup:deleteStaleDocuments
+```
+
+### Seed Influencer Demo
+
+Creates 2 products with fully branded checkout links — simulates influencer partnerships where each influencer has their own checkout page with custom colors, text, celebration effects, and a custom recipient wallet for direct payout.
+
+```bash
+npx convex run seedInfluencers:seed '{"wallet": "YOUR_WALLET_ADDRESS"}'
+```
+
+| Influencer | Product | Price | Theme | Effect | Recipient |
+|-----------|---------|-------|-------|--------|-----------|
+| Luna (@LunaCryptoQueen) | Premium Access Pass | $49/mo | Violet on deep purple | Fireworks | Custom wallet |
+| Rex (@RexBuildoor) | Builder Toolkit | $25 | Emerald on dark green | Bubbles | Custom wallet |
+
+The command returns the checkout URLs for both influencers. Open them to see the branded checkout pages. Replace the placeholder recipient addresses with real wallets before the demo.
 
 ## Environment Variables
 
@@ -88,6 +99,104 @@ npx convex env set WC_PAY_API_KEY "your-api-key"
 npx convex env set WC_PAY_MERCHANT_ID "your-merchant-id"
 npx convex env set WC_PAY_MOCK "true"
 ```
+
+## User Flow
+
+### Public Pages
+
+**Landing Page** (`/`)
+- Product overview: payroll & advances, invoicing & checkout
+- Stats: USDC settlement, up to 100% salary advance, custom per-invoice parameters, any CCTP chain
+- Live dashboard preview with mock data
+- "How it works" steps and tech stack cards
+- Login → connects wallet via Reown AppKit
+
+**Checkout Page** (`/checkout/[slug]`)
+- Public payment page for any product
+- Customer enters: quantity, wallet address, name, email, country
+- Pays via WalletConnect Pay → polls status → shows confirmation
+- Customizable per checkout link: colors, heading, button text, celebration effect (confetti/fireworks/snow/bubbles)
+- Custom recipient address per link (overrides company default)
+
+### Operator Dashboard
+
+After login, the operator sees a sidebar with these sections:
+
+**Overview** (`/dashboard`)
+- 8 KPI cards in two rows:
+  - Treasury (with Deposit button), Payroll due, Receivables, Revenue today
+  - Total collected, Total paid out, Overdue, Advance requests
+- Recent activity feed (latest 12 inbound + outbound payments)
+
+**Employees** (`/dashboard/employees`)
+- Employee roster table: name, role, type, compensation, wallet status, privacy level
+- Add employee dialog
+- Click employee → detail page (`/dashboard/employees/[id]`):
+  - Identity vault (legal name, tax ID — concealed by default, reveal on demand)
+  - Wallet profile (primary + backup wallets, verification status)
+  - Compensation lines (add/edit/toggle/remove salary arrangements with splits)
+  - Payment history with blockchain explorer links
+
+**Customers** (`/dashboard/customers`)
+- Customer list: name, type (company/app/agent/buyer), pricing model, billing state
+- Add customer, create manual payment
+- Click customer → detail page (`/dashboard/customers/[id]`):
+  - Billing profile (editable: name, contact, email, country)
+  - Wallet profile with payment summary
+  - Payment history by mode (invoice/checkout/usage)
+
+**Treasury** (`/dashboard/treasury`)
+- On-chain payroll contract balance (USDC on Arc)
+- Deposit funds to payroll contract (records in Convex ledger)
+- CCTP bridge card: bridge USDC from Arc to Arbitrum/Base
+- Ledger entries table: all credits/debits with reasons and timestamps
+
+**My Products** (`/dashboard/products`)
+- Product catalog: name, billing unit, pricing model, unit price
+- Create product (any decimal precision for price)
+- Generate checkout links per product
+- Checkout links table with full URL, copy, deactivate
+- Customize button → checkout customization page (`/dashboard/products/[linkId]`):
+  - Live preview on the right
+  - Colors (primary, background, text), heading, button text, thank you message
+  - Celebration effect selector
+  - Custom recipient address for settlement
+
+**Agents** (`/dashboard/agents`)
+- API key management: generate, reveal (one-time), revoke
+- Active sessions: session ID, customer, usage count
+- Settlement records
+- Recent agent billing activity
+
+**Integration** (`/dashboard/integration`)
+- Company ID and API base URL
+- Code examples: checkout link integration, usage billing SDK
+- Status polling and webhook documentation
+- Recent checkout/usage payment activity feed
+
+**Payroll** (`/dashboard/payroll`)
+- Payment summary cards: draft, approved/queued, settled totals
+- Payment runs with status transitions: draft → approved → queued → settled
+- 3-month payroll forecast with per-employee breakdown
+- Salary advance (credit) management:
+  - Pending requests inbox (approve/deny)
+  - Settings: interest rate, max % of paycheck, auto-disable threshold
+  - Auto-disable when treasury drops below threshold
+
+**Settings** (`/dashboard/settings`)
+- Workspace details (name, slug, industry, website)
+- Settlement config (address, network, chain ID, CCTP domain)
+- Configuration (default currency, webhook URL, brand color, support email)
+- Delete workspace (danger zone)
+
+### Employee Portal
+
+**Employee Portal** (`/employee-portal`)
+- Separate route — employees connect their own wallet
+- See: upcoming paycheck, salary amount, eligible advance
+- Request salary advance with interest preview (amount, interest deduction, net payout)
+- View advance history and status
+- Auto-disabled warning when company treasury is low
 
 ## Tech Stack
 

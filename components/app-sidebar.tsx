@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/sidebar";
 import {
   Add01Icon,
+  AiChat02Icon,
   Analytics01Icon,
   ArrowDown01Icon,
   CommandIcon,
@@ -37,11 +38,13 @@ import {
   Menu01Icon,
   SearchIcon,
   Settings05Icon,
+  SparklesIcon,
   UserGroupIcon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 
 const navItems = [
+  // ─── Operations ───
   {
     title: "Overview",
     url: "/dashboard",
@@ -57,6 +60,7 @@ const navItems = [
     url: "/dashboard/customers",
     icon: <HugeiconsIcon icon={Menu01Icon} strokeWidth={2} />,
   },
+  // ─── Money ───
   {
     title: "Treasury",
     url: "/dashboard/treasury",
@@ -67,15 +71,16 @@ const navItems = [
     url: "/dashboard/products",
     icon: <HugeiconsIcon icon={Database01Icon} strokeWidth={2} />,
   },
+  // ─── AI & Platform ───
   {
-    title: "Agents",
+    title: "AI & Agents",
     url: "/dashboard/agents",
-    icon: <HugeiconsIcon icon={CommandIcon} strokeWidth={2} />,
+    icon: <HugeiconsIcon icon={SparklesIcon} strokeWidth={2} />,
   },
   {
     title: "Integration",
     url: "/dashboard/integration",
-    icon: <HugeiconsIcon icon={CommandIcon} strokeWidth={2} />,
+    icon: <HugeiconsIcon icon={Database01Icon} strokeWidth={2} />,
   },
 ];
 
