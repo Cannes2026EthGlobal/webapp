@@ -153,8 +153,8 @@ function EmployeesContent({
       await updateEmployee({ id, notes: `[no-advance]${currentNotes ?? ""}` });
       toast.success("Salary in advance disabled for this employee");
     } else {
-      const cleaned = (currentNotes ?? "").replace("[no-advance]", "");
-      await updateEmployee({ id, notes: cleaned || undefined });
+      const cleaned = (currentNotes ?? "").replace("[no-advance]", "").trim();
+      await updateEmployee({ id, notes: cleaned || "" });
       toast.success("Salary in advance enabled for this employee");
     }
   };

@@ -171,7 +171,7 @@ export const update = mutation({
     const updates: Record<string, unknown> = {};
     for (const [key, value] of Object.entries(fields)) {
       if (value !== undefined) {
-        updates[key] = value === "" ? undefined : value;
+        updates[key] = value;
       }
     }
     await ctx.db.patch(id, updates);
