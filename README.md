@@ -84,6 +84,27 @@ Each influencer has a **referral commission** — when a customer buys through t
 
 The command returns the checkout URLs for both influencers. Replace the placeholder recipient addresses with real wallets before the demo.
 
+## Admin Panel — Fund Dispatch
+
+Password-protected page at `/admin` (password: `password`) for dispatching collected USDC to companies and referrers.
+
+**How it works:**
+1. WalletConnect Pay collects USDC from customers → arrives at Arc Counting's wallet on Arbitrum/Base
+2. Open `/admin`, enter password, click "Dispatch All Pending"
+3. Backend reads all paid-but-undispatched payments
+4. Resolves destination per payment: custom recipient address > company settlement address
+5. Calculates referral splits (if checkout link has referral %)
+6. Signs & sends USDC ERC20 transfers using the backend private key
+7. Shows results: destination, amount, tx hash or error
+
+**Required env vars for dispatch:**
+```bash
+npx convex env set DISPATCH_PRIVATE_KEY "0x..."           # Master wallet private key
+npx convex env set DISPATCH_CHAIN "arbitrum"               # or "base"
+npx convex env set DISPATCH_RPC_URL "https://sepolia-rollup.arbitrum.io/rpc"
+npx convex env set DISPATCH_USDC_ADDRESS "0xaf88d065e77c8cc2239327c5edb3a432268e5831"
+```
+
 ## Environment Variables
 
 Create a `.env` file in the project root:
