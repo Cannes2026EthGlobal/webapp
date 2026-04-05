@@ -156,7 +156,7 @@ function ProductsContent({
                               {prod.pricingModel}
                             </TableCell>
                             <TableCell className="tabular-nums">
-                              ${(prod.unitPriceCents / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 18 })}
+                              {prod.currency === "EUR" ? "€" : "$"}{(prod.unitPriceCents / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 18 })}
                             </TableCell>
                             <TableCell>
                               <div className="flex items-center gap-2">
@@ -307,6 +307,7 @@ function CreateProductDialog({
   const [billingUnit, setBillingUnit] = useState("");
   const [pricingModel, setPricingModel] = useState<"per-unit" | "pay-as-you-go">("per-unit");
   const [priceInput, setPriceInput] = useState("");
+  const [currency, setCurrency] = useState<"USD" | "EUR">("USD");
   const [privacyMode, setPrivacyMode] = useState<"standard" | "pseudonymous" | "shielded">("standard");
   const [refundPolicy, setRefundPolicy] = useState<"no-refund" | "partial" | "full">("no-refund");
 
@@ -320,8 +321,8 @@ function CreateProductDialog({
       billingUnit,
       pricingModel,
       unitPriceCents: Math.floor(val * 100 * 1e10) / 1e10,
-      currency: "USD",
-      settlementAsset: "USDC",
+      currency,
+      settlementAsset: currency === "EUR" ? "EURC" : "USDC",
       privacyMode,
       refundPolicy,
       isActive: true,
@@ -332,6 +333,7 @@ function CreateProductDialog({
     setBillingUnit("");
     setPricingModel("per-unit");
     setPriceInput("");
+    setCurrency("USD");
     setPrivacyMode("standard");
     setRefundPolicy("no-refund");
     toast.success("Product created");
@@ -371,21 +373,33 @@ function CreateProductDialog({
               </Select>
             </div>
           </div>
-          <div className="grid gap-2">
-            <Label htmlFor="unitPrice">Unit price (USDC)</Label>
-            <Input
-              id="unitPrice"
-              type="text"
-              inputMode="decimal"
-              placeholder="0.0001"
-              value={priceInput}
-              onChange={(e) => {
-                const v = e.target.value;
-                if (v === "" || /^\d*\.?\d*$/.test(v)) {
-                  setPriceInput(v);
-                }
-              }}
+          <div className="grid grid-cols-3 gap-4">
+            <div className="grid gap-2 col-span-2">
+              <Label htmlFor="unitPrice">Unit price ({currency === "EUR" ? "EURC" : "USDC"})</Label>
+              <Input
+                id="unitPrice"
+                type="text"
+                inputMode="decimal"
+                placeholder="0.0001"
+                value={priceInput}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  if (v === "" || /^\d*\.?\d*$/.test(v)) {
+                    setPriceInput(v);
+                  }
+                }}
             />
+            </div>
+            <div className="grid gap-2">
+              <Label>Currency</Label>
+              <Select value={currency} onValueChange={(v) => setCurrency(v as "USD" | "EUR")}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="USD">USDC</SelectItem>
+                  <SelectItem value="EUR">EURC</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="grid gap-2">
