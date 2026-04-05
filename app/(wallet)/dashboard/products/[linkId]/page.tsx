@@ -43,6 +43,9 @@ export default function CustomizeCheckoutPage() {
   const [backgroundColor, setBackgroundColor] = useState("#ffffff");
   const [textColor, setTextColor] = useState("#1a1a1a");
   const [effect, setEffect] = useState<"none" | "confetti" | "fireworks" | "snow" | "bubbles">("confetti");
+  const [referralName, setReferralName] = useState("");
+  const [referralWallet, setReferralWallet] = useState("");
+  const [referralPercentage, setReferralPercentage] = useState("");
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
@@ -56,6 +59,9 @@ export default function CustomizeCheckoutPage() {
       setBackgroundColor(link.customization?.backgroundColor ?? "#ffffff");
       setTextColor(link.customization?.textColor ?? "#1a1a1a");
       setEffect(link.customization?.effect ?? "confetti");
+      setReferralName(link.referralName ?? "");
+      setReferralWallet(link.referralWalletAddress ?? "");
+      setReferralPercentage(link.referralPercentage ? String(link.referralPercentage) : "");
     }
   }, [link, loaded]);
 
@@ -72,6 +78,9 @@ export default function CustomizeCheckoutPage() {
     await updateLink({
       id: linkId as Id<"checkoutLinks">,
       recipientAddress: recipientAddress || undefined,
+      referralName: referralName || undefined,
+      referralWalletAddress: referralWallet || undefined,
+      referralPercentage: referralPercentage ? parseFloat(referralPercentage) : undefined,
       customization: {
         heading: heading || undefined,
         buttonText: buttonText || undefined,
@@ -169,6 +178,34 @@ export default function CustomizeCheckoutPage() {
                   <Input placeholder="0x... (leave empty to use company default)" value={recipientAddress} onChange={(e) => setRecipientAddress(e.target.value)} />
                   <p className="text-xs text-muted-foreground">Override the default settlement address for this checkout link</p>
                 </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Referral Commission</CardTitle>
+                <CardDescription>Pay a percentage of each sale to a referrer</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="grid gap-2">
+                  <Label>Referrer name</Label>
+                  <Input placeholder="e.g. @LunaCryptoQueen" value={referralName} onChange={(e) => setReferralName(e.target.value)} />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="grid gap-2">
+                    <Label>Commission (%)</Label>
+                    <Input type="number" min="0" max="100" step="0.1" placeholder="e.g. 10" value={referralPercentage} onChange={(e) => setReferralPercentage(e.target.value)} />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label>Referrer wallet</Label>
+                    <Input placeholder="0x..." value={referralWallet} onChange={(e) => setReferralWallet(e.target.value)} />
+                  </div>
+                </div>
+                {referralName && referralPercentage && (
+                  <p className="text-xs text-muted-foreground">
+                    {referralName} will earn {referralPercentage}% commission on every sale through this link. A draft payment will be created automatically for each transaction.
+                  </p>
+                )}
               </CardContent>
             </Card>
 

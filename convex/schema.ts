@@ -226,7 +226,8 @@ export default defineSchema({
   // ─── Employee Payments (outbound) ───
   employeePayments: defineTable({
     companyId: v.id("companies"),
-    employeeId: v.id("employees"),
+    employeeId: v.optional(v.id("employees")),
+    walletAddress: v.optional(v.string()),  // for referral payouts without an employee record
     type: v.union(
       v.literal("salary"),
       v.literal("freelance"),
@@ -299,6 +300,10 @@ export default defineSchema({
     label: v.optional(v.string()),
     isActive: v.boolean(),
     recipientAddress: v.optional(v.string()),
+    // ─── Referral / Commission ───
+    referralName: v.optional(v.string()),              // e.g. "Luna", "@RexBuildoor"
+    referralWalletAddress: v.optional(v.string()),      // where commission is sent
+    referralPercentage: v.optional(v.number()),         // 0-100, e.g. 10 = 10%
     customization: v.optional(v.object({
       primaryColor: v.optional(v.string()),
       backgroundColor: v.optional(v.string()),
@@ -350,6 +355,7 @@ export default defineSchema({
     wcPayPaymentId: v.optional(v.string()),
     wcPayGatewayUrl: v.optional(v.string()),
     quantity: v.optional(v.number()),
+    checkoutLinkId: v.optional(v.id("checkoutLinks")),
   })
     .index("by_companyId", ["companyId"])
     .index("by_companyId_and_status", ["companyId", "status"])

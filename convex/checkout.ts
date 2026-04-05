@@ -72,6 +72,7 @@ export const initiateCheckout = mutation({
       status: "pending",
       description: `${product.name}${qty > 1 ? ` x${qty}` : ""}`,
       quantity: qty,
+      checkoutLinkId: link._id,
     });
 
     const referenceId = shortRef();
@@ -220,6 +221,30 @@ export const confirmPayment = mutation({
         txExplorerUrl: `https://testnet.arcscan.app/tx/${args.txHash}`,
       } : {}),
     });
+
+    // ─── Referral Commission ───
+    // If the payment came through a checkout link with referral config,
+    // create an employee payment for the referee's commission.
+    if (payment.checkoutLinkId) {
+      const link = await ctx.db.get(payment.checkoutLinkId);
+      if (link?.referralPercentage && link.referralPercentage > 0 && link.referralName) {
+        const commissionCents = Math.round(
+          (payment.amountCents * link.referralPercentage) / 100
+        );
+        if (commissionCents > 0) {
+          await ctx.db.insert("employeePayments", {
+            companyId: payment.companyId,
+            // No employeeId — this is a referral payout, not tied to an employee record
+            type: "freelance" as const,
+            amountCents: commissionCents,
+            currency: payment.currency,
+            status: "draft" as const,
+            description: `Referral commission: ${link.referralName} — ${link.referralPercentage}% of ${payment.description ?? "checkout payment"}`,
+            walletAddress: link.referralWalletAddress,
+          });
+        }
+      }
+    }
   },
 });
 

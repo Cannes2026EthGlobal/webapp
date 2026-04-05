@@ -51,10 +51,12 @@ npx convex run seedInfluencers:seed '{"wallet": "YOUR_WALLET_ADDRESS"}'
 
 | Influencer | Product | Price | Theme | Effect | Recipient |
 |-----------|---------|-------|-------|--------|-----------|
-| Luna (@LunaCryptoQueen) | Premium Access Pass | $49/mo | Violet on deep purple | Fireworks | Custom wallet |
-| Rex (@RexBuildoor) | Builder Toolkit | $25 | Emerald on dark green | Bubbles | Custom wallet |
+| Luna (@LunaCryptoQueen) | Premium Access Pass | $49/mo | Violet on deep purple | Fireworks | 15% | Custom wallet |
+| Rex (@RexBuildoor) | Builder Toolkit | $25 | Emerald on dark green | Bubbles | 10% | Custom wallet |
 
-The command returns the checkout URLs for both influencers. Open them to see the branded checkout pages. Replace the placeholder recipient addresses with real wallets before the demo.
+Each influencer has a **referral commission** — when a customer buys through their link, a draft freelance payment is automatically created for the influencer's cut (15% or 10%). These appear in the Employees payroll table ready for approval.
+
+The command returns the checkout URLs for both influencers. Replace the placeholder recipient addresses with real wallets before the demo.
 
 ## Environment Variables
 
@@ -161,6 +163,7 @@ After login, the operator sees a sidebar with these sections:
   - Colors (primary, background, text), heading, button text, thank you message
   - Celebration effect selector
   - Custom recipient address for settlement
+  - **Referral commission**: set a referrer name, wallet, and percentage. Every sale through this link automatically creates a draft payment for the referrer's commission (visible in the Employees payroll table as a freelance payout)
 
 **Agents** (`/dashboard/agents`)
 - API key management: generate, reveal (one-time), revoke

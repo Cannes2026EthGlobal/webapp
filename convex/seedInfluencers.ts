@@ -64,6 +64,9 @@ export const seed = mutation({
       label: "Luna's Checkout",
       isActive: true,
       recipientAddress: "0xL00000000000000000000000000000000000Luna1",
+      referralName: "@LunaCryptoQueen",
+      referralWalletAddress: "0xL00000000000000000000000000000000000Luna1",
+      referralPercentage: 15,
       customization: {
         primaryColor: "#8B5CF6",       // violet
         backgroundColor: "#0F0B1E",    // deep purple-black
@@ -98,6 +101,9 @@ export const seed = mutation({
       label: "Rex's Checkout",
       isActive: true,
       recipientAddress: "0xR00000000000000000000000000000000000Rex42",
+      referralName: "@RexBuildoor",
+      referralWalletAddress: "0xR00000000000000000000000000000000000Rex42",
+      referralPercentage: 10,
       customization: {
         primaryColor: "#10B981",        // emerald green
         backgroundColor: "#022C22",     // dark green-black

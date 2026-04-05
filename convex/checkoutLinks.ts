@@ -118,6 +118,9 @@ export const update = mutation({
   args: {
     id: v.id("checkoutLinks"),
     recipientAddress: v.optional(v.string()),
+    referralName: v.optional(v.string()),
+    referralWalletAddress: v.optional(v.string()),
+    referralPercentage: v.optional(v.number()),
     customization: v.optional(v.object({
       primaryColor: v.optional(v.string()),
       backgroundColor: v.optional(v.string()),
