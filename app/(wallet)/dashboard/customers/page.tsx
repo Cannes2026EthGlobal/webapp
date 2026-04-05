@@ -87,6 +87,7 @@ function CustomersContent({
     customerId: "",
     mode: "invoice" as const,
     amountCents: 0,
+    currency: "USD" as "USD" | "EUR",
     description: "",
   });
 
@@ -131,7 +132,7 @@ function CustomersContent({
         : undefined,
       mode: paymentForm.mode,
       amountCents: paymentForm.amountCents,
-      currency: "USD",
+      currency: paymentForm.currency,
       description: paymentForm.description || undefined,
     });
     setShowCreatePayment(false);
@@ -139,6 +140,7 @@ function CustomersContent({
       customerId: "",
       mode: "invoice",
       amountCents: 0,
+      currency: "USD",
       description: "",
     });
   };
@@ -151,15 +153,12 @@ function CustomersContent({
     checkout: payments.filter((p) => p.mode === "checkout"),
   };
 
-  const paidTotal = payments
-    .filter((p) => p.status === "paid")
-    .reduce((s, p) => s + p.amountCents, 0);
-  const pendingTotal = payments
-    .filter((p) => ["draft", "sent", "pending"].includes(p.status))
-    .reduce((s, p) => s + p.amountCents, 0);
-  const overdueTotal = payments
-    .filter((p) => p.status === "overdue")
-    .reduce((s, p) => s + p.amountCents, 0);
+  const paidUsd = payments.filter((p) => p.status === "paid" && (p.currency ?? "USD") === "USD").reduce((s, p) => s + p.amountCents, 0);
+  const paidEur = payments.filter((p) => p.status === "paid" && p.currency === "EUR").reduce((s, p) => s + p.amountCents, 0);
+  const pendingUsd = payments.filter((p) => ["draft", "sent", "pending"].includes(p.status) && (p.currency ?? "USD") === "USD").reduce((s, p) => s + p.amountCents, 0);
+  const pendingEur = payments.filter((p) => ["draft", "sent", "pending"].includes(p.status) && p.currency === "EUR").reduce((s, p) => s + p.amountCents, 0);
+  const overdueUsd = payments.filter((p) => p.status === "overdue" && (p.currency ?? "USD") === "USD").reduce((s, p) => s + p.amountCents, 0);
+  const overdueEur = payments.filter((p) => p.status === "overdue" && p.currency === "EUR").reduce((s, p) => s + p.amountCents, 0);
 
   return (
     <div className="flex flex-col gap-4 p-4 lg:p-6" data-tour="customer-list">
@@ -169,7 +168,8 @@ function CustomersContent({
           <CardHeader className="pb-2">
             <CardDescription>Collected</CardDescription>
             <CardTitle className="text-2xl tabular-nums">
-              {formatCents(paidTotal)}
+              {formatCents(paidUsd, "USD")}
+              {paidEur > 0 && <span className="text-lg ml-2">{formatCents(paidEur, "EUR")}</span>}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -186,7 +186,8 @@ function CustomersContent({
           <CardHeader className="pb-2">
             <CardDescription>Pending</CardDescription>
             <CardTitle className="text-2xl tabular-nums">
-              {formatCents(pendingTotal)}
+              {formatCents(pendingUsd, "USD")}
+              {pendingEur > 0 && <span className="text-lg ml-2">{formatCents(pendingEur, "EUR")}</span>}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -199,7 +200,8 @@ function CustomersContent({
           <CardHeader className="pb-2">
             <CardDescription>Overdue</CardDescription>
             <CardTitle className="text-2xl tabular-nums text-destructive">
-              {formatCents(overdueTotal)}
+              {formatCents(overdueUsd, "USD")}
+              {overdueEur > 0 && <span className="text-lg ml-2">{formatCents(overdueEur, "EUR")}</span>}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -514,21 +516,43 @@ function CustomersContent({
                 </Select>
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="paymentAmount">Amount (USD)</Label>
-                <Input
-                  id="paymentAmount"
-                  type="number"
-                  value={paymentForm.amountCents / 100 || ""}
-                  onChange={(e) =>
+                <Label>Currency</Label>
+                <Select
+                  value={paymentForm.currency}
+                  onValueChange={(v) =>
                     setPaymentForm({
                       ...paymentForm,
-                      amountCents: Math.round(
-                        parseFloat(e.target.value || "0") * 100
-                      ),
+                      currency: v as "USD" | "EUR",
                     })
                   }
-                />
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="USD">USDC</SelectItem>
+                    <SelectItem value="EUR">EURC</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="paymentAmount">Amount ({paymentForm.currency === "EUR" ? "EURC" : "USDC"})</Label>
+              <Input
+                id="paymentAmount"
+                type="number"
+                step="any"
+                min="0"
+                value={paymentForm.amountCents / 100 || ""}
+                onChange={(e) =>
+                  setPaymentForm({
+                    ...paymentForm,
+                    amountCents: Math.round(
+                      parseFloat(e.target.value || "0") * 100
+                    ),
+                  })
+                }
+              />
             </div>
             <div className="grid gap-2">
               <Label htmlFor="paymentDescription">Description (optional)</Label>
@@ -567,6 +591,7 @@ function CustomerPaymentsTable({
     customerId?: Id<"customers">;
     mode: string;
     amountCents: number;
+    currency?: "USD" | "EUR";
     status: string;
     description?: string;
     dueDate?: number;
@@ -612,7 +637,7 @@ function CustomerPaymentsTable({
                 </Badge>
               </TableCell>
               <TableCell className="tabular-nums">
-                {formatCents(p.amountCents)}
+                {formatCents(p.amountCents, p.currency ?? "USD")}
               </TableCell>
               <TableCell>
                 <PaymentStatusBadge status={p.status} />

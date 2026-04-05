@@ -96,12 +96,17 @@ function EmployeesContent({
     employmentType: "full-time" as const,
     email: "",
     walletAddress: "",
+    compensationModel: "salary" as "salary" | "hourly" | "per-task" | "milestone",
+    payoutAmountCents: 0,
+    payoutFrequency: "monthly" as "monthly" | "biweekly" | "weekly" | "per-task",
+    payoutAsset: "USDC",
   });
 
   const [paymentForm, setPaymentForm] = useState({
     employeeId: "",
     type: "salary" as const,
     amountCents: 0,
+    currency: "USD" as "USD" | "EUR",
     description: "",
   });
 
@@ -127,6 +132,10 @@ function EmployeesContent({
       status: "active",
       email: formData.email || undefined,
       walletAddress: formData.walletAddress,
+      compensationModel: formData.compensationModel,
+      payoutAmountCents: formData.payoutAmountCents,
+      payoutFrequency: formData.payoutFrequency,
+      payoutAsset: formData.payoutAsset,
     });
     setShowCreate(false);
     setFormData({
@@ -135,6 +144,10 @@ function EmployeesContent({
       employmentType: "full-time",
       email: "",
       walletAddress: "",
+      compensationModel: "salary",
+      payoutAmountCents: 0,
+      payoutFrequency: "monthly",
+      payoutAsset: "USDC",
     });
     toast.success("Employee added");
   };
@@ -166,7 +179,7 @@ function EmployeesContent({
       employeeId: paymentForm.employeeId as Id<"employees">,
       type: paymentForm.type,
       amountCents: paymentForm.amountCents,
-      currency: "USD",
+      currency: paymentForm.currency,
       description: paymentForm.description || undefined,
     });
     setShowCreatePayment(false);
@@ -174,6 +187,7 @@ function EmployeesContent({
       employeeId: "",
       type: "salary",
       amountCents: 0,
+      currency: "USD",
       description: "",
     });
   };
@@ -195,8 +209,9 @@ function EmployeesContent({
           <CardHeader className="pb-2">
             <CardDescription>Draft</CardDescription>
             <CardTitle className="text-2xl tabular-nums">
-              {formatCents(
-                statusGroups.draft.reduce((s, p) => s + p.amountCents, 0)
+              {formatCents(statusGroups.draft.filter((p) => (p.currency ?? "USD") === "USD").reduce((s, p) => s + p.amountCents, 0), "USD")}
+              {statusGroups.draft.some((p) => p.currency === "EUR") && (
+                <span className="text-lg ml-2">{formatCents(statusGroups.draft.filter((p) => p.currency === "EUR").reduce((s, p) => s + p.amountCents, 0), "EUR")}</span>
               )}
             </CardTitle>
           </CardHeader>
@@ -211,12 +226,12 @@ function EmployeesContent({
           <CardHeader className="pb-2">
             <CardDescription>Approved / Queued</CardDescription>
             <CardTitle className="text-2xl tabular-nums">
-              {formatCents(
-                [...statusGroups.approved, ...statusGroups.queued].reduce(
-                  (s, p) => s + p.amountCents,
-                  0
-                )
-              )}
+              {(() => {
+                const aq = [...statusGroups.approved, ...statusGroups.queued];
+                const usd = aq.filter((p) => (p.currency ?? "USD") === "USD").reduce((s, p) => s + p.amountCents, 0);
+                const eur = aq.filter((p) => p.currency === "EUR").reduce((s, p) => s + p.amountCents, 0);
+                return <>{formatCents(usd, "USD")}{eur > 0 && <span className="text-lg ml-2">{formatCents(eur, "EUR")}</span>}</>;
+              })()}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -234,8 +249,9 @@ function EmployeesContent({
           <CardHeader className="pb-2">
             <CardDescription>Settled</CardDescription>
             <CardTitle className="text-2xl tabular-nums">
-              {formatCents(
-                statusGroups.settled.reduce((s, p) => s + p.amountCents, 0)
+              {formatCents(statusGroups.settled.filter((p) => (p.currency ?? "USD") === "USD").reduce((s, p) => s + p.amountCents, 0), "USD")}
+              {statusGroups.settled.some((p) => p.currency === "EUR") && (
+                <span className="text-lg ml-2">{formatCents(statusGroups.settled.filter((p) => p.currency === "EUR").reduce((s, p) => s + p.amountCents, 0), "EUR")}</span>
               )}
             </CardTitle>
           </CardHeader>
@@ -301,7 +317,7 @@ function EmployeesContent({
                         </Badge>
                       </TableCell>
                       <TableCell className="tabular-nums">
-                        {formatCents(emp.payoutAmountCents)}/{emp.payoutFrequency}
+                        {formatCents(emp.payoutAmountCents ?? 0, emp.payoutAsset === "EURC" ? "EUR" : "USD")}/{emp.payoutFrequency ?? "—"}
                       </TableCell>
                       <TableCell className="text-muted-foreground">
                         {emp.nextPaymentDate
@@ -479,11 +495,89 @@ function EmployeesContent({
                 />
               </div>
             </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label>Compensation model</Label>
+                <Select
+                  value={formData.compensationModel}
+                  onValueChange={(v) =>
+                    setFormData({
+                      ...formData,
+                      compensationModel: v as typeof formData.compensationModel,
+                    })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="salary">Salary</SelectItem>
+                    <SelectItem value="hourly">Hourly</SelectItem>
+                    <SelectItem value="per-task">Per task</SelectItem>
+                    <SelectItem value="milestone">Milestone</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid gap-2">
+                <Label>Payout frequency</Label>
+                <Select
+                  value={formData.payoutFrequency}
+                  onValueChange={(v) =>
+                    setFormData({
+                      ...formData,
+                      payoutFrequency: v as typeof formData.payoutFrequency,
+                    })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="monthly">Monthly</SelectItem>
+                    <SelectItem value="biweekly">Biweekly</SelectItem>
+                    <SelectItem value="weekly">Weekly</SelectItem>
+                    <SelectItem value="per-task">Per task</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="payoutAmount">Payout amount ({formData.payoutAsset})</Label>
+                <Input
+                  id="payoutAmount"
+                  type="number"
+                  step="any"
+                  min="0"
+                  placeholder="5000"
+                  value={formData.payoutAmountCents ? formData.payoutAmountCents / 100 : ""}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      payoutAmountCents: Math.round(parseFloat(e.target.value || "0") * 100),
+                    })
+                  }
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label>Payout asset</Label>
+                <Select
+                  value={formData.payoutAsset}
+                  onValueChange={(v) =>
+                    setFormData({ ...formData, payoutAsset: v })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="USDC">USDC</SelectItem>
+                    <SelectItem value="EURC">EURC</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
           </div>
-          <p className="text-xs text-muted-foreground rounded-md bg-muted px-3 py-2">
-            Salary and compensation details are configured on the employee
-            profile page. You will be redirected there after creating.
-          </p>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowCreate(false)}>
               Cancel
@@ -523,7 +617,7 @@ function EmployeesContent({
                 </SelectContent>
               </Select>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-3 gap-4">
               <div className="grid gap-2">
                 <Label>Payment type</Label>
                 <Select
@@ -548,10 +642,12 @@ function EmployeesContent({
                 </Select>
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="paymentAmount">Amount (USD)</Label>
+                <Label htmlFor="paymentAmount">Amount ({paymentForm.currency === "EUR" ? "EURC" : "USDC"})</Label>
                 <Input
                   id="paymentAmount"
                   type="number"
+                  step="any"
+                  min="0"
                   value={paymentForm.amountCents / 100 || ""}
                   onChange={(e) =>
                     setPaymentForm({
@@ -562,6 +658,26 @@ function EmployeesContent({
                     })
                   }
                 />
+              </div>
+              <div className="grid gap-2">
+                <Label>Currency</Label>
+                <Select
+                  value={paymentForm.currency}
+                  onValueChange={(v) =>
+                    setPaymentForm({
+                      ...paymentForm,
+                      currency: v as "USD" | "EUR",
+                    })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="USD">USDC</SelectItem>
+                    <SelectItem value="EUR">EURC</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
             <div className="grid gap-2">
@@ -617,9 +733,10 @@ function PaymentsTable({
   payments: Array<{
     _id: Id<"employeePayments">;
     _creationTime: number;
-    employeeId: Id<"employees">;
+    employeeId?: Id<"employees">;
     type: string;
     amountCents: number;
+    currency?: "USD" | "EUR";
     status: string;
     description?: string;
     scheduledDate?: number;
@@ -655,21 +772,34 @@ function PaymentsTable({
           {payments.map((p) => (
             <TableRow key={p._id}>
               <TableCell className="font-medium">
-                {employeeMap.get(p.employeeId)?.displayName ?? "Unknown"}
+                {p.employeeId
+                  ? (employeeMap.get(p.employeeId)?.displayName ?? "Unknown")
+                  : p.description?.includes("with love from")
+                    ? "Referral"
+                    : "External"}
               </TableCell>
               <TableCell>
-                <Badge variant="outline" className="capitalize">
-                  {p.type}
-                </Badge>
+                {p.description?.includes("with love from") ? (
+                  <Badge className="bg-purple-100 text-purple-700 border-purple-200">Referral</Badge>
+                ) : (
+                  <Badge variant="outline" className="capitalize">{p.type}</Badge>
+                )}
               </TableCell>
               <TableCell className="tabular-nums">
-                {formatCents(p.amountCents)}
+                {formatCents(p.amountCents, p.currency ?? "USD")}
               </TableCell>
               <TableCell>
                 <PaymentStatusBadge status={p.status} />
               </TableCell>
-              <TableCell className="max-w-48 truncate text-muted-foreground">
-                {p.description ?? "-"}
+              <TableCell className="max-w-64 text-muted-foreground">
+                {p.description?.includes("with love from") ? (
+                  <span>
+                    <span className="italic">{p.description.match(/with love from [^(]+/)?.[0]?.trim()}</span>
+                    <span className="text-xs ml-1 opacity-70">{p.description.match(/\(.*\)/)?.[0]}</span>
+                  </span>
+                ) : (
+                  <span className="truncate block max-w-48">{p.description ?? "-"}</span>
+                )}
               </TableCell>
               <TableCell className="text-muted-foreground">
                 {p.settledAt

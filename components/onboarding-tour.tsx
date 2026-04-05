@@ -91,7 +91,7 @@ const TOUR_STEPS: TourStep[] = [
   {
     selector: "[data-tour='employee-roster']",
     title: "Employee Management",
-    description: "Your team roster with wallet addresses, employment type, and salary-in-advance toggle. Each employee can request advances against their next paycheck.",
+    description: "Your team roster with wallet addresses, employment type, and salary-in-advance toggle. Pay a US dev in USDC and a Paris contractor in EURC — dual-currency payroll, native.",
     route: "/dashboard/employees",
     position: "bottom",
     emoji: "👥",
@@ -111,7 +111,7 @@ const TOUR_STEPS: TourStep[] = [
   {
     selector: "[data-tour='customer-list']",
     title: "Customers & Receivables",
-    description: "Track customers by type — companies, apps, autonomous agents, buyers. Any wallet that pays through WalletConnect Pay is auto-registered here.",
+    description: "Track customers by type — companies, apps, autonomous agents, buyers. Collected, pending, and overdue split by USDC and EURC. Any wallet that pays through WalletConnect Pay is auto-registered.",
     route: "/dashboard/customers",
     position: "bottom",
     emoji: "🤝",
@@ -120,7 +120,7 @@ const TOUR_STEPS: TourStep[] = [
   {
     selector: "[data-tour='treasury-balance']",
     title: "Treasury & Deposits",
-    description: "Your on-chain USDC balance. Deposit funds to your Payroll contract on Arc — each deposit is recorded in the ledger automatically.",
+    description: "Side-by-side USDC and EURC balances. Deposit on-chain, withdraw via CCTP to any supported chain — Arbitrum, Base, Polygon, and more. Every movement hits the ledger.",
     route: "/dashboard/treasury",
     position: "bottom",
     emoji: "🏦",
@@ -139,7 +139,7 @@ const TOUR_STEPS: TourStep[] = [
   {
     selector: "[data-tour='product-list']",
     title: "Products & Checkout Links",
-    description: "Create products, generate checkout links, and customize each with brand colors, celebration effects, and referral commissions. Share the link — customers pay via WalletConnect Pay.",
+    description: "Create products priced in USDC or EURC, generate checkout links, and customize each with brand colors, celebration effects, and referral commissions. Share the link — customers pay via WalletConnect Pay.",
     route: "/dashboard/products",
     position: "bottom",
     emoji: "🛒",

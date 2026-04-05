@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useCompany } from "@/hooks/use-company";
@@ -57,8 +57,19 @@ function TreasuryContent() {
     refetch: refetchOnChain,
   } = usePayrollBalance(payrollContractAddress);
 
+  const usdBalance = useQuery(
+    api.balances.getForCompany,
+    companyId ? { companyId, currency: "USD" } : "skip"
+  );
+  const eurBalance = useQuery(
+    api.balances.getForCompany,
+    companyId ? { companyId, currency: "EUR" } : "skip"
+  );
+
   const [showDeposit, setShowDeposit] = useState(false);
+  const [depositCurrency, setDepositCurrency] = useState<"USDC" | "EURC">("USDC");
   const [showWithdraw, setShowWithdraw] = useState(false);
+  const [withdrawCurrency, setWithdrawCurrency] = useState<"USD" | "EUR">("USD");
 
   const entries = useQuery(
     api.balances.getEntriesForCompany,
@@ -79,40 +90,45 @@ function TreasuryContent() {
 
   return (
     <div className="flex flex-col gap-4 p-4 lg:p-6">
-      {/* ─── On-Chain Contract ─── */}
-      {payrollContractAddress && (
-        <Card data-tour="treasury-balance">
+      {/* ─── Balances ─── */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2" data-tour="treasury-balance">
+        <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
-                <CardDescription>Available balance</CardDescription>
+                <CardDescription>USDC Balance</CardDescription>
                 <CardTitle className="text-3xl tabular-nums">
-                  {onChainLoading
-                    ? "..."
-                    : onChainBalance !== undefined
-                      ? `${onChainBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 })} USDC/EURC`
-                      : "N/A"}
+                  {usdBalance ? formatCents(usdBalance.availableCents, "USD") : "..."}
                 </CardTitle>
               </div>
               <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => void refetchOnChain()}
-                >
-                  Refresh
-                </Button>
-                <Button size="sm" onClick={() => setShowDeposit(true)}>
-                  Deposit
-                </Button>
-                <Button variant="outline" size="sm" onClick={() => setShowWithdraw(true)}>
-                  Withdraw
-                </Button>
+                {payrollContractAddress && (
+                  <Button size="sm" onClick={() => { setDepositCurrency("USDC"); setShowDeposit(true); }}>Deposit</Button>
+                )}
+                <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white" onClick={() => { setWithdrawCurrency("USD"); setShowWithdraw(true); }}>Withdraw</Button>
               </div>
             </div>
           </CardHeader>
         </Card>
-      )}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardDescription>EURC Balance</CardDescription>
+                <CardTitle className="text-3xl tabular-nums">
+                  {eurBalance ? formatCents(eurBalance.availableCents, "EUR") : "€0"}
+                </CardTitle>
+              </div>
+              <div className="flex gap-2">
+                {payrollContractAddress && (
+                  <Button size="sm" onClick={() => { setDepositCurrency("EURC"); setShowDeposit(true); }}>Deposit</Button>
+                )}
+                <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white" onClick={() => { setWithdrawCurrency("EUR"); setShowWithdraw(true); }}>Withdraw</Button>
+              </div>
+            </div>
+          </CardHeader>
+        </Card>
+      </div>
 
 
       {/* ─── Obligations & Receivables ─── */}
@@ -133,7 +149,8 @@ function TreasuryContent() {
                 </p>
               </div>
               <span className="text-sm font-medium tabular-nums">
-                {formatCents(stats.payrollDueCents)}
+                {formatCents(stats.payrollDueCents, "USD")}
+                {stats.payrollDueEurCents > 0 && <span className="ml-1.5 text-xs opacity-70">{formatCents(stats.payrollDueEurCents, "EUR")}</span>}
               </span>
             </div>
             <div className="flex items-center justify-between rounded-lg border p-3">
@@ -166,7 +183,8 @@ function TreasuryContent() {
                 </p>
               </div>
               <span className="text-sm font-medium tabular-nums">
-                {formatCents(stats.receivablesCents)}
+                {formatCents(stats.receivablesCents, "USD")}
+                {stats.receivablesEurCents > 0 && <span className="ml-1.5 text-xs opacity-70">{formatCents(stats.receivablesEurCents, "EUR")}</span>}
               </span>
             </div>
             <div className="flex items-center justify-between rounded-lg border p-3">
@@ -177,7 +195,8 @@ function TreasuryContent() {
                 </p>
               </div>
               <span className="text-sm font-medium tabular-nums">
-                {formatCents(stats.usageRevenueTodayCents)}
+                {formatCents(stats.usageRevenueTodayCents, "USD")}
+                {stats.usageRevenueTodayEurCents > 0 && <span className="ml-1.5 text-xs opacity-70">{formatCents(stats.usageRevenueTodayEurCents, "EUR")}</span>}
               </span>
             </div>
           </CardContent>
@@ -246,6 +265,7 @@ function TreasuryContent() {
         open={showDeposit}
         onOpenChange={setShowDeposit}
         contractAddress={payrollContractAddress}
+        currency={depositCurrency}
         onSuccess={() => void refetchOnChain()}
       />
 
@@ -254,6 +274,7 @@ function TreasuryContent() {
           open={showWithdraw}
           onOpenChange={setShowWithdraw}
           companyId={companyId}
+          initialCurrency={withdrawCurrency}
         />
       )}
     </div>
@@ -274,16 +295,18 @@ function WithdrawDialog({
   open,
   onOpenChange,
   companyId,
+  initialCurrency = "USD",
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   companyId: any;
+  initialCurrency?: "USD" | "EUR";
 }) {
-  const createPayment = useMutation(api.employeePayments.create);
   const debitBalance = useMutation(api.balances.debit);
   const [recipient, setRecipient] = useState("");
   const [amount, setAmount] = useState("");
-  const [currency, setCurrency] = useState<"USD" | "EUR">("USD");
+  const [currency, setCurrency] = useState<"USD" | "EUR">(initialCurrency);
+  useEffect(() => { setCurrency(initialCurrency); }, [initialCurrency]);
   const [chain, setChain] = useState("arc");
   const [description, setDescription] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
@@ -294,17 +317,7 @@ function WithdrawDialog({
 
     setIsProcessing(true);
     try {
-      // Create as an employee payment (freelance type, no employeeId)
-      await createPayment({
-        companyId,
-        type: "freelance",
-        amountCents: cents,
-        currency,
-        description: description || `Withdrawal to ${recipient.slice(0, 10)}... on ${chain}`,
-        walletAddress: recipient,
-      });
-
-      // Debit the treasury
+      // Debit the treasury and record as ledger entry
       await debitBalance({
         companyId,
         amountCents: cents,

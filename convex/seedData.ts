@@ -50,6 +50,7 @@ export const addEmployee = mutation({
       v.literal("biweekly"),
       v.literal("weekly")
     )),
+    payoutAsset: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const companyId = await resolveCompany(ctx, args.wallet);
@@ -64,6 +65,7 @@ export const addEmployee = mutation({
       status: "active" as const,
       email: args.email,
       walletAddress: args.employeeWallet,
+      payoutAsset: args.payoutAsset ?? "USDC",
     });
 
     // Create compensation line if salary provided
@@ -73,7 +75,7 @@ export const addEmployee = mutation({
         companyId,
         name: "Base Salary",
         amountCents: args.salaryAmountCents,
-        asset: "USDC",
+        asset: args.payoutAsset ?? "USDC",
         frequency: args.salaryFrequency ?? "monthly",
         isActive: true,
       });
@@ -342,5 +344,133 @@ export const seedFullDemo = mutation({
     });
 
     return { companyId, employees: empIds.length, customers: customers.length, products: products.length };
+  },
+});
+
+/**
+ * Seed a Paris contractor paid in EURC and a US dev paid in USDC.
+ * Demonstrates dual-currency payroll — a key differentiator.
+ *
+ * Usage:
+ *   npx convex run seedData:seedDualCurrencyTeam '{"wallet": "0x..."}'
+ */
+export const seedDualCurrencyTeam = mutation({
+  args: {
+    wallet: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const companyId = await resolveCompany(ctx, args.wallet);
+    const day = 86400000;
+    const now = Date.now();
+
+    // US dev — paid in USDC
+    const usDevId = await ctx.db.insert("employees", {
+      companyId,
+      displayName: "Ryan Mitchell",
+      role: "Senior Full-Stack Engineer",
+      employmentType: "full-time" as const,
+      walletVerified: true,
+      privacyLevel: "verified" as const,
+      status: "active" as const,
+      email: "ryan@arcdemo.co",
+      walletAddress: "0xba232D9C9A551a60ff20F9f6AA3BBb21FE55F909",
+      payoutAsset: "USDC",
+      compensationModel: "salary" as const,
+      payoutAmountCents: 1200000,
+      payoutFrequency: "monthly" as const,
+      jurisdiction: "US",
+      nextPaymentDate: now + 15 * day,
+    });
+
+    await ctx.db.insert("compensationLines", {
+      employeeId: usDevId,
+      companyId,
+      name: "Base Salary",
+      amountCents: 1200000,
+      asset: "USDC",
+      frequency: "monthly",
+      isActive: true,
+    });
+
+    // Paris contractor — paid in EURC
+    const parisDevId = await ctx.db.insert("employees", {
+      companyId,
+      displayName: "Camille Dupont",
+      role: "Smart Contract Auditor",
+      employmentType: "contractor" as const,
+      walletVerified: true,
+      privacyLevel: "verified" as const,
+      status: "active" as const,
+      email: "camille@arcdemo.co",
+      walletAddress: "0xC4e20D8eB3D5A85B6523f6A8C0b2D28E79b03B77",
+      payoutAsset: "EURC",
+      compensationModel: "salary" as const,
+      payoutAmountCents: 950000,
+      payoutFrequency: "monthly" as const,
+      jurisdiction: "FR",
+      nextPaymentDate: now + 15 * day,
+    });
+
+    await ctx.db.insert("compensationLines", {
+      employeeId: parisDevId,
+      companyId,
+      name: "Base Salary",
+      amountCents: 950000,
+      asset: "EURC",
+      frequency: "monthly",
+      isActive: true,
+    });
+
+    // Create payments: settled March + draft April for both
+    await ctx.db.insert("employeePayments", {
+      companyId,
+      employeeId: usDevId,
+      type: "salary",
+      amountCents: 1200000,
+      currency: "USD",
+      status: "settled",
+      description: "March salary — USDC",
+      settledAt: now - 5 * day,
+    });
+
+    await ctx.db.insert("employeePayments", {
+      companyId,
+      employeeId: usDevId,
+      type: "salary",
+      amountCents: 1200000,
+      currency: "USD",
+      status: "draft",
+      description: "April salary — USDC",
+      scheduledDate: now + 15 * day,
+    });
+
+    await ctx.db.insert("employeePayments", {
+      companyId,
+      employeeId: parisDevId,
+      type: "salary",
+      amountCents: 950000,
+      currency: "EUR",
+      status: "settled",
+      description: "March salary — EURC",
+      settledAt: now - 5 * day,
+    });
+
+    await ctx.db.insert("employeePayments", {
+      companyId,
+      employeeId: parisDevId,
+      type: "salary",
+      amountCents: 950000,
+      currency: "EUR",
+      status: "draft",
+      description: "April salary — EURC",
+      scheduledDate: now + 15 * day,
+    });
+
+    return {
+      companyId,
+      usDevId,
+      parisDevId,
+      message: "Ryan (US, $12K USDC/mo) + Camille (Paris, €9.5K EURC/mo) seeded with March settled + April draft",
+    };
   },
 });

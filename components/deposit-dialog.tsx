@@ -22,11 +22,13 @@ export function DepositDialog({
   onOpenChange,
   contractAddress,
   onSuccess,
+  currency = "USDC",
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   contractAddress: `0x${string}` | undefined;
   onSuccess?: () => void;
+  currency?: "USDC" | "EURC";
 }) {
   const [amount, setAmount] = useState("");
   const { sendTransaction, data: txHash, isPending, reset } = useSendTransaction();
@@ -68,14 +70,14 @@ export function DepositDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Deposit USDC to payroll contract</DialogTitle>
+          <DialogTitle>Deposit {currency} to payroll contract</DialogTitle>
           <DialogDescription>
-            Send native USDC to fund your payroll contract on Arc testnet.
+            Send {currency} to fund your payroll contract on Arc testnet.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
           <div className="grid gap-2">
-            <Label>Amount (USDC)</Label>
+            <Label>Amount ({currency})</Label>
             <Input
               type="number"
               step="0.01"

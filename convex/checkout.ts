@@ -239,7 +239,7 @@ export const confirmPayment = mutation({
             amountCents: commissionCents,
             currency: payment.currency,
             status: "draft" as const,
-            description: `Referral commission: ${link.referralName} — ${link.referralPercentage}% of ${payment.description ?? "checkout payment"}`,
+            description: `Referral commission — with love from ${link.referralName} (${link.referralPercentage}% of ${payment.description ?? "checkout payment"})`,
             walletAddress: link.referralWalletAddress,
           });
         }

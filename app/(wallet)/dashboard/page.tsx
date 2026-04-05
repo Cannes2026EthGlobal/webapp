@@ -56,20 +56,20 @@ function OverviewContent() {
     },
     {
       title: "Payroll due",
-      value: formatCents(stats.payrollDueCents),
+      value: formatCents(stats.payrollDueCents, "USD") + (stats.payrollDueEurCents > 0 ? ` + ${formatCents(stats.payrollDueEurCents, "EUR")}` : ""),
       trend: `${stats.payrollDueCount} pending`,
       direction: "down" as const,
     },
     {
       title: "Receivables",
-      value: formatCents(stats.receivablesCents),
+      value: formatCents(stats.receivablesCents, "USD") + (stats.receivablesEurCents > 0 ? ` + ${formatCents(stats.receivablesEurCents, "EUR")}` : ""),
       trend: `${stats.receivablesCount} pending`,
       direction: "up" as const,
     },
     {
       title: "Revenue today",
-      value: formatCents(stats.usageRevenueTodayCents),
-      trend: stats.usageRevenueTodayCents > 0 ? "Active" : "No activity",
+      value: formatCents(stats.usageRevenueTodayCents, "USD") + (stats.usageRevenueTodayEurCents > 0 ? ` + ${formatCents(stats.usageRevenueTodayEurCents, "EUR")}` : ""),
+      trend: (stats.usageRevenueTodayCents + stats.usageRevenueTodayEurCents) > 0 ? "Active" : "No activity",
       direction: "up" as const,
     },
   ];
@@ -77,19 +77,19 @@ function OverviewContent() {
   const bottomCards = [
     {
       title: "Total collected",
-      value: formatCents(stats.totalCollectedCents),
+      value: formatCents(stats.totalCollectedCents, "USD") + (stats.totalCollectedEurCents > 0 ? ` + ${formatCents(stats.totalCollectedEurCents, "EUR")}` : ""),
       trend: `${stats.activeCustomers} customers`,
       direction: "up" as const,
     },
     {
       title: "Total paid out",
-      value: formatCents(stats.totalPaidOutCents),
+      value: formatCents(stats.totalPaidOutCents, "USD") + (stats.totalPaidOutEurCents > 0 ? ` + ${formatCents(stats.totalPaidOutEurCents, "EUR")}` : ""),
       trend: `${stats.activeEmployees} employees`,
       direction: "down" as const,
     },
     {
       title: "Overdue",
-      value: formatCents(stats.overdueCents),
+      value: formatCents(stats.overdueCents, "USD") + (stats.overdueEurCents > 0 ? ` + ${formatCents(stats.overdueEurCents, "EUR")}` : ""),
       trend: stats.overdueCount > 0 ? `${stats.overdueCount} overdue` : "None",
       direction: "down" as const,
     },
@@ -175,6 +175,7 @@ function RecentActivity() {
       type: "outbound" as const,
       description: p.description ?? `${p.type} payment`,
       amount: p.amountCents,
+      currency: (p.currency ?? "USD") as "USD" | "EUR",
       status: p.status,
       time: p._creationTime,
     })),
@@ -183,6 +184,7 @@ function RecentActivity() {
       type: "inbound" as const,
       description: p.description ?? `${p.mode} payment`,
       amount: p.amountCents,
+      currency: (p.currency ?? "USD") as "USD" | "EUR",
       status: p.status,
       time: p._creationTime,
     })),
@@ -226,7 +228,7 @@ function RecentActivity() {
                   <StatusBadge status={payment.status} />
                   <span className="text-sm font-medium tabular-nums">
                     {payment.type === "inbound" ? "+" : "-"}
-                    {formatCents(payment.amount)}
+                    {formatCents(payment.amount, payment.currency)}
                   </span>
                 </div>
               </div>

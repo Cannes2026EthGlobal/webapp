@@ -93,23 +93,31 @@ export const stats = query({
     const todayMs = todayStart.getTime();
 
     let payrollDueCents = 0;
+    let payrollDueEurCents = 0;
     const duePayments = [...pendingPayroll, ...approvedPayroll];
     for (const p of duePayments) {
-      payrollDueCents += p.amountCents;
+      if (p.currency === "EUR") payrollDueEurCents += p.amountCents;
+      else payrollDueCents += p.amountCents;
     }
 
     let receivablesCents = 0;
+    let receivablesEurCents = 0;
     const allReceivables = [...pendingReceivables, ...sentReceivables];
     for (const r of allReceivables) {
-      receivablesCents += r.amountCents;
+      if (r.currency === "EUR") receivablesEurCents += r.amountCents;
+      else receivablesCents += r.amountCents;
     }
 
     let usageRevenueTodayCents = 0;
+    let usageRevenueTodayEurCents = 0;
     let totalCollectedCents = 0;
+    let totalCollectedEurCents = 0;
     for (const p of paidToday) {
-      totalCollectedCents += p.amountCents;
+      if (p.currency === "EUR") totalCollectedEurCents += p.amountCents;
+      else totalCollectedCents += p.amountCents;
       if (p.paidAt && p.paidAt >= todayMs) {
-        usageRevenueTodayCents += p.amountCents;
+        if (p.currency === "EUR") usageRevenueTodayEurCents += p.amountCents;
+        else usageRevenueTodayCents += p.amountCents;
       }
     }
 
@@ -121,8 +129,10 @@ export const stats = query({
       )
       .take(200);
     let totalPaidOutCents = 0;
+    let totalPaidOutEurCents = 0;
     for (const p of settledPayroll) {
-      totalPaidOutCents += p.amountCents;
+      if (p.currency === "EUR") totalPaidOutEurCents += p.amountCents;
+      else totalPaidOutCents += p.amountCents;
     }
 
     // Overdue receivables
@@ -133,8 +143,10 @@ export const stats = query({
       )
       .take(200);
     let overdueCents = 0;
+    let overdueEurCents = 0;
     for (const r of overdueReceivables) {
-      overdueCents += r.amountCents;
+      if (r.currency === "EUR") overdueEurCents += r.amountCents;
+      else overdueCents += r.amountCents;
     }
 
     // Active customers count
@@ -168,13 +180,19 @@ export const stats = query({
       totalCreditedCents: balance?.totalCreditedCents ?? 0,
       totalDebitedCents: balance?.totalDebitedCents ?? 0,
       payrollDueCents,
+      payrollDueEurCents,
       payrollDueCount: duePayments.length,
       receivablesCents,
+      receivablesEurCents,
       receivablesCount: allReceivables.length,
       usageRevenueTodayCents,
+      usageRevenueTodayEurCents,
       totalCollectedCents,
+      totalCollectedEurCents,
       totalPaidOutCents,
+      totalPaidOutEurCents,
       overdueCents,
+      overdueEurCents,
       overdueCount: overdueReceivables.length,
       activeEmployees: employees.length,
       activeCustomers: activeCustomers.length,
