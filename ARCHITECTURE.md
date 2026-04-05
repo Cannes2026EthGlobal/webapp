@@ -172,7 +172,7 @@ graph TB
     Dispatch -->|viem + RPC| ArbitrumSepolia
     Dispatch -->|viem + RPC| BaseSepolia
     CRETrigger -->|Confidential HTTP| ChainlinkCRE
-    ChainlinkCRE -->|onReport()| PayrollContract
+    ChainlinkCRE -->|"onReport()"| PayrollContract
 
     %% Blockchain cross-chain
     CircleCCTP -->|Burn/Mint| ArcTestnet
@@ -214,22 +214,22 @@ graph TB
 
 ```mermaid
 sequenceDiagram
-    participant Op as Operator (Dashboard)
+    participant Op as Operator Dashboard
     participant CX as Convex Backend
     participant CRE as Chainlink CRE
-    participant PS as Payroll.sol (Arc)
+    participant PAY as Payroll.sol on Arc
     participant EW as Employee Wallet
 
-    Op->>CX: Create salary payment (draft)
+    Op->>CX: Create salary payment draft
     Op->>CX: Approve payment batch
     CX->>CX: employeePayments status → approved
-    CRE->>CX: Fetch pending payments (Confidential HTTP)
-    CX-->>CRE: Return (recipient, amount) pairs
-    CRE->>CRE: Encode report on DON (WASM)
-    CRE->>PS: KeystoneForwarder → onReport()
-    PS->>PS: _processReport() — decode recipients
-    PS->>EW: Transfer USDC to each employee
-    PS-->>CX: Emit event (txHash)
+    CRE->>CX: Fetch pending payments via Confidential HTTP
+    CX-->>CRE: Return recipient + amount pairs
+    CRE->>CRE: Encode report on DON via WASM
+    CRE->>PAY: KeystoneForwarder → onReport
+    PAY->>PAY: _processReport — decode recipients
+    PAY->>EW: Transfer USDC to each employee
+    PAY-->>CX: Emit event with txHash
     CX->>CX: employeePayments status → settled
 ```
 
@@ -244,20 +244,20 @@ sequenceDiagram
     participant CX as Convex Backend
     participant DP as Dispatch Action
 
-    CU->>CK: Visit /checkout/[slug]
-    CK->>API: POST (productId, amount, currency)
-    API->>CX: checkout.initiateCheckout()
-    CX->>CX: Create customerPayment (pending)
-    API->>WC: createPayment(referenceId, amount)
+    CU->>CK: Visit /checkout/slug
+    CK->>API: POST productId, amount, currency
+    API->>CX: checkout.initiateCheckout
+    CX->>CX: Create customerPayment as pending
+    API->>WC: createPayment with referenceId + amount
     WC-->>API: Return gatewayUrl + paymentId
     API-->>CK: Redirect to WC Pay gateway
     CU->>WC: Pay via wallet
-    WC->>API: Webhook (status: succeeded)
-    API->>CX: customerPayments.recordWcPaySuccess()
+    WC->>API: Webhook — status succeeded
+    API->>CX: customerPayments.recordWcPaySuccess
     CX->>CX: Status → paid
-    CX->>DP: dispatchRecords.create()
+    CX->>DP: dispatchRecords.create
     DP->>DP: Send USDC to company treasury
-    DP->>CX: dispatchRecords.updateStatus(confirmed)
+    DP->>CX: dispatchRecords.updateStatus confirmed
 ```
 
 ### Usage-Based Billing Flow
@@ -267,15 +267,15 @@ sequenceDiagram
     participant Dev as Developer / Agent
     participant API as /api/usage/record
     participant CX as Convex Backend
-    participant Op as Operator (Dashboard)
+    participant Op as Operator Dashboard
     participant WC as WalletConnect Pay
 
-    Dev->>API: POST usage event (units, productId)
-    API->>CX: usageTabs.recordUsage()
+    Dev->>API: POST usage event — units, productId
+    API->>CX: usageTabs.recordUsage
     CX->>CX: Create or append to open tab
     CX->>CX: Insert usageEntry (audit)
     Note over CX: Tab accumulates usage over time
-    Op->>CX: Bill tab (usageTabs.billTab)
+    Op->>CX: Bill tab — usageTabs.billTab
     CX->>CX: Tab status → billed
     CX->>CX: Create customerPayment
     CX->>WC: Generate checkout link
@@ -290,21 +290,21 @@ sequenceDiagram
     participant EE as Employee
     participant EP as Employee Portal
     participant CX as Convex Backend
-    participant Op as Operator (Dashboard)
-    participant AE as AdvanceEscrow.sol (Arc)
+    participant Op as Operator Dashboard
+    participant AE as AdvanceEscrow.sol on Arc
 
     EE->>EP: View salary forecast
-    EE->>EP: Request advance (amount, reason)
-    EP->>CX: creditRequests.create(pending)
-    CX->>CX: Calculate interest (rate × days)
-    Op->>CX: creditRequests.approveRequest()
+    EE->>EP: Request advance — amount + reason
+    EP->>CX: creditRequests.create as pending
+    CX->>CX: Calculate interest — rate × days
+    Op->>CX: creditRequests.approveRequest
     CX->>CX: Status → approved
-    Op->>AE: createAdvance(employee, amount, repayDate)
+    Op->>AE: createAdvance — employee, amount, repayDate
     AE->>AE: Escrow USDC
     AE->>EE: Release advance to wallet
     Note over AE: At next paycheck cycle
-    AE->>AE: deductFromPayroll(principal + interest)
-    EE->>AE: repayAdvance()
+    AE->>AE: deductFromPayroll — principal + interest
+    EE->>AE: repayAdvance
     AE-->>CX: Advance settled
     CX->>CX: creditRequests status → settled
 ```
@@ -315,26 +315,26 @@ sequenceDiagram
 sequenceDiagram
     participant U as User
     participant RO as Reown AppKit
-    participant FE as Frontend (Next.js)
+    participant FE as Frontend Next.js
     participant CX as Convex Backend
 
     U->>RO: Connect Wallet
     RO-->>FE: wallet address
-    FE->>CX: users.getByWallet(address)
+    FE->>CX: users.getByWallet address
     alt New user
         CX-->>FE: null
-        FE->>CX: users.createOrUpdate(address)
+        FE->>CX: users.createOrUpdate address
         CX-->>FE: userId
     else Existing user
         CX-->>FE: user record
     end
-    FE->>CX: companies.getByUserId(userId)
+    FE->>CX: companies.getByUserId userId
     CX-->>FE: company list
     alt No companies
         FE->>FE: Show Onboarding Wizard
-        FE->>CX: companies.create(name, details)
+        FE->>CX: companies.create — name, details
     else Has companies
-        FE->>FE: Select active company (localStorage)
+        FE->>FE: Select active company from localStorage
     end
     FE->>FE: Render Dashboard Shell
 ```
