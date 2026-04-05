@@ -108,8 +108,11 @@ export const updateStatus = mutation({
 
     // When settling, debit the treasury
     if (args.status === "settled") {
-      const employee = await ctx.db.get(payment.employeeId);
-      const employeeName = employee?.displayName ?? "Unknown";
+      let employeeName = "Unknown";
+      if (payment.employeeId) {
+        const employee = await ctx.db.get(payment.employeeId);
+        employeeName = employee?.displayName ?? "Unknown";
+      }
 
       await debitBalance(ctx, {
         companyId: payment.companyId,
