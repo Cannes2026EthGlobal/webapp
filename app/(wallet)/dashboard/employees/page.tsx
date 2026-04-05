@@ -317,7 +317,7 @@ function EmployeesContent({
                         </Badge>
                       </TableCell>
                       <TableCell className="tabular-nums">
-                        {formatCents(emp.payoutAmountCents ?? 0, emp.payoutAsset === "EURC" ? "EUR" : "USD")}/{emp.payoutFrequency ?? "—"}
+                        {formatCents(emp.totalCompensationCents || emp.payoutAmountCents || 0, emp.payoutAsset === "EURC" ? "EUR" : "USD")}/{emp.payoutFrequency ?? "—"}
                       </TableCell>
                       <TableCell className="text-muted-foreground">
                         {emp.nextPaymentDate
