@@ -1,18 +1,36 @@
 "use client";
 
 import { useState } from "react";
-import { useQuery } from "convex/react";
+import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useCompany } from "@/hooks/use-company";
 import { useBusinessProfile } from "@/hooks/use-business-profile";
 import { usePayrollBalance } from "@/hooks/use-payroll-contract";
 import { formatCents, formatDate } from "@/lib/format";
+import { toast } from "sonner";
 
 import { PageHeader } from "@/components/page-header";
 import { CompanyGuard } from "@/components/company-guard";
 import { DepositDialog } from "@/components/deposit-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Card,
   CardContent,
@@ -40,6 +58,7 @@ function TreasuryContent() {
   } = usePayrollBalance(payrollContractAddress);
 
   const [showDeposit, setShowDeposit] = useState(false);
+  const [showWithdraw, setShowWithdraw] = useState(false);
 
   const entries = useQuery(
     api.balances.getEntriesForCompany,
@@ -71,7 +90,7 @@ function TreasuryContent() {
                   {onChainLoading
                     ? "..."
                     : onChainBalance !== undefined
-                      ? `${onChainBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 })} USDC`
+                      ? `${onChainBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 })} USDC/EURC`
                       : "N/A"}
                 </CardTitle>
               </div>
@@ -85,6 +104,9 @@ function TreasuryContent() {
                 </Button>
                 <Button size="sm" onClick={() => setShowDeposit(true)}>
                   Deposit
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => setShowWithdraw(true)}>
+                  Withdraw
                 </Button>
               </div>
             </div>
@@ -226,7 +248,136 @@ function TreasuryContent() {
         contractAddress={payrollContractAddress}
         onSuccess={() => void refetchOnChain()}
       />
+
+      {companyId && (
+        <WithdrawDialog
+          open={showWithdraw}
+          onOpenChange={setShowWithdraw}
+          companyId={companyId}
+        />
+      )}
     </div>
+  );
+}
+
+const SUPPORTED_CHAINS = [
+  { value: "arc", label: "Arc" },
+  { value: "arbitrum", label: "Arbitrum" },
+  { value: "base", label: "Base" },
+  { value: "ethereum", label: "Ethereum" },
+  { value: "optimism", label: "Optimism" },
+  { value: "polygon", label: "Polygon" },
+  { value: "avalanche", label: "Avalanche" },
+];
+
+function WithdrawDialog({
+  open,
+  onOpenChange,
+  companyId,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  companyId: any;
+}) {
+  const createPayment = useMutation(api.employeePayments.create);
+  const debitBalance = useMutation(api.balances.debit);
+  const [recipient, setRecipient] = useState("");
+  const [amount, setAmount] = useState("");
+  const [currency, setCurrency] = useState<"USD" | "EUR">("USD");
+  const [chain, setChain] = useState("arc");
+  const [description, setDescription] = useState("");
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  const handleWithdraw = async () => {
+    const cents = Math.round(parseFloat(amount || "0") * 100);
+    if (!recipient || cents <= 0) return;
+
+    setIsProcessing(true);
+    try {
+      // Create as an employee payment (freelance type, no employeeId)
+      await createPayment({
+        companyId,
+        type: "freelance",
+        amountCents: cents,
+        currency,
+        description: description || `Withdrawal to ${recipient.slice(0, 10)}... on ${chain}`,
+        walletAddress: recipient,
+      });
+
+      // Debit the treasury
+      await debitBalance({
+        companyId,
+        amountCents: cents,
+        currency,
+        reason: `Withdrawal via CCTP — ${amount} ${currency === "EUR" ? "EURC" : "USDC"} to ${recipient.slice(0, 10)}... on ${chain}`,
+      });
+
+      toast.success(`Withdrawal of ${amount} ${currency === "EUR" ? "EURC" : "USDC"} to ${chain} recorded`);
+      onOpenChange(false);
+      setRecipient("");
+      setAmount("");
+      setDescription("");
+    } catch (e: any) {
+      toast.error(e.message ?? "Withdrawal failed");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Withdraw via CCTP</DialogTitle>
+          <DialogDescription>
+            Send USDC or EURC to any address on any CCTP-supported chain
+          </DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-4 py-4">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="grid gap-2">
+              <Label>Chain</Label>
+              <Select value={chain} onValueChange={setChain}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {SUPPORTED_CHAINS.map((c) => (
+                    <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label>Currency</Label>
+              <Select value={currency} onValueChange={(v) => setCurrency(v as "USD" | "EUR")}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="USD">USDC</SelectItem>
+                  <SelectItem value="EUR">EURC</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="grid gap-2">
+            <Label>Recipient address</Label>
+            <Input placeholder="0x..." value={recipient} onChange={(e) => setRecipient(e.target.value)} />
+          </div>
+          <div className="grid gap-2">
+            <Label>Amount ({currency === "EUR" ? "EURC" : "USDC"})</Label>
+            <Input type="number" step="any" min="0" placeholder="100.00" value={amount} onChange={(e) => setAmount(e.target.value)} />
+          </div>
+          <div className="grid gap-2">
+            <Label>Description (optional)</Label>
+            <Input placeholder="e.g. Vendor payment, Treasury rebalance" value={description} onChange={(e) => setDescription(e.target.value)} />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isProcessing}>Cancel</Button>
+          <Button onClick={() => void handleWithdraw()} disabled={isProcessing || !recipient || !amount}>
+            {isProcessing ? "Processing..." : `Withdraw ${currency === "EUR" ? "EURC" : "USDC"}`}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
