@@ -62,13 +62,22 @@ type TourStep = {
 
 const TOUR_STEPS: TourStep[] = [
   {
-    selector: "[data-tour='overview']",
-    title: "Welcome to Arc Counting 🚀",
-    description: "Your dashboard shows 8 real-time KPIs: treasury, payroll, receivables, revenue, overdue invoices, and salary advance requests.",
+    selector: "#tour-hero-anchor",
+    title: "Welcome to Arc Counting",
+    description: "The accounting backbone for the on-chain economy. We'll walk you through everything your dashboard can do — payroll, invoicing, salary advances, checkout links, AI insights, and more. Let's get started!",
     route: "/dashboard",
     position: "bottom",
     effect: "fireworks",
     emoji: "🚀",
+    highlight: "green",
+  },
+  {
+    selector: "[data-tour='overview']",
+    title: "Your Command Center",
+    description: "8 real-time KPIs: treasury balance, payroll obligations, receivables, revenue, overdue invoices, and pending salary advance requests.",
+    route: "/dashboard",
+    position: "bottom",
+    emoji: "📊",
     highlight: "green",
   },
   {
@@ -314,18 +323,32 @@ export function OnboardingTour() {
       {showEffect && currentStep.effect && <ParticleEffect type={currentStep.effect} />}
 
       {/* Overlay */}
-      <div className="fixed inset-0 z-[9998] transition-opacity duration-500" style={{ backgroundColor: "rgba(0, 0, 0, 0.65)" }} onClick={finish} />
+      <div className="fixed inset-0 z-[9998] transition-opacity duration-500" style={{ backgroundColor: "rgba(0, 0, 0, 0.8)" }} onClick={finish} />
 
       {/* Highlight */}
       {!navigating && (
         <div className="fixed z-[9999] pointer-events-none transition-all duration-500 ease-out" style={{
           ...highlightStyle,
-          boxShadow: `0 0 0 9999px rgba(0, 0, 0, 0.65), 0 0 30px 8px ${colors.glow}`,
+          boxShadow: `0 0 0 9999px rgba(0, 0, 0, 0.8), 0 0 40px 12px ${colors.glow}, inset 0 0 20px 4px rgba(255, 255, 255, 0.1)`,
           border: `2px solid ${colors.border}`,
+          backgroundColor: "rgba(255, 255, 255, 0.05)",
         }} />
       )}
 
-      {/* Tooltip */}
+      {/* Tooltip — Hero mode for step 0, normal for others */}
+      {step === 0 ? (
+        <div className="fixed z-[10000] inset-0 flex items-center justify-center pointer-events-none">
+          <div className="pointer-events-auto rounded-2xl border bg-card shadow-2xl p-8 text-center max-w-lg mx-4 transition-all duration-700 ease-out" style={{ boxShadow: `0 0 60px 20px ${colors.glow}` }}>
+            <div className="text-5xl mb-4">🚀</div>
+            <h2 className="text-2xl font-semibold mb-2">{currentStep.title}</h2>
+            <p className="text-muted-foreground leading-relaxed mb-6">{currentStep.description}</p>
+            <div className="flex gap-3 justify-center">
+              <Button variant="ghost" onClick={finish}>Skip tour</Button>
+              <Button size="lg" onClick={next} style={{ backgroundColor: colors.border }}>Let&apos;s go →</Button>
+            </div>
+          </div>
+        </div>
+      ) : (
       <div className="fixed z-[10000] rounded-xl border bg-card shadow-2xl transition-all duration-500 ease-out" style={{ ...tooltipStyle, width: 400, maxWidth: "calc(100vw - 32px)" }}>
         <div className="p-5">
           <div className="flex items-start justify-between gap-2 mb-3">
@@ -365,6 +388,7 @@ export function OnboardingTour() {
           </div>
         </div>
       </div>
+      )}
     </>
   );
 }
