@@ -98,7 +98,7 @@ function ProductsContent({
 
   return (
     <div className="flex flex-col gap-4 p-4 lg:p-6">
-      <div className="space-y-4">
+      <div className="space-y-4" data-tour="product-list">
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">

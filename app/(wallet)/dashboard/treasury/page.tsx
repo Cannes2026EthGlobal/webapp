@@ -62,7 +62,7 @@ function TreasuryContent() {
     <div className="flex flex-col gap-4 p-4 lg:p-6">
       {/* ─── On-Chain Contract ─── */}
       {payrollContractAddress && (
-        <Card>
+        <Card data-tour="treasury-balance">
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
@@ -176,7 +176,7 @@ function TreasuryContent() {
       </div>
 
       {/* ─── Ledger Entries ─── */}
-      <Card>
+      <Card data-tour="ledger-entries">
         <CardHeader>
           <CardTitle>Ledger Entries</CardTitle>
           <CardDescription>
