@@ -71,27 +71,16 @@ const navItems = [
     url: "/dashboard/products",
     icon: <HugeiconsIcon icon={Database01Icon} strokeWidth={2} />,
   },
-  // ─── AI ───
+  // ─── AI & Platform ───
   {
-    title: "AI Insights",
-    url: "/dashboard/ai-insights",
-    icon: <HugeiconsIcon icon={SparklesIcon} strokeWidth={2} />,
-  },
-  {
-    title: "AI Chat",
-    url: "/dashboard/ai-chat",
-    icon: <HugeiconsIcon icon={AiChat02Icon} strokeWidth={2} />,
-  },
-  // ─── Platform ───
-  {
-    title: "Agents",
+    title: "AI & Agents",
     url: "/dashboard/agents",
-    icon: <HugeiconsIcon icon={CommandIcon} strokeWidth={2} />,
+    icon: <HugeiconsIcon icon={SparklesIcon} strokeWidth={2} />,
   },
   {
     title: "Integration",
     url: "/dashboard/integration",
-    icon: <HugeiconsIcon icon={CommandIcon} strokeWidth={2} />,
+    icon: <HugeiconsIcon icon={Database01Icon} strokeWidth={2} />,
   },
 ];
 

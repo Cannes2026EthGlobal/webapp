@@ -1,5 +1,6 @@
 "use client";
 
+import { usePathname } from "next/navigation";
 import { useChat, type UIMessage } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import ReactMarkdown from "react-markdown";
@@ -556,13 +557,40 @@ function AIChatContent() {
   );
 }
 
+function AiNav() {
+  const pathname = usePathname();
+  const tabs = [
+    { label: "Agents", href: "/dashboard/agents" },
+    { label: "AI Insights", href: "/dashboard/ai-insights" },
+    { label: "AI Chat", href: "/dashboard/ai-chat" },
+  ];
+  return (
+    <div className="flex gap-1 border-b px-4 lg:px-6">
+      {tabs.map((tab) => (
+        <a
+          key={tab.href}
+          href={tab.href}
+          className={`px-3 py-2 text-sm font-medium transition-colors ${
+            pathname === tab.href
+              ? "border-b-2 border-primary text-foreground"
+              : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          {tab.label}
+        </a>
+      ))}
+    </div>
+  );
+}
+
 export default function AIChatPage() {
   return (
     <>
       <PageHeader
-        title="AI Chat"
-        description="Conversational assistant with full platform access"
+        title="AI & Agents"
+        description="Agent billing, AI insights, and AI-powered business chat"
       />
+      <AiNav />
       <CompanyGuard>
         <AIChatContent />
       </CompanyGuard>

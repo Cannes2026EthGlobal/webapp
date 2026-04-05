@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { usePathname } from "next/navigation";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useCompany } from "@/hooks/use-company";
@@ -581,13 +582,40 @@ function AgentsContent() {
   );
 }
 
+function AiNav() {
+  const pathname = usePathname();
+  const tabs = [
+    { label: "Agents", href: "/dashboard/agents" },
+    { label: "AI Insights", href: "/dashboard/ai-insights" },
+    { label: "AI Chat", href: "/dashboard/ai-chat" },
+  ];
+  return (
+    <div className="flex gap-1 border-b px-4 lg:px-6">
+      {tabs.map((tab) => (
+        <a
+          key={tab.href}
+          href={tab.href}
+          className={`px-3 py-2 text-sm font-medium transition-colors ${
+            pathname === tab.href
+              ? "border-b-2 border-primary text-foreground"
+              : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          {tab.label}
+        </a>
+      ))}
+    </div>
+  );
+}
+
 export default function AgentsPage() {
   return (
     <>
       <PageHeader
-        title="Agents"
-        description="API keys, billing sessions, and agent-to-agent settlements"
+        title="AI & Agents"
+        description="Agent billing, AI insights, and AI-powered business chat"
       />
+      <AiNav />
       <div className="flex flex-1 flex-col">
         <div className="@container/main flex flex-1 flex-col gap-2">
           <CompanyGuard>
