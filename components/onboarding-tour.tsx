@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 
@@ -62,13 +62,22 @@ type TourStep = {
 
 const TOUR_STEPS: TourStep[] = [
   {
-    selector: "[data-tour='overview']",
-    title: "Welcome to Arc Counting 🚀",
-    description: "Your dashboard shows 8 real-time KPIs: treasury, payroll, receivables, revenue, overdue invoices, and salary advance requests.",
+    selector: "#tour-hero-anchor",
+    title: "Welcome to Arc Counting",
+    description: "The accounting backbone for the on-chain economy. We'll walk you through everything your dashboard can do — payroll, invoicing, salary advances, checkout links, AI insights, and more. Let's get started!",
     route: "/dashboard",
     position: "bottom",
     effect: "fireworks",
     emoji: "🚀",
+    highlight: "green",
+  },
+  {
+    selector: "[data-tour='overview']",
+    title: "Your Command Center",
+    description: "8 real-time KPIs: treasury balance, payroll obligations, receivables, revenue, overdue invoices, and pending salary advance requests.",
+    route: "/dashboard",
+    position: "bottom",
+    emoji: "📊",
     highlight: "green",
   },
   {
@@ -186,6 +195,7 @@ export function OnboardingTour() {
   const [highlightStyle, setHighlightStyle] = useState<React.CSSProperties>({});
   const [showEffect, setShowEffect] = useState(false);
   const [navigating, setNavigating] = useState(false);
+  const highlightedElRef = useRef<Element | null>(null);
   const router = useRouter();
   const pathname = usePathname();
 
@@ -197,13 +207,43 @@ export function OnboardingTour() {
     }
   }, [pathname]);
 
+  // Boost brightness of highlighted element
+  useEffect(() => {
+    // Clean up previous
+    if (highlightedElRef.current) {
+      const el = highlightedElRef.current as HTMLElement;
+      el.style.removeProperty("filter");
+      el.style.removeProperty("z-index");
+      el.style.removeProperty("position");
+      highlightedElRef.current = null;
+    }
+
+    if (!active || navigating || step === 0) return;
+
+    const currentStep = TOUR_STEPS[step];
+    const el = document.querySelector(currentStep.selector);
+    if (!el) return;
+
+    const htmlEl = el as HTMLElement;
+    htmlEl.style.filter = "brightness(1.4)";
+    htmlEl.style.zIndex = "9999";
+    htmlEl.style.position = "relative";
+    highlightedElRef.current = el;
+
+    return () => {
+      htmlEl.style.removeProperty("filter");
+      htmlEl.style.removeProperty("z-index");
+      htmlEl.style.removeProperty("position");
+    };
+  }, [active, step, navigating]);
+
   const positionTooltip = useCallback(() => {
     if (!active || navigating) return;
     const currentStep = TOUR_STEPS[step];
     const el = document.querySelector(currentStep.selector);
 
-    const tooltipW = 400;
-    const tooltipH = 230;
+    const tooltipW = 440;
+    const tooltipH = 260;
     const pad = 12;
     const vw = window.innerWidth;
     const vh = window.innerHeight;
@@ -304,6 +344,18 @@ export function OnboardingTour() {
   const prev = () => { if (step > 0) setStep(step - 1); };
   const finish = () => { setActive(false); setStep(0); localStorage.setItem(TOUR_KEY, "true"); };
 
+  // Keyboard navigation
+  useEffect(() => {
+    if (!active) return;
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "ArrowRight" || e.key === "Enter") next();
+      else if (e.key === "ArrowLeft") prev();
+      else if (e.key === "Escape") finish();
+    };
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  });
+
   if (!active) return null;
 
   const currentStep = TOUR_STEPS[step];
@@ -314,37 +366,48 @@ export function OnboardingTour() {
       {showEffect && currentStep.effect && <ParticleEffect type={currentStep.effect} />}
 
       {/* Overlay */}
-      <div className="fixed inset-0 z-[9998] transition-opacity duration-500" style={{ backgroundColor: "rgba(0, 0, 0, 0.65)" }} onClick={finish} />
+      <div className="fixed inset-0 z-[9998] transition-opacity duration-500" style={{ backgroundColor: "rgba(0, 0, 0, 0.8)" }} onClick={finish} />
 
       {/* Highlight */}
       {!navigating && (
         <div className="fixed z-[9999] pointer-events-none transition-all duration-500 ease-out" style={{
           ...highlightStyle,
-          boxShadow: `0 0 0 9999px rgba(0, 0, 0, 0.65), 0 0 30px 8px ${colors.glow}`,
+          boxShadow: `0 0 0 9999px rgba(0, 0, 0, 0.8), 0 0 40px 12px ${colors.glow}, inset 0 0 20px 4px rgba(255, 255, 255, 0.1)`,
           border: `2px solid ${colors.border}`,
+          backgroundColor: "rgba(255, 255, 255, 0.05)",
         }} />
       )}
 
-      {/* Tooltip */}
-      <div className="fixed z-[10000] rounded-xl border bg-card shadow-2xl transition-all duration-500 ease-out" style={{ ...tooltipStyle, width: 400, maxWidth: "calc(100vw - 32px)" }}>
-        <div className="p-5">
+      {/* Tooltip — Hero mode for step 0, normal for others */}
+      {step === 0 ? (
+        <div className="fixed z-[10000] inset-0 flex items-center justify-center pointer-events-none">
+          <div className="pointer-events-auto rounded-2xl border bg-card shadow-2xl p-10 text-center max-w-xl mx-4 transition-all duration-700 ease-out" style={{ boxShadow: `0 0 60px 20px ${colors.glow}` }}>
+            <div className="text-6xl mb-5">🚀</div>
+            <h2 className="text-3xl font-semibold mb-3">{currentStep.title}</h2>
+            <p className="text-base text-muted-foreground leading-relaxed mb-8">{currentStep.description}</p>
+            <div className="flex gap-3 justify-center">
+              <Button variant="ghost" size="lg" onClick={finish}>Skip tour</Button>
+              <Button size="lg" onClick={next} style={{ backgroundColor: colors.border }}>Let&apos;s go →</Button>
+            </div>
+          </div>
+        </div>
+      ) : (
+      <div className="fixed z-[10000] rounded-xl border bg-card shadow-2xl transition-all duration-500 ease-out" style={{ ...tooltipStyle, width: 440, maxWidth: "calc(100vw - 32px)" }}>
+        <div className="p-6">
           <div className="flex items-start justify-between gap-2 mb-3">
-            <div className="flex items-center gap-2">
-              {currentStep.emoji && <span className="text-2xl">{currentStep.emoji}</span>}
+            <div className="flex items-center gap-3">
+              {currentStep.emoji && <span className="text-3xl">{currentStep.emoji}</span>}
               <div>
                 <p className="text-xs font-medium" style={{ color: colors.border }}>{step + 1} / {TOUR_STEPS.length}</p>
-                <h3 className="text-base font-semibold">{currentStep.title}</h3>
+                <h3 className="text-lg font-semibold">{currentStep.title}</h3>
               </div>
             </div>
             <button onClick={finish} className="rounded-full p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
-              <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M1 1L11 11M1 11L11 1" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M1 1L13 13M1 13L13 1" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
             </button>
           </div>
 
-          <p className="text-sm text-muted-foreground leading-relaxed mb-4">{currentStep.description}</p>
-
-          {/* Current page indicator */}
-          <p className="text-xs font-mono text-muted-foreground/50 mb-3">{currentStep.route}</p>
+          <p className="text-sm text-muted-foreground leading-relaxed mb-5">{currentStep.description}</p>
 
           <div className="flex items-center justify-between">
             <div className="flex gap-1.5">
@@ -365,6 +428,7 @@ export function OnboardingTour() {
           </div>
         </div>
       </div>
+      )}
     </>
   );
 }

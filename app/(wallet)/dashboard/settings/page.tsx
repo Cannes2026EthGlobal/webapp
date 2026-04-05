@@ -530,25 +530,6 @@ function SettingsContent() {
       </Card>
 
       {/* ─── Privacy ─── */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Privacy</CardTitle>
-          <CardDescription>
-            Workspace privacy state and identity configuration
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center gap-4">
-            <Badge variant="secondary">Pseudonymous</Badge>
-            <p className="text-sm text-muted-foreground">
-              This workspace operates in pseudonymous mode. Identity verification
-              and shielded transactions will be available with the Chainlink
-              integration.
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-
       {/* ─── Integrations ─── */}
       <Card>
         <CardHeader>
@@ -566,24 +547,6 @@ function SettingsContent() {
               </p>
             </div>
             <Badge variant="outline">Not connected</Badge>
-          </div>
-          <div className="flex items-center justify-between rounded-lg border p-3">
-            <div>
-              <p className="text-sm font-medium">Chainlink</p>
-              <p className="text-xs text-muted-foreground">
-                Payment routing, automation, and price feeds
-              </p>
-            </div>
-            <Badge variant="outline">Not connected</Badge>
-          </div>
-          <div className="flex items-center justify-between rounded-lg border p-3">
-            <div>
-              <p className="text-sm font-medium">Reown Auth</p>
-              <p className="text-xs text-muted-foreground">
-                Wallet-based operator authentication
-              </p>
-            </div>
-            <Badge variant="default">Connected</Badge>
           </div>
         </CardContent>
       </Card>
