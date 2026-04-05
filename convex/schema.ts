@@ -357,12 +357,36 @@ export default defineSchema({
     wcPayGatewayUrl: v.optional(v.string()),
     quantity: v.optional(v.number()),
     checkoutLinkId: v.optional(v.id("checkoutLinks")),
+    dispatched: v.optional(v.boolean()),
+    dispatchedAt: v.optional(v.number()),
   })
     .index("by_companyId", ["companyId"])
     .index("by_companyId_and_status", ["companyId", "status"])
     .index("by_customerId", ["customerId"])
     .index("by_productId", ["productId"])
     .index("by_referenceId", ["referenceId"]),
+
+  // ─── Dispatch Records (fund transfers from Arc Counting to companies) ───
+  dispatchRecords: defineTable({
+    companyId: v.id("companies"),
+    destinationAddress: v.string(),
+    amountCents: v.number(),
+    currency: v.union(v.literal("USD"), v.literal("EUR")),
+    chain: v.string(),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("sent"),
+      v.literal("confirmed"),
+      v.literal("failed")
+    ),
+    txHash: v.optional(v.string()),
+    errorMessage: v.optional(v.string()),
+    paymentIds: v.array(v.id("customerPayments")),
+    isReferral: v.optional(v.boolean()),
+    referralName: v.optional(v.string()),
+  })
+    .index("by_companyId", ["companyId"])
+    .index("by_status", ["status"]),
 
   // ─── Treasury / Company Balances ───
   companyBalances: defineTable({
