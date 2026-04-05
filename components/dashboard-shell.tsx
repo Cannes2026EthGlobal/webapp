@@ -4,6 +4,7 @@ import type { CSSProperties } from "react";
 import { useBusinessProfile } from "@/hooks/use-business-profile";
 import { useCompany } from "@/hooks/use-company";
 import { OnboardingWizard } from "@/components/onboarding-wizard";
+import { OnboardingTour } from "@/components/onboarding-tour";
 import { AppSidebar } from "@/components/app-sidebar";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -46,6 +47,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
     >
       <AppSidebar variant="inset" />
       <SidebarInset>{children}</SidebarInset>
+      <OnboardingTour />
     </SidebarProvider>
   );
 }
