@@ -48,7 +48,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 
-function PayrollContent() {
+export function PayrollContent() {
   const { companyId } = useCompany();
   const employees = useQuery(
     api.employees.listByCompany,
