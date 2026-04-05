@@ -95,6 +95,7 @@ function EmployeesContent({
     role: "",
     employmentType: "full-time" as const,
     email: "",
+    walletAddress: "",
   });
 
   const [paymentForm, setPaymentForm] = useState({
@@ -121,10 +122,11 @@ function EmployeesContent({
       displayName: formData.displayName,
       role: formData.role,
       employmentType: formData.employmentType,
-      walletVerified: false,
+      walletVerified: !!formData.walletAddress,
       privacyLevel: "pseudonymous",
-      status: "onboarding",
+      status: "active",
       email: formData.email || undefined,
+      walletAddress: formData.walletAddress || undefined,
     });
     setShowCreate(false);
     setFormData({
@@ -132,6 +134,7 @@ function EmployeesContent({
       role: "",
       employmentType: "full-time",
       email: "",
+      walletAddress: "",
     });
     toast.success("Employee added");
   };
@@ -452,16 +455,29 @@ function EmployeesContent({
                 </SelectContent>
               </Select>
             </div>
-            <div className="grid gap-2">
-              <Label htmlFor="email">Email (optional)</Label>
-              <Input
-                id="email"
-                type="email"
-                value={formData.email}
-                onChange={(e) =>
-                  setFormData({ ...formData, email: e.target.value })
-                }
-              />
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="email">Email (optional)</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) =>
+                    setFormData({ ...formData, email: e.target.value })
+                  }
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="walletAddress">Wallet address (optional)</Label>
+                <Input
+                  id="walletAddress"
+                  placeholder="0x..."
+                  value={formData.walletAddress}
+                  onChange={(e) =>
+                    setFormData({ ...formData, walletAddress: e.target.value })
+                  }
+                />
+              </div>
             </div>
           </div>
           <p className="text-xs text-muted-foreground rounded-md bg-muted px-3 py-2">
