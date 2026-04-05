@@ -89,7 +89,6 @@ const secondaryItems = [
     title: "Settings",
     url: "/dashboard/settings",
     icon: <HugeiconsIcon icon={Settings05Icon} strokeWidth={2} />,
-    icon: <HugeiconsIcon icon={HelpCircleIcon} strokeWidth={2} />,
   },
 ];
 
