@@ -588,6 +588,25 @@ function SettingsContent() {
         </CardContent>
       </Card>
 
+      {/* ─── Tour ─── */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Onboarding Tour</CardTitle>
+          <CardDescription>Walk through the dashboard features</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button
+            variant="outline"
+            onClick={() => {
+              localStorage.removeItem("arc-counting-tour-completed");
+              window.location.href = "/dashboard";
+            }}
+          >
+            Replay Tour
+          </Button>
+        </CardContent>
+      </Card>
+
       {/* ─── Danger Zone ─── */}
       <Card className="border-destructive/50">
         <CardHeader>

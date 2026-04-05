@@ -25,7 +25,7 @@ export function NavMain({
       <SidebarGroupContent>
         <SidebarMenu>
           {items.map((item) => (
-            <SidebarMenuItem key={item.title}>
+            <SidebarMenuItem key={item.title} data-tour={item.title.toLowerCase().replace(/[^a-z]/g, "-")}>
               <SidebarMenuButton
                 asChild
                 tooltip={item.title}
