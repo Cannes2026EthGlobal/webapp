@@ -202,7 +202,9 @@ export default defineSchema({
     billingUnit: v.string(),
     pricingModel: v.union(
       v.literal("per-unit"),
-      v.literal("pay-as-you-go")
+      v.literal("pay-as-you-go"),
+      v.literal("flat"),
+      v.literal("tiered")
     ),
     unitPriceCents: v.number(),
     currency: v.union(v.literal("USD"), v.literal("EUR")),
