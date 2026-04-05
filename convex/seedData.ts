@@ -69,6 +69,43 @@ export const nukeCompanyData = mutation({
 });
 
 /**
+ * Reset treasury balances and ledger entries so it relies purely on on-chain data.
+ *
+ * Usage:
+ *   npx convex run seedData:resetTreasury '{"wallet": "0x..."}'
+ */
+export const resetTreasury = mutation({
+  args: { wallet: v.string() },
+  handler: async (ctx, args) => {
+    const companyId = await resolveCompany(ctx, args.wallet);
+
+    let deleted = 0;
+
+    // Delete companyBalances (USD + EUR)
+    const balances = await ctx.db
+      .query("companyBalances")
+      .withIndex("by_companyId", (q: any) => q.eq("companyId", companyId))
+      .take(10);
+    for (const b of balances) {
+      await ctx.db.delete(b._id);
+      deleted++;
+    }
+
+    // Delete all ledger entries
+    const entries = await ctx.db
+      .query("balanceEntries")
+      .withIndex("by_companyId", (q: any) => q.eq("companyId", companyId))
+      .take(500);
+    for (const e of entries) {
+      await ctx.db.delete(e._id);
+      deleted++;
+    }
+
+    return { companyId, deleted, message: "Treasury reset — balance now comes from on-chain only" };
+  },
+});
+
+/**
  * Add an employee.
  *
  * Usage:
