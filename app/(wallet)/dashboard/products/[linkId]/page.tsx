@@ -6,6 +6,7 @@ import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { toast } from "sonner";
+import { formatCentsDetailed } from "@/lib/format";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -237,7 +238,7 @@ export default function CustomizeCheckoutPage() {
                   </p>
                   <div className="rounded-lg border p-4 w-full max-w-xs" style={{ borderColor: primaryColor + "40" }}>
                     <p className="text-sm font-medium">1 x {link.productName}</p>
-                    <p className="text-2xl font-bold mt-1" style={{ color: primaryColor }}>$0.00</p>
+                    <p className="text-2xl font-bold mt-1" style={{ color: primaryColor }}>{formatCentsDetailed(link.productPriceCents, link.productCurrency as "USD" | "EUR")}</p>
                   </div>
                   <button
                     className="rounded-lg px-6 py-3 font-medium text-white transition-opacity hover:opacity-90"

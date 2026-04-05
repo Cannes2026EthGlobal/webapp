@@ -103,7 +103,12 @@ export const getById = query({
     const link = await ctx.db.get(args.id);
     if (!link) return null;
     const product = await ctx.db.get(link.productId);
-    return { ...link, productName: product?.name ?? "Unknown" };
+    return {
+      ...link,
+      productName: product?.name ?? "Unknown",
+      productPriceCents: product?.unitPriceCents ?? 0,
+      productCurrency: product?.currency ?? "USD",
+    };
   },
 });
 

@@ -19,6 +19,56 @@ async function resolveCompany(ctx: any, wallet: string) {
 }
 
 /**
+ * Nuke all data for a company (keeps the company + user + membership).
+ *
+ * Usage:
+ *   npx convex run seedData:nukeCompanyData '{"wallet": "0x..."}'
+ */
+export const nukeCompanyData = mutation({
+  args: { wallet: v.string() },
+  handler: async (ctx, args) => {
+    const companyId = await resolveCompany(ctx, args.wallet);
+
+    // Tables with by_companyId index
+    const tables = [
+      "employees",
+      "compensationLines",
+      "employeePayments",
+      "customers",
+      "customerPayments",
+      "products",
+      "checkoutLinks",
+      "companyBalances",
+      "balanceEntries",
+      "creditRequests",
+      "creditSettings",
+    ] as const;
+
+    let total = 0;
+    for (const table of tables) {
+      const rows = await ctx.db
+        .query(table)
+        .withIndex("by_companyId", (q: any) => q.eq("companyId", companyId))
+        .take(500);
+      for (const row of rows) {
+        await ctx.db.delete(row._id);
+        total++;
+      }
+    }
+
+    // compensationSplits uses by_employeeId, not by_companyId — already deleted via cascade
+    // but clean up any orphans
+    const splits = await ctx.db.query("compensationSplits").take(500);
+    for (const s of splits) {
+      const line = await ctx.db.get(s.compensationLineId);
+      if (!line) { await ctx.db.delete(s._id); total++; }
+    }
+
+    return { companyId, deletedRows: total };
+  },
+});
+
+/**
  * Add an employee.
  *
  * Usage:
@@ -67,19 +117,6 @@ export const addEmployee = mutation({
       walletAddress: args.employeeWallet,
       payoutAsset: args.payoutAsset ?? "USDC",
     });
-
-    // Create compensation line if salary provided
-    if (args.salaryAmountCents) {
-      await ctx.db.insert("compensationLines", {
-        employeeId,
-        companyId,
-        name: "Base Salary",
-        amountCents: args.salaryAmountCents,
-        asset: args.payoutAsset ?? "USDC",
-        frequency: args.salaryFrequency ?? "monthly",
-        isActive: true,
-      });
-    }
 
     return { employeeId };
   },
@@ -242,13 +279,66 @@ export const seedFullDemo = mutation({
     const day = 86400000;
     const now = Date.now();
 
-    // Employees
+    // ─── Treasury balance (seed companyBalances) ───
+    // $85,000 USDC credited, $32,000 debited → $53,000 available
+    const existingUsd = await ctx.db
+      .query("companyBalances")
+      .withIndex("by_companyId_and_currency", (q: any) => q.eq("companyId", companyId).eq("currency", "USD"))
+      .unique();
+    if (!existingUsd) {
+      await ctx.db.insert("companyBalances", {
+        companyId,
+        currency: "USD",
+        availableCents: 5300000,
+        totalCreditedCents: 8500000,
+        totalDebitedCents: 3200000,
+      });
+    }
+
+    // €25,000 EURC credited, €9,500 debited → €15,500 available
+    const existingEur = await ctx.db
+      .query("companyBalances")
+      .withIndex("by_companyId_and_currency", (q: any) => q.eq("companyId", companyId).eq("currency", "EUR"))
+      .unique();
+    if (!existingEur) {
+      await ctx.db.insert("companyBalances", {
+        companyId,
+        currency: "EUR",
+        availableCents: 1550000,
+        totalCreditedCents: 2500000,
+        totalDebitedCents: 950000,
+      });
+    }
+
+    // ─── Ledger entries ───
+    await ctx.db.insert("balanceEntries", {
+      companyId, type: "credit", amountCents: 5000000, currency: "USD",
+      reason: "Initial treasury deposit — USDC", occurredAt: now - 30 * day,
+    });
+    await ctx.db.insert("balanceEntries", {
+      companyId, type: "credit", amountCents: 3500000, currency: "USD",
+      reason: "Customer payments — March batch", occurredAt: now - 15 * day,
+    });
+    await ctx.db.insert("balanceEntries", {
+      companyId, type: "debit", amountCents: 3200000, currency: "USD",
+      reason: "March payroll settlement", occurredAt: now - 5 * day,
+    });
+    await ctx.db.insert("balanceEntries", {
+      companyId, type: "credit", amountCents: 2500000, currency: "EUR",
+      reason: "Initial EURC deposit", occurredAt: now - 25 * day,
+    });
+    await ctx.db.insert("balanceEntries", {
+      companyId, type: "debit", amountCents: 950000, currency: "EUR",
+      reason: "March contractor payment — EURC", occurredAt: now - 5 * day,
+    });
+
+    // ─── Employees (realistic salaries in cents) ───
     const employees = [
-      { displayName: "Elena Vasquez", role: "Lead Engineer", employmentType: "full-time" as const, email: "elena@arcdemo.co", salary: 95 },
-      { displayName: "Marcus Chen", role: "Product Designer", employmentType: "full-time" as const, salary: 80 },
-      { displayName: "Aria Nakamura", role: "Backend Dev", employmentType: "contractor" as const, salary: 70 },
-      { displayName: "James Whitfield", role: "DevOps", employmentType: "full-time" as const, salary: 85 },
-      { displayName: "Sofia Reyes", role: "Data Analyst", employmentType: "part-time" as const, salary: 50 },
+      { displayName: "Elena Vasquez", role: "Lead Engineer", employmentType: "full-time" as const, email: "elena@arcdemo.co", salaryCents: 1100000, asset: "USDC" },
+      { displayName: "Marcus Chen", role: "Product Designer", employmentType: "full-time" as const, salaryCents: 850000, asset: "USDC" },
+      { displayName: "Aria Nakamura", role: "Backend Dev", employmentType: "contractor" as const, salaryCents: 750000, asset: "USDC" },
+      { displayName: "James Whitfield", role: "DevOps", employmentType: "full-time" as const, salaryCents: 900000, asset: "USDC" },
+      { displayName: "Sofia Reyes", role: "Data Analyst", employmentType: "part-time" as const, salaryCents: 450000, asset: "USDC" },
     ];
 
     const empIds = [];
@@ -263,21 +353,17 @@ export const seedFullDemo = mutation({
         status: "active" as const,
         email: emp.email,
         walletAddress: empWallet,
+        payoutAsset: emp.asset,
+        compensationModel: "salary" as const,
+        payoutAmountCents: emp.salaryCents,
+        payoutFrequency: "monthly" as const,
+        nextPaymentDate: now + 15 * day,
       });
       empIds.push(id);
-
-      await ctx.db.insert("compensationLines", {
-        employeeId: id,
-        companyId,
-        name: "Base Salary",
-        amountCents: emp.salary,
-        asset: "USDC",
-        frequency: "monthly",
-        isActive: true,
-      });
     }
 
-    // Customers
+    // ─── Customers ───
+    const custIds = [];
     const customers = [
       { displayName: "Northwind Labs", customerType: "company" as const, email: "billing@northwind.io" },
       { displayName: "Synthex AI", customerType: "app" as const, email: "ops@synthex.ai" },
@@ -285,7 +371,7 @@ export const seedFullDemo = mutation({
     ];
 
     for (const cust of customers) {
-      await ctx.db.insert("customers", {
+      const id = await ctx.db.insert("customers", {
         companyId,
         displayName: cust.displayName,
         customerType: cust.customerType,
@@ -294,13 +380,14 @@ export const seedFullDemo = mutation({
         walletReady: true,
         email: cust.email,
       });
+      custIds.push(id);
     }
 
-    // Products
+    // ─── Products ───
     const products = [
-      { name: "API Access", billingUnit: "1K requests", priceCents: 50 },
-      { name: "Pro License", billingUnit: "license", priceCents: 1500000 },
-      { name: "Event Pass", billingUnit: "ticket", priceCents: 25000 },
+      { name: "API Access", billingUnit: "1K requests", priceCents: 5000, currency: "USD" as const },
+      { name: "Pro License", billingUnit: "license", priceCents: 1500000, currency: "USD" as const },
+      { name: "Event Pass", billingUnit: "ticket", priceCents: 2500000, currency: "USD" as const },
     ];
 
     for (const prod of products) {
@@ -310,40 +397,153 @@ export const seedFullDemo = mutation({
         billingUnit: prod.billingUnit,
         pricingModel: "per-unit" as const,
         unitPriceCents: prod.priceCents,
-        currency: "USD" as const,
-        settlementAsset: "USDC",
+        currency: prod.currency,
+        settlementAsset: prod.currency === "EUR" ? "EURC" : "USDC",
         privacyMode: "standard" as const,
         refundPolicy: "no-refund" as const,
         isActive: true,
       });
     }
 
-    // Payments
+    // ─── Employee Payments (settled March + draft/approved April) ───
+    // March settled — all 5 employees
+    for (let i = 0; i < 5; i++) {
+      await ctx.db.insert("employeePayments", {
+        companyId,
+        employeeId: empIds[i],
+        type: "salary",
+        amountCents: employees[i].salaryCents,
+        currency: "USD",
+        status: "settled",
+        description: `March salary — ${employees[i].displayName}`,
+        settledAt: now - 5 * day,
+      });
+    }
+
+    // April — 3 draft, 1 approved
     for (let i = 0; i < 3; i++) {
       await ctx.db.insert("employeePayments", {
         companyId,
         employeeId: empIds[i],
         type: "salary",
-        amountCents: employees[i].salary,
+        amountCents: employees[i].salaryCents,
         currency: "USD",
-        status: "settled",
-        description: "March salary",
-        settledAt: now - 5 * day,
+        status: "draft",
+        description: `April salary — ${employees[i].displayName}`,
+        scheduledDate: now + 15 * day,
       });
     }
+    await ctx.db.insert("employeePayments", {
+      companyId,
+      employeeId: empIds[3],
+      type: "salary",
+      amountCents: employees[3].salaryCents,
+      currency: "USD",
+      status: "approved",
+      description: `April salary — ${employees[3].displayName}`,
+      scheduledDate: now + 15 * day,
+    });
 
+    // Bonus payment
     await ctx.db.insert("employeePayments", {
       companyId,
       employeeId: empIds[0],
-      type: "salary",
-      amountCents: employees[0].salary,
+      type: "bonus",
+      amountCents: 250000,
       currency: "USD",
-      status: "approved",
-      description: "April salary",
-      scheduledDate: now + 2 * day,
+      status: "settled",
+      description: "Q1 performance bonus — Elena Vasquez",
+      settledAt: now - 3 * day,
     });
 
-    return { companyId, employees: empIds.length, customers: customers.length, products: products.length };
+    // ─── Customer Payments (paid, pending, overdue) ───
+    // Paid — Northwind Labs (today!)
+    await ctx.db.insert("customerPayments", {
+      companyId,
+      customerId: custIds[0],
+      mode: "invoice" as const,
+      amountCents: 1500000,
+      currency: "USD",
+      status: "paid",
+      description: "Northwind Labs — March invoice",
+      paidAt: now - 2 * day,
+    });
+    await ctx.db.insert("customerPayments", {
+      companyId,
+      customerId: custIds[0],
+      mode: "usage" as const,
+      amountCents: 350000,
+      currency: "USD",
+      status: "paid",
+      description: "Northwind Labs — API usage March",
+      paidAt: now,
+    });
+
+    // Paid today — Synthex AI
+    await ctx.db.insert("customerPayments", {
+      companyId,
+      customerId: custIds[1],
+      mode: "usage" as const,
+      amountCents: 180000,
+      currency: "USD",
+      status: "paid",
+      description: "Synthex AI — API usage settlement",
+      paidAt: now,
+    });
+
+    // Pending — AutoAgent-7
+    await ctx.db.insert("customerPayments", {
+      companyId,
+      customerId: custIds[2],
+      mode: "usage" as const,
+      amountCents: 75000,
+      currency: "USD",
+      status: "pending",
+      description: "AutoAgent-7 — metered session fees",
+    });
+
+    // Pending EUR
+    await ctx.db.insert("customerPayments", {
+      companyId,
+      customerId: custIds[1],
+      mode: "invoice" as const,
+      amountCents: 420000,
+      currency: "EUR",
+      status: "sent",
+      description: "Synthex AI — EU operations invoice (EURC)",
+    });
+
+    // Overdue
+    await ctx.db.insert("customerPayments", {
+      companyId,
+      customerId: custIds[2],
+      mode: "invoice" as const,
+      amountCents: 250000,
+      currency: "USD",
+      status: "overdue",
+      description: "AutoAgent-7 — February invoice (overdue)",
+      dueDate: now - 10 * day,
+    });
+
+    // ─── Credit (advance) request ───
+    await ctx.db.insert("creditRequests", {
+      companyId,
+      employeeId: empIds[2],
+      requestedCents: 375000,
+      interestRateBps: 500,
+      interestCents: 18750,
+      netCents: 356250,
+      status: "pending" as const,
+      requestedAt: now - 1 * day,
+    });
+
+    return {
+      companyId,
+      employees: empIds.length,
+      customers: custIds.length,
+      products: products.length,
+      message: "Full demo seeded: $53K USDC + €15.5K EURC treasury, 5 employees, 3 customers, 6 customer payments, 1 advance request",
+    };
   },
 });
 
@@ -382,16 +582,6 @@ export const seedDualCurrencyTeam = mutation({
       nextPaymentDate: now + 15 * day,
     });
 
-    await ctx.db.insert("compensationLines", {
-      employeeId: usDevId,
-      companyId,
-      name: "Base Salary",
-      amountCents: 1200000,
-      asset: "USDC",
-      frequency: "monthly",
-      isActive: true,
-    });
-
     // Paris contractor — paid in EURC
     const parisDevId = await ctx.db.insert("employees", {
       companyId,
@@ -409,16 +599,6 @@ export const seedDualCurrencyTeam = mutation({
       payoutFrequency: "monthly" as const,
       jurisdiction: "FR",
       nextPaymentDate: now + 15 * day,
-    });
-
-    await ctx.db.insert("compensationLines", {
-      employeeId: parisDevId,
-      companyId,
-      name: "Base Salary",
-      amountCents: 950000,
-      asset: "EURC",
-      frequency: "monthly",
-      isActive: true,
     });
 
     // Create payments: settled March + draft April for both
